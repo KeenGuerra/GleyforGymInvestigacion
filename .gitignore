@@ -1,0 +1,47 @@
+# Windows / System files
+Thumbs.db
+db.db
+Desktop.ini
+.DS_Store
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Python (Backend)
+backend/venv/
+backend/.env
+backend/__pycache__/
+backend/app/__pycache__/
+backend/app/**/__pycache__/
+backend/tests/__pycache__/
+backend/.pytest_cache/
+backend/.coverage
+backend/coverage.xml
+backend/*.db
+backend/*.db-journal
+
+# Node / JS (Web Admin)
+web-admin/node_modules/
+web-admin/dist/
+web-admin/.env*
+web-admin/coverage/
+web-admin/.eslintcache
+
+# Flutter / Dart (Mobile App)
+mobile-app/gleyforgym_app/.dart_tool/
+mobile-app/gleyforgym_app/build/
+mobile-app/gleyforgym_app/.flutter-plugins
+mobile-app/gleyforgym_app/.flutter-plugins-dependencies
+mobile-app/gleyforgym_app/.packages
+mobile-app/gleyforgym_app/ios/Flutter/flutter_export_environment.sh
+mobile-app/gleyforgym_app/android/key.properties
+mobile-app/gleyforgym_app/.env*
+
+# SonarQube
+.scannerwork/
