@@ -24,13 +24,11 @@ services:
         value: "*" # Custom CORS configuration
 
   # Frontend: React Static Site
-  - type: web
+  - type: static
     name: gleyforgym-frontend
-    env: static
     buildCommand: npm install && npm run build
     publishDir: dist
     rootDir: web-admin
-    plan: free
     routes:
       # Rewrite rule to route all frontend paths to index.html (SPA routing support)
       - type: rewrite
