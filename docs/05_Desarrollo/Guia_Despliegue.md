@@ -537,7 +537,34 @@ Verificar:
 
 ---
 
-# 20. Estado Actual
+# 20. Despliegue Automático en Render
+
+Render permite desplegar el backend (FastAPI), el frontend (React) y la base de datos (PostgreSQL) usando un plano unificado (`render.yaml`).
+
+## Configuración Creada
+
+El archivo [render.yaml](file:///d:/gleyforgym/render.yaml) en la raíz del proyecto automatiza la creación de:
+1. **Base de Datos PostgreSQL:** Un servicio de base de datos gestionada.
+2. **Backend FastAPI:** Servicio web configurado para instalar dependencias de `requirements.txt` y correr con `uvicorn`.
+3. **Frontend React:** Sitio estático configurado para compilarse y redirigir todas las rutas al `index.html` (para soporte de enrutado SPA).
+
+## Pasos para Desplegar en Render:
+
+1. **Subir cambios a GitHub:** Asegúrate de subir todo tu repositorio (incluyendo `render.yaml` y `backend/requirements.txt`) a un repositorio privado o público en GitHub.
+2. **Crear Blueprint en Render:**
+   - Inicia sesión en [Render](https://render.com).
+   - Ve a **Blueprints** en la barra superior.
+   - Haz clic en **New Blueprint Instance**.
+   - Conecta tu repositorio de GitHub de `gleyforgym`.
+3. **Configurar Variables Manuales:**
+   - Render creará automáticamente los servicios.
+   - Durante o después del despliegue, ve al servicio `gleyforgym-backend` -> **Environment** y añade la variable `CLOUDINARY_URL` con tu credencial de producción.
+4. **Verificación:**
+   - Una vez finalizado el build, Render te proveerá de una URL pública para el frontend y otra para el backend de forma automática y gratuita (con HTTPS activo).
+
+---
+
+# 21. Estado Actual
 
 ## Implementado
 
