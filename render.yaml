@@ -37,14 +37,10 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: gleyforgym-backend
-          property: url
+        value: https://gleyforgym-backend.onrender.com # Public backend URL
 
 databases:
   # Managed PostgreSQL Database
   - name: gleyforgym-db
     databaseName: gleyforgym
-    user: postgres
     plan: free
