@@ -12,12 +12,13 @@ from app.constants import (
     ESTADO_INACTIVO
 )
 
-router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
+router = APIRouter()
 
 
 @router.post(
     "/",
     response_model=schemas.MembresiaResponse,
+    dependencies=[Depends(obtener_usuario_actual)],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -45,10 +46,7 @@ def crear_membresia(
 
 @router.get(
     "/",
-    response_model=list[schemas.MembresiaResponse],
-    responses={
-        401: {"description": "Token inválido o expirado"}
-    }
+    response_model=list[schemas.MembresiaResponse]
 )
 def listar_membresias(db: Annotated[Session, Depends(get_db)]):
     return db.query(models.Membresia).order_by(models.Membresia.id_membresia).all()
@@ -58,7 +56,6 @@ def listar_membresias(db: Annotated[Session, Depends(get_db)]):
     "/{id_membresia}",
     response_model=schemas.MembresiaResponse,
     responses={
-        401: {"description": "Token inválido o expirado"},
         404: {"description": "Membresía no encontrada"}
     }
 )
@@ -80,6 +77,7 @@ def obtener_membresia(
 @router.put(
     "/{id_membresia}",
     response_model=schemas.MembresiaResponse,
+    dependencies=[Depends(obtener_usuario_actual)],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Membresía no encontrada"}
@@ -108,6 +106,7 @@ def actualizar_membresia(
 
 @router.delete(
     "/{id_membresia}",
+    dependencies=[Depends(obtener_usuario_actual)],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Membresía no encontrada"}
