@@ -63,7 +63,10 @@ def seed_admin_user():
 
 if __name__ == "__main__":
     try:
-        create_database_if_not_exists()
+        try:
+            create_database_if_not_exists()
+        except Exception as e:
+            print(f"Skipping database creation (likely running on Render or managed DB): {e}")
         initialize_tables()
         seed_admin_user()
         print("Database setup completed successfully.")
