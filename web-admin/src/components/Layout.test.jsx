@@ -55,7 +55,7 @@ describe("Layout Component", () => {
     expect(screen.getAllByText("CLIENTE").length).toBeGreaterThan(0);
   });
 
-  it("clears localStorage and navigates to login on logout click", () => {
+  it("clears localStorage and navigates to home on logout click", () => {
     localStorage.setItem("rol", "ADMIN");
     localStorage.setItem("correo", "admin@gym.com");
 
@@ -69,7 +69,7 @@ describe("Layout Component", () => {
     fireEvent.click(logoutBtn);
 
     expect(localStorage.getItem("rol")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
+    expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
   it("renders sidebar with ENTRENADOR links when role is ENTRENADOR", () => {

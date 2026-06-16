@@ -9,7 +9,7 @@ export default function Layout() {
 
   const cerrarSesion = () => {
     localStorage.clear();
-    navigate("/login");
+    navigate("/");
   };
 
   let inicial = "C";
