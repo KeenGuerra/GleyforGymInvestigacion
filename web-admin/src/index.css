@@ -927,7 +927,7 @@ tr:hover td {
 
 .content-grid {
   display: grid;
-  grid-template-columns: 1.7fr 0.8fr;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.8fr);
   gap: 28px;
 }
 
@@ -935,6 +935,73 @@ tr:hover td {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.status-list span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.status-list span::before {
+  content: "●";
+  color: var(--success);
+  font-size: 10px;
+  text-shadow: 0 0 8px var(--success);
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-top: 16px;
+  transition: all 0.25s ease;
+}
+
+.summary-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 85, 0, 0.15);
+}
+
+.summary-item > span {
+  font-size: 20px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 85, 0, 0.08);
+  border: 1px solid rgba(255, 85, 0, 0.2);
+}
+
+.summary-item div {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-item strong {
+  font-size: 15px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.summary-item p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .info-card,
@@ -1342,7 +1409,7 @@ tr:hover td {
    RESPONSIVE
 ========================= */
 
-@media (max-width: 1100px) {
+@media (max-width: 1250px) {
   .stats-grid,
   .quick-actions-grid {
     grid-template-columns: repeat(2, 1fr);
