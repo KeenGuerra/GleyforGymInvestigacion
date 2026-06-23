@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import logo from "../assets/icono.png";
+import { FaBars, FaTimes } from "react-icons/fa";
 
 export default function Layout() {
   const navigate = useNavigate();
   const rol = localStorage.getItem("rol");
   const correo = localStorage.getItem("correo");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const cerrarSesion = () => {
     localStorage.clear();
@@ -28,7 +30,23 @@ export default function Layout() {
 
   return (
     <div className="layout">
-      <aside className="sidebar">
+      {/* Mobile Top Bar */}
+      <header className="mobile-header">
+        <button className="menu-toggle" onClick={() => setMenuOpen(true)}>
+          <FaBars />
+        </button>
+        <div className="mobile-logo" onClick={() => navigate("/")}>
+          <img src={logo} alt="GleyforGym Logo" />
+          <span>GLEYFORGYM</span>
+        </div>
+      </header>
+
+      {/* Overlay Backdrop */}
+      {menuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMenuOpen(false)} />
+      )}
+
+      <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="sidebar-brand">
           <div className="brand-icon">
             <img src={logo} alt="GleyforGym" />
@@ -38,9 +56,13 @@ export default function Layout() {
             <h2>GLEYFORGYM</h2>
             <span>Sistema de gestión</span>
           </div>
+
+          <button className="sidebar-close" onClick={() => setMenuOpen(false)}>
+            <FaTimes />
+          </button>
         </div>
 
-        <nav className="sidebar-menu">
+        <nav className="sidebar-menu" onClick={() => setMenuOpen(false)}>
           <NavLink to="/dashboard">Panel principal</NavLink>
 
           {rol === "ADMIN" && (
