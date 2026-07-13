@@ -30,6 +30,7 @@ function Inventario() {
   const aplicarAjuste = async (e) => {
     e.preventDefault(); setError("");
     if (!ajuste.id_producto) { setError("Seleccione un producto"); return; }
+    if (Number(ajuste.cantidad) === 0) { setError("La cantidad no puede ser cero"); return; }
     try {
       await api.post("/inventario/ajustes", {
         id_producto: Number(ajuste.id_producto),
