@@ -131,10 +131,14 @@ async def crear_producto(
 )
 def listar_productos(db: Annotated[Session, Depends(get_db)]):
     _ensure_columns(db)
-    productos = db.query(models.Producto).order_by(
-        models.Producto.id_producto.desc()
-    ).all()
-    return [_producto_con_stock(db, p) for p in productos]
+    try:
+        productos = db.query(models.Producto).order_by(
+            models.Producto.id_producto.desc()
+        ).all()
+        return [_producto_con_stock(db, p) for p in productos]
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error consultando productos: {str(e)}")
 
 
 @router.get(
@@ -144,10 +148,14 @@ def listar_productos(db: Annotated[Session, Depends(get_db)]):
 )
 def listar_productos_disponibles(db: Annotated[Session, Depends(get_db)]):
     _ensure_columns(db)
-    productos = db.query(models.Producto).filter(
-        models.Producto.estado == "ACTIVO"
-    ).order_by(models.Producto.nombre).all()
-    return [_producto_con_stock(db, p) for p in productos]
+    try:
+        productos = db.query(models.Producto).filter(
+            models.Producto.estado == "ACTIVO"
+        ).order_by(models.Producto.nombre).all()
+        return [_producto_con_stock(db, p) for p in productos]
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error consultando productos: {str(e)}")
 
 
 @router.get(
