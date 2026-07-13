@@ -181,12 +181,18 @@ function Inicio() {
                   {prod.descripcion && (
                     <p className="item-description">{prod.descripcion}</p>
                   )}
-                  <button className="btn-primary" onClick={irAcceso}>
-                    {token ? "Ver en panel" : "Consultar precio"}
+                  <button className="btn-primary" onClick={() => navigate(token ? "/tienda" : "/login")}>
+                    {token ? "Ir a la tienda" : "Iniciar sesión para comprar"}
                   </button>
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="form-actions" style={{ justifyContent: "center", marginTop: "1.5rem" }}>
+            <button className="btn-primary" onClick={() => navigate(token ? "/tienda" : "/login")}>
+              {token ? "Ver todos los productos" : "Ir a la tienda"}
+            </button>
           </div>
         </section>
       )}
