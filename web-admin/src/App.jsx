@@ -32,6 +32,7 @@ import Proveedores from "./pages/Proveedores";
 import Compras from "./pages/Compras";
 import Inventario from "./pages/Inventario";
 import Ventas from "./pages/Ventas";
+import Tienda from "./pages/Tienda";
 
 export default function App() {
   return (
@@ -227,6 +228,15 @@ export default function App() {
           />
 
           {/* CLIENTE */}
+          <Route
+            path="/tienda"
+            element={
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+                <Tienda />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/mi-perfil"
             element={

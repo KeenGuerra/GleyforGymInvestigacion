@@ -94,6 +94,13 @@ function Ventas() {
     finally { setProcesando(null); }
   };
 
+  const confirmar = async (id) => {
+    if (!globalThis.confirm("¿Confirmar esta venta? Se descontará el inventario.")) return;
+    try { setProcesando(id); await api.post(`/ventas/${id}/confirmar`); await cargar(); }
+    catch (err) { setError(err.response?.data?.detail || "Error al confirmar"); }
+    finally { setProcesando(null); }
+  };
+
   const filtradas = ventas.filter((v) => {
     const t = busqueda.toLowerCase();
     return (
@@ -228,11 +235,27 @@ function Ventas() {
                   <div><strong>{v.detalles?.length || 0}</strong><span>Productos</span></div>
                 </div>
                 <p className="item-description">{new Date(v.fecha_venta).toLocaleString()}</p>
-                {v.estado === "CONFIRMADA" && (
-                  <button className="btn-danger" disabled={procesando === v.id_venta} onClick={() => anular(v.id_venta)}>
-                    {procesando === v.id_venta ? "Anulando..." : "Anular"}
-                  </button>
+                {v.detalles && v.detalles.length > 0 && (
+                  <div style={{ margin: "0.5rem 0" }}>
+                    {v.detalles.map((d) => (
+                      <p key={d.id_detalle_venta} className="item-description">
+                        {d.nombre_producto} x{d.cantidad} — S/ {d.subtotal?.toFixed(2)}
+                      </p>
+                    ))}
+                  </div>
                 )}
+                <div className="item-actions">
+                  {v.estado === "PENDIENTE" && (
+                    <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => confirmar(v.id_venta)}>
+                      {procesando === v.id_venta ? "Confirmando..." : "Confirmar"}
+                    </button>
+                  )}
+                  {v.estado === "CONFIRMADA" && (
+                    <button className="btn-danger" disabled={procesando === v.id_venta} onClick={() => anular(v.id_venta)}>
+                      {procesando === v.id_venta ? "Anulando..." : "Anular"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -810,6 +810,13 @@ class VentaCreate(BaseModel):
     detalles: List[DetalleVentaCreate]
 
 
+class VentaSolicitarCreate(BaseModel):
+    metodo_pago: MetodoPagoVenta = "EFECTIVO"
+    descuento: float = 0
+    observaciones: Optional[str] = None
+    detalles: List[DetalleVentaCreate]
+
+
 class VentaResponse(BaseModel):
     id_venta: int
     id_cliente: Optional[int] = None
