@@ -1,7 +1,6 @@
-# pyrefly: ignore [missing-import]
-from fastapi import FastAPI
-# pyrefly: ignore [missing-import]
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.routes import (
     usuarios,
@@ -33,13 +32,33 @@ app = FastAPI(
 )
 
 
+ORIGINS = [
+    "https://gleyforgym-frontend.onrender.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def catch_all_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in ORIGINS or origin.endswith(".onrender.com"):
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers=headers,
+    )
 
 
 app.include_router(usuarios.router, prefix="/usuarios", tags=["Usuarios"])
