@@ -40,6 +40,7 @@ def initialize_tables():
     from sqlalchemy import inspect
     inspector = inspect(engine)
     migrations = [
+        ("productos", "imagen_url", "TEXT"),
         ("productos", "cloudinary_public_id", "VARCHAR(255)"),
         ("membresias", "beneficios", "TEXT"),
         ("cliente_membresias", "precio_asignado", "FLOAT"),
