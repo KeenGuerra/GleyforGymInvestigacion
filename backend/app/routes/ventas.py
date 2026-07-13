@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_admin
 from app.constants import (
     MSG_VENTA_NO_ENCONTRADA, MSG_VENTA_YA_CONFIRMADA,
     MSG_VENTA_NO_PENDIENTE, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -228,6 +228,29 @@ def reporte_ventas(
 
 
 @router.get(
+    "/mis-pedidos",
+    response_model=list[schemas.VentaResponse],
+    responses={401: {"description": "Token inválido o expirado"}}
+)
+def mis_pedidos(
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual)
+):
+    cliente = db.query(models.Cliente).filter(
+        models.Cliente.id_usuario == usuario.get("id_usuario")
+    ).first()
+
+    if not cliente:
+        raise HTTPException(status_code=400, detail="Solo los clientes pueden ver sus pedidos")
+
+    ventas = db.query(models.Venta).filter(
+        models.Venta.id_cliente == cliente.id_cliente
+    ).order_by(models.Venta.id_venta.desc()).all()
+
+    return [_venta_con_detalles(db, v) for v in ventas]
+
+
+@router.get(
     "/{id_venta}",
     response_model=schemas.VentaResponse,
     responses={
@@ -300,6 +323,155 @@ def anular_venta(
             db.add(movimiento)
 
     venta.estado = "ANULADA"
+    db.commit()
+    db.refresh(venta)
+
+    return _venta_con_detalles(db, venta)
+
+
+@router.post(
+    "/solicitar",
+    response_model=schemas.VentaResponse,
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        400: {"description": "Validación de datos"},
+        409: {"description": "Stock insuficiente"}
+    }
+)
+def solicitar_venta(
+    venta: schemas.VentaSolicitarCreate,
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual)
+):
+    if not venta.detalles:
+        raise HTTPException(status_code=400, detail=MSG_DETALLE_VACIO)
+
+    cliente = db.query(models.Cliente).filter(
+        models.Cliente.id_usuario == usuario.get("id_usuario")
+    ).first()
+
+    if not cliente:
+        raise HTTPException(status_code=400, detail="Solo los clientes pueden realizar pedidos")
+
+    subtotal_total = 0
+    detalles_procesados = []
+
+    for detalle in venta.detalles:
+        if detalle.cantidad <= 0:
+            raise HTTPException(status_code=400, detail=MSG_CANTIDAD_INVALIDA)
+
+        producto = db.query(models.Producto).filter(
+            models.Producto.id_producto == detalle.id_producto,
+            models.Producto.estado == "ACTIVO"
+        ).first()
+
+        if not producto:
+            raise HTTPException(status_code=404, detail=MSG_PRODUCTO_INACTIVO)
+
+        inventario = db.query(models.Inventario).filter(
+            models.Inventario.id_producto == detalle.id_producto
+        ).first()
+
+        stock_disponible = inventario.stock_actual if inventario else 0
+
+        if stock_disponible < detalle.cantidad:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{MSG_STOCK_INSUFICIENTE}: {producto.nombre} (disponible: {stock_disponible})"
+            )
+
+        precio = producto.precio_venta
+        sub = round(detalle.cantidad * precio, 2)
+        subtotal_total += sub
+        detalles_procesados.append((detalle, sub, producto, precio))
+
+    descuento = max(0, venta.descuento)
+    total = round(subtotal_total - descuento, 2)
+    if total < 0:
+        total = 0
+
+    nueva_venta = models.Venta(
+        id_cliente=cliente.id_cliente,
+        id_usuario=usuario.get("id_usuario"),
+        subtotal=subtotal_total,
+        descuento=descuento,
+        total=total,
+        metodo_pago=venta.metodo_pago,
+        observaciones=venta.observaciones,
+        estado="PENDIENTE"
+    )
+    db.add(nueva_venta)
+    db.flush()
+
+    for detalle, sub, producto, precio in detalles_procesados:
+        det = models.DetalleVenta(
+            id_venta=nueva_venta.id_venta,
+            id_producto=detalle.id_producto,
+            id_lote=detalle.id_lote,
+            cantidad=detalle.cantidad,
+            precio_unitario=precio,
+            descuento=0,
+            subtotal=sub
+        )
+        db.add(det)
+
+    db.commit()
+    db.refresh(nueva_venta)
+
+    return _venta_con_detalles(db, nueva_venta)
+
+
+@router.post(
+    "/{id_venta}/confirmar",
+    response_model=schemas.VentaResponse,
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Venta no encontrada"},
+        409: {"description": "Venta no se puede confirmar"}
+    }
+)
+def confirmar_venta(
+    id_venta: int,
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(requerir_admin)
+):
+    venta = db.query(models.Venta).filter(
+        models.Venta.id_venta == id_venta
+    ).first()
+
+    if not venta:
+        raise HTTPException(status_code=404, detail=MSG_VENTA_NO_ENCONTRADA)
+
+    if venta.estado != "PENDIENTE":
+        raise HTTPException(status_code=409, detail="Solo se pueden confirmar ventas en estado PENDIENTE")
+
+    detalles = db.query(models.DetalleVenta).filter(
+        models.DetalleVenta.id_venta == id_venta
+    ).all()
+
+    for detalle in detalles:
+        inventario = db.query(models.Inventario).filter(
+            models.Inventario.id_producto == detalle.id_producto
+        ).first()
+
+        if inventario:
+            inventario.stock_actual -= detalle.cantidad
+            inventario.fecha_actualizacion = datetime.now()
+
+        movimiento = models.MovimientoStock(
+            id_producto=detalle.id_producto,
+            id_lote=detalle.id_lote,
+            tipo_movimiento="SALIDA_VENTA",
+            referencia_tipo="VENTA",
+            referencia_id=venta.id_venta,
+            cantidad=detalle.cantidad,
+            costo_unitario=inventario.ultimo_costo if inventario else 0,
+            descripcion=f"Venta #{venta.id_venta} confirmada",
+            id_usuario=usuario.get("id_usuario")
+        )
+        db.add(movimiento)
+
+    venta.estado = "CONFIRMADA"
     db.commit()
     db.refresh(venta)
 

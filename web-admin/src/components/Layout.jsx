@@ -108,6 +108,7 @@ export default function Layout() {
           {rol === "CLIENTE" && (
             <>
               <p className="menu-label">Mi cuenta</p>
+              <NavLink to="/tienda">Tienda</NavLink>
               <NavLink to="/mi-perfil">Mi perfil</NavLink>
               <NavLink to="/mi-rutina">Mi rutina</NavLink>
               <NavLink to="/mi-nutricion">Mi nutrición</NavLink>
