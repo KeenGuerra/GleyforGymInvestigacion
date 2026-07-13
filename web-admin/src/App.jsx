@@ -26,6 +26,12 @@ import MiProgreso from "./pages/MiProgreso";
 import MiMembresia from "./pages/MiMembresia";
 import MisPagos from "./pages/MisPagos";
 import DetalleCliente from "./pages/DetalleCliente";
+import Categorias from "./pages/Categorias";
+import Productos from "./pages/Productos";
+import Proveedores from "./pages/Proveedores";
+import Compras from "./pages/Compras";
+import Inventario from "./pages/Inventario";
+import Ventas from "./pages/Ventas";
 
 export default function App() {
   return (
@@ -96,6 +102,61 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR"]}>
                 <Nutricion />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* COMERCIO - ADMIN */}
+          <Route
+            path="/categorias"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Categorias />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/productos"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Productos />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/proveedores"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Proveedores />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/compras"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Compras />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/inventario"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Inventario />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/ventas"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Ventas />
               </ProtectedRoute>
             }
           />

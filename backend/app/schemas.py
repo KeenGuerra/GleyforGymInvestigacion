@@ -537,3 +537,311 @@ class ComidaOut(ComidaCreate):
 
     class Config:
         from_attributes = True
+
+
+# =========================
+# GESTIÓN COMERCIAL - ESTADOS Y TIPOS
+# =========================
+
+EstadoProducto = Literal["ACTIVO", "INACTIVO"]
+EstadoCompra = Literal["PENDIENTE", "CONFIRMADA", "ANULADA"]
+EstadoVenta = Literal["PENDIENTE", "CONFIRMADA", "ANULADA"]
+EstadoLote = Literal["ACTIVO", "VENCIDO", "AGOTADO"]
+TipoMovimiento = Literal["ENTRADA_COMPRA", "SALIDA_VENTA", "ENTRADA_ANULACION_VENTA", "SALIDA_ANULACION_COMPRA", "AJUSTE"]
+MetodoPagoVenta = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA"]
+
+
+# =========================
+# CATEGORÍAS
+# =========================
+
+class CategoriaCreate(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    estado: EstadoProducto = "ACTIVO"
+
+
+class CategoriaUpdate(BaseModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    estado: Optional[EstadoProducto] = None
+
+
+class CategoriaResponse(CategoriaCreate):
+    id_categoria: int
+    fecha_creacion: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# PRODUCTOS
+# =========================
+
+class ProductoCreate(BaseModel):
+    id_categoria: Optional[int] = None
+    nombre: str
+    descripcion: Optional[str] = None
+    precio_compra: float = 0
+    precio_venta: float = 0
+    unidad_medida: str = "UNIDAD"
+    stock_minimo: float = 0
+    controla_lote: bool = False
+    controla_vencimiento: bool = False
+    estado: EstadoProducto = "ACTIVO"
+
+
+class ProductoUpdate(BaseModel):
+    id_categoria: Optional[int] = None
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio_compra: Optional[float] = None
+    precio_venta: Optional[float] = None
+    unidad_medida: Optional[str] = None
+    stock_minimo: Optional[float] = None
+    controla_lote: Optional[bool] = None
+    controla_vencimiento: Optional[bool] = None
+    estado: Optional[EstadoProducto] = None
+
+
+class ProductoResponse(ProductoCreate):
+    id_producto: int
+    fecha_creacion: datetime
+    stock_actual: Optional[float] = 0
+    nombre_categoria: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# PROVEEDORES
+# =========================
+
+class ProveedorCreate(BaseModel):
+    razon_social: str
+    ruc: Optional[str] = None
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    direccion: Optional[str] = None
+    contacto: Optional[str] = None
+    estado: EstadoProducto = "ACTIVO"
+
+
+class ProveedorUpdate(BaseModel):
+    razon_social: Optional[str] = None
+    ruc: Optional[str] = None
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    direccion: Optional[str] = None
+    contacto: Optional[str] = None
+    estado: Optional[EstadoProducto] = None
+
+
+class ProveedorResponse(ProveedorCreate):
+    id_proveedor: int
+    fecha_creacion: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# DETALLE COMPRAS
+# =========================
+
+class DetalleCompraCreate(BaseModel):
+    id_producto: int
+    cantidad: float
+    precio_unitario: float
+
+
+class DetalleCompraResponse(DetalleCompraCreate):
+    id_detalle_compra: int
+    id_compra: int
+    subtotal: float
+    nombre_producto: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# COMPRAS
+# =========================
+
+class CompraCreate(BaseModel):
+    id_proveedor: int
+    detalles: List[DetalleCompraCreate]
+    observaciones: Optional[str] = None
+
+
+class CompraResponse(BaseModel):
+    id_compra: int
+    id_proveedor: int
+    id_usuario: int
+    fecha_compra: datetime
+    subtotal: float
+    igv: float
+    total: float
+    estado: EstadoCompra
+    observaciones: Optional[str] = None
+    detalles: List[DetalleCompraResponse] = []
+    nombre_proveedor: Optional[str] = None
+    nombre_usuario: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# INVENTARIO
+# =========================
+
+class InventarioResponse(BaseModel):
+    id_inventario: int
+    id_producto: int
+    stock_actual: float
+    stock_minimo: float
+    ultimo_costo: Optional[float] = None
+    fecha_actualizacion: datetime
+    nombre_producto: Optional[str] = None
+    unidad_medida: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AjusteInventarioCreate(BaseModel):
+    id_producto: int
+    cantidad: float
+    descripcion: Optional[str] = None
+
+
+# =========================
+# LOTES
+# =========================
+
+class LoteCreate(BaseModel):
+    id_producto: int
+    numero_lote: str
+    cantidad: float
+    fecha_vencimiento: Optional[date] = None
+
+
+class LoteUpdate(BaseModel):
+    numero_lote: Optional[str] = None
+    cantidad: Optional[float] = None
+    fecha_vencimiento: Optional[date] = None
+    estado: Optional[EstadoLote] = None
+
+
+class LoteResponse(LoteCreate):
+    id_lote: int
+    fecha_ingreso: datetime
+    estado: EstadoLote
+    nombre_producto: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# MOVIMIENTOS DE STOCK
+# =========================
+
+class MovimientoStockResponse(BaseModel):
+    id_movimiento: int
+    id_producto: int
+    id_lote: Optional[int] = None
+    tipo_movimiento: str
+    referencia_tipo: Optional[str] = None
+    referencia_id: Optional[int] = None
+    cantidad: float
+    costo_unitario: Optional[float] = None
+    descripcion: Optional[str] = None
+    id_usuario: Optional[int] = None
+    fecha_movimiento: datetime
+    nombre_producto: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# DETALLE VENTAS
+# =========================
+
+class DetalleVentaCreate(BaseModel):
+    id_producto: int
+    cantidad: float
+    id_lote: Optional[int] = None
+
+
+class DetalleVentaResponse(BaseModel):
+    id_detalle_venta: int
+    id_venta: int
+    id_producto: int
+    id_lote: Optional[int] = None
+    cantidad: float
+    precio_unitario: float
+    descuento: float
+    subtotal: float
+    nombre_producto: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# VENTAS
+# =========================
+
+class VentaCreate(BaseModel):
+    id_cliente: Optional[int] = None
+    metodo_pago: MetodoPagoVenta = "EFECTIVO"
+    descuento: float = 0
+    observaciones: Optional[str] = None
+    detalles: List[DetalleVentaCreate]
+
+
+class VentaResponse(BaseModel):
+    id_venta: int
+    id_cliente: Optional[int] = None
+    id_usuario: int
+    fecha_venta: datetime
+    subtotal: float
+    descuento: float
+    total: float
+    metodo_pago: str
+    estado: EstadoVenta
+    observaciones: Optional[str] = None
+    detalles: List[DetalleVentaResponse] = []
+    nombre_cliente: Optional[str] = None
+    nombre_usuario: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# REPORTE VENTAS
+# =========================
+
+class ReporteVentas(BaseModel):
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
+    total_ventas: int = 0
+    total_ingresos: float = 0
+    total_descuentos: float = 0
+    productos_vendidos: float = 0
+
+
+class ResumenVentas(BaseModel):
+    ventas_hoy: int = 0
+    ingresos_hoy: float = 0
+    ventas_mes: int = 0
+    ingresos_mes: float = 0
+    productos_bajo_stock: int = 0
+    productos_por_vencer: int = 0

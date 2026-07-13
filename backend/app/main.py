@@ -16,6 +16,12 @@ from app.routes import (
     nutricion,
     ejercicios,
     comidas,
+    categorias,
+    productos,
+    proveedores,
+    compras,
+    inventario,
+    ventas,
 )
 
 from app.routes.ia import ia_rutina, ia_nutricion
@@ -48,6 +54,13 @@ app.include_router(rutinas.router, prefix="/rutinas", tags=["Rutinas"])
 app.include_router(nutricion.router, prefix="/nutricion", tags=["Nutrición"])
 app.include_router(ejercicios.router, prefix="/ejercicios", tags=["Ejercicios"])
 app.include_router(comidas.router, prefix="/comidas", tags=["Comidas"])
+
+app.include_router(categorias.router, prefix="/categorias", tags=["Categorías"])
+app.include_router(productos.router, prefix="/productos", tags=["Productos"])
+app.include_router(proveedores.router, prefix="/proveedores", tags=["Proveedores"])
+app.include_router(compras.router, prefix="/compras", tags=["Compras"])
+app.include_router(inventario.router, prefix="/inventario", tags=["Inventario"])
+app.include_router(ventas.router, prefix="/ventas", tags=["Ventas"])
 
 app.include_router(ia_rutina.router, prefix="/ia/rutina", tags=["IA Rutina"])
 app.include_router(ia_nutricion.router, prefix="/ia/nutricion", tags=["IA Nutrición"])
