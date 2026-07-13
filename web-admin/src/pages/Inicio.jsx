@@ -13,6 +13,7 @@ function Inicio() {
   const rol = localStorage.getItem("rol");
 
   const [planes, setPlanes] = useState([]);
+  const [productos, setProductos] = useState([]);
   const [error, setError] = useState("");
 
   const irAcceso = () => {
@@ -31,8 +32,18 @@ function Inicio() {
     }
   };
 
+  const cargarProductos = async () => {
+    try {
+      const res = await api.get("/productos/disponibles");
+      setProductos(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     cargarPlanes();
+    cargarProductos();
   }, []);
 
   const obtenerBeneficios = (plan) => {
@@ -58,6 +69,7 @@ function Inicio() {
         <nav className="public-menu">
           <a href="#inicio">Inicio</a>
           <a href="#beneficios">Beneficios</a>
+          <a href="#tienda">Tienda</a>
           <a href="#planes">Planes</a>
           <a href="#contacto">Contacto</a>
         </nav>
@@ -140,6 +152,47 @@ function Inicio() {
           </div>
         </div>
       </section>
+
+      {productos.length > 0 && (
+        <section className="public-section" id="tienda">
+          <div className="section-title">
+            <span className="badge">Tienda</span>
+            <h2>Productos y suplementos</h2>
+          </div>
+
+          <div className="cards-grid">
+            {productos.slice(0, 8).map((prod) => (
+              <div key={prod.id_producto} className="card item-card">
+                <div className="item-card-top">
+                  <span className="badge">{prod.nombre_categoria || "PRODUCTO"}</span>
+                  <span className="badge badge-success">S/ {Number(prod.precio_venta).toFixed(2)}</span>
+                </div>
+
+                <h3>{prod.nombre}</h3>
+
+                {prod.descripcion && (
+                  <p className="item-description">{prod.descripcion}</p>
+                )}
+
+                <div className="mini-stats-grid">
+                  <div>
+                    <strong>{prod.stock_actual || 0}</strong>
+                    <span>Disponible</span>
+                  </div>
+                  <div>
+                    <strong>{prod.unidad_medida || "UNIDAD"}</strong>
+                    <span>Unidad</span>
+                  </div>
+                </div>
+
+                <button className="btn-primary" onClick={irAcceso}>
+                  {token ? "Ver en panel" : "Consultar precio"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="public-section" id="planes">
         <div className="section-title">
