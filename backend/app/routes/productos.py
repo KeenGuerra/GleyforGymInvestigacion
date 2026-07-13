@@ -23,16 +23,31 @@ cloudinary_url = CLOUDINARY_URL
 
 _column_check_done = False
 
+_MIGRATIONS = [
+    ("productos", "imagen_url", "TEXT"),
+    ("productos", "cloudinary_public_id", "VARCHAR(255)"),
+    ("membresias", "beneficios", "TEXT"),
+    ("cliente_membresias", "precio_asignado", "FLOAT"),
+]
+
 def _ensure_columns(db: Session):
     global _column_check_done
     if _column_check_done:
         return
     try:
-        db.execute(sa_text(
-            "ALTER TABLE productos ADD COLUMN IF NOT EXISTS cloudinary_public_id VARCHAR(255)"
-        ))
+        from sqlalchemy import inspect as sa_inspect
+        insp = sa_inspect(db.bind)
+        existing_tables = insp.get_table_names()
+        for table, column, col_type in _MIGRATIONS:
+            if table not in existing_tables:
+                continue
+            cols = [c["name"] for c in insp.get_columns(table)]
+            if column not in cols:
+                db.execute(sa_text(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                ))
+                print(f"MIGRATED: {table}.{column} added")
         db.commit()
-        print("MIGRATED: cloudinary_public_id ensured")
     except Exception as e:
         print(f"WARN: migration skip: {e}")
         db.rollback()
