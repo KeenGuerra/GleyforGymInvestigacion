@@ -191,9 +191,9 @@ def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def reporte_ventas(
+    db: Annotated[Session, Depends(get_db)],
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
-    db: Annotated[Session, Depends(get_db)]
 ):
     query = db.query(models.Venta).filter(
         models.Venta.estado == "CONFIRMADA"

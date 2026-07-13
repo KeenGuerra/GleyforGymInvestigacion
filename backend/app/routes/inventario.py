@@ -84,8 +84,8 @@ def obtener_inventario_producto(
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_movimientos(
+    db: Annotated[Session, Depends(get_db)],
     id_producto: Optional[int] = None,
-    db: Annotated[Session, Depends(get_db)]
 ):
     query = db.query(models.MovimientoStock)
 
@@ -223,8 +223,8 @@ def alertas_stock_bajo(db: Annotated[Session, Depends(get_db)]):
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def alertas_vencimiento(
+    db: Annotated[Session, Depends(get_db)],
     dias: int = 30,
-    db: Annotated[Session, Depends(get_db)]
 ):
     fecha_limite = datetime.now() + timedelta(days=dias)
 
@@ -294,8 +294,8 @@ def crear_lote(
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_lotes(
+    db: Annotated[Session, Depends(get_db)],
     id_producto: Optional[int] = None,
-    db: Annotated[Session, Depends(get_db)]
 ):
     query = db.query(models.Lote)
 
