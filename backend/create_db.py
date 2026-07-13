@@ -31,10 +31,29 @@ def initialize_tables():
     print("Loading models and initializing tables in the new database...")
     from app.database import Base, engine
     import app.models as models  # Ensure all models are registered on Base.metadata
-    
+
     # Create all tables
     Base.metadata.create_all(bind=engine)
     print("All tables initialized successfully!")
+
+    print("Checking for missing columns...")
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    migrations = [
+        ("productos", "cloudinary_public_id", "VARCHAR(255)"),
+        ("membresias", "beneficios", "TEXT"),
+        ("cliente_membresias", "precio_asignado", "FLOAT"),
+    ]
+    existing_tables = inspector.get_table_names()
+    for table, column, col_type in migrations:
+        if table in existing_tables:
+            cols = [c["name"] for c in inspector.get_columns(table)]
+            if column not in cols:
+                print(f"  Adding column {table}.{column}...")
+                with engine.connect() as conn:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+                    conn.commit()
+    print("Schema migration completed.")
 
 def seed_admin_user():
     print("Checking if default admin user exists...")
