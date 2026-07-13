@@ -240,12 +240,14 @@ def mis_pedidos(
         models.Cliente.id_usuario == usuario.get("id_usuario")
     ).first()
 
-    if not cliente:
-        raise HTTPException(status_code=400, detail="Solo los clientes pueden ver sus pedidos")
-
-    ventas = db.query(models.Venta).filter(
-        models.Venta.id_cliente == cliente.id_cliente
-    ).order_by(models.Venta.id_venta.desc()).all()
+    if cliente:
+        ventas = db.query(models.Venta).filter(
+            models.Venta.id_cliente == cliente.id_cliente
+        ).order_by(models.Venta.id_venta.desc()).all()
+    else:
+        ventas = db.query(models.Venta).filter(
+            models.Venta.id_usuario == usuario.get("id_usuario")
+        ).order_by(models.Venta.id_venta.desc()).all()
 
     return [_venta_con_detalles(db, v) for v in ventas]
 
@@ -350,9 +352,6 @@ def solicitar_venta(
         models.Cliente.id_usuario == usuario.get("id_usuario")
     ).first()
 
-    if not cliente:
-        raise HTTPException(status_code=400, detail="Solo los clientes pueden realizar pedidos")
-
     subtotal_total = 0
     detalles_procesados = []
 
@@ -391,7 +390,7 @@ def solicitar_venta(
         total = 0
 
     nueva_venta = models.Venta(
-        id_cliente=cliente.id_cliente,
+        id_cliente=cliente.id_cliente if cliente else None,
         id_usuario=usuario.get("id_usuario"),
         subtotal=subtotal_total,
         descuento=descuento,
