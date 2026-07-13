@@ -11,7 +11,7 @@ from app import models, schemas
 from app.security import obtener_usuario_actual
 from app.constants import ESTADO_INACTIVO, MSG_PRODUCTO_NO_ENCONTRADO
 
-router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
+router = APIRouter()
 
 
 @router.post(
@@ -23,7 +23,8 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 )
 def crear_producto(
     producto: schemas.ProductoCreate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual)
 ):
     nuevo = models.Producto(**producto.model_dump())
     db.add(nuevo)
@@ -99,7 +100,8 @@ def obtener_producto(
 def actualizar_producto(
     id_producto: int,
     datos: schemas.ProductoUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual)
 ):
     producto = db.query(models.Producto).filter(
         models.Producto.id_producto == id_producto
@@ -133,7 +135,8 @@ def actualizar_producto(
 )
 def eliminar_producto(
     id_producto: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual)
 ):
     producto = db.query(models.Producto).filter(
         models.Producto.id_producto == id_producto
