@@ -1,10 +1,7 @@
 # pyrefly: ignore [missing-import]
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
-# pyrefly: ignore [missing-import]
-from fastapi.responses import JSONResponse
-from app.config import CORS_ORIGINS
 
 from app.routes import (
     usuarios,
@@ -36,32 +33,18 @@ app = FastAPI(
 )
 
 
-ALLOWED_ORIGINS = [
-    "https://gleyforgym-frontend.onrender.com",
-    "https://gleyforgym-backend.onrender.com",
-    "http://localhost:5173",
-    "http://localhost:3000",
-]
-for origin in CORS_ORIGINS:
-    if origin.strip() and origin.strip() != "*":
-        ALLOWED_ORIGINS.append(origin.strip())
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=[
+        "https://gleyforgym-frontend.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc)},
-    )
 
 
 app.include_router(usuarios.router, prefix="/usuarios", tags=["Usuarios"])
