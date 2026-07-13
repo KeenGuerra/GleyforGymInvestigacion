@@ -227,14 +227,10 @@ export default function App() {
             }
           />
 
-          {/* CLIENTE */}
+          {/* TIENDA - TODOS LOS ROLES */}
           <Route
             path="/tienda"
-            element={
-              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
-                <Tienda />
-              </ProtectedRoute>
-            }
+            element={<Tienda />}
           />
 
           <Route
