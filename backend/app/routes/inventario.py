@@ -85,7 +85,7 @@ def obtener_inventario_producto(
 )
 def listar_movimientos(
     id_producto: Optional[int] = None,
-    db: Annotated[Session, Depends(get_db)] = None
+    db: Annotated[Session, Depends(get_db)]
 ):
     query = db.query(models.MovimientoStock)
 
@@ -146,9 +146,11 @@ def ajustar_inventario(
     ).first()
 
     if inventario:
+        stock_anterior = inventario.stock_actual
         inventario.stock_actual += ajuste.cantidad
         inventario.fecha_actualizacion = datetime.now()
     else:
+        stock_anterior = 0
         inventario = models.Inventario(
             id_producto=ajuste.id_producto,
             stock_actual=ajuste.cantidad,
@@ -160,11 +162,13 @@ def ajustar_inventario(
     if inventario.stock_actual < 0:
         inventario.stock_actual = 0
 
+    cantidad_real = inventario.stock_actual - stock_anterior
+
     movimiento = models.MovimientoStock(
         id_producto=ajuste.id_producto,
         tipo_movimiento=tipo,
         referencia_tipo="AJUSTE",
-        cantidad=ajuste.cantidad,
+        cantidad=cantidad_real,
         descripcion=ajuste.descripcion or "Ajuste manual de inventario",
         id_usuario=usuario.get("id_usuario")
     )
@@ -220,7 +224,7 @@ def alertas_stock_bajo(db: Annotated[Session, Depends(get_db)]):
 )
 def alertas_vencimiento(
     dias: int = 30,
-    db: Annotated[Session, Depends(get_db)] = None
+    db: Annotated[Session, Depends(get_db)]
 ):
     fecha_limite = datetime.now() + timedelta(days=dias)
 
@@ -291,7 +295,7 @@ def crear_lote(
 )
 def listar_lotes(
     id_producto: Optional[int] = None,
-    db: Annotated[Session, Depends(get_db)] = None
+    db: Annotated[Session, Depends(get_db)]
 ):
     query = db.query(models.Lote)
 

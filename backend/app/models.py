@@ -289,6 +289,8 @@ class Producto(Base):
     id_categoria = Column(Integer, ForeignKey("categorias.id_categoria"), nullable=True)
     nombre = Column(String(150), nullable=False)
     descripcion = Column(Text, nullable=True)
+    imagen_url = Column(Text, nullable=True)
+    cloudinary_public_id = Column(String(255), nullable=True)
     precio_compra = Column(Float, nullable=False, default=0)
     precio_venta = Column(Float, nullable=False, default=0)
     unidad_medida = Column(String(30), nullable=False, default="UNIDAD")

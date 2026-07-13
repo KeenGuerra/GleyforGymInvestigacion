@@ -6,6 +6,7 @@ function Compras() {
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [procesando, setProcesando] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -79,14 +80,16 @@ function Compras() {
 
   const confirmar = async (id) => {
     if (!globalThis.confirm("¿Confirmar compra? Se actualizará el inventario.")) return;
-    try { await api.post(`/compras/${id}/confirmar`); await cargar(); }
+    try { setProcesando(id); await api.post(`/compras/${id}/confirmar`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al confirmar"); }
+    finally { setProcesando(null); }
   };
 
   const anular = async (id) => {
     if (!globalThis.confirm("¿Anular esta compra?")) return;
-    try { await api.post(`/compras/${id}/anular`); await cargar(); }
+    try { setProcesando(id); await api.post(`/compras/${id}/anular`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al anular"); }
+    finally { setProcesando(null); }
   };
 
   const filtradas = compras.filter((c) => {
@@ -208,8 +211,12 @@ function Compras() {
                 <p className="item-description">Fecha: {new Date(c.fecha_compra).toLocaleDateString()}</p>
                 {c.estado === "PENDIENTE" && (
                   <div className="item-actions">
-                    <button className="btn-primary" onClick={() => confirmar(c.id_compra)}>Confirmar</button>
-                    <button className="btn-danger" onClick={() => anular(c.id_compra)}>Anular</button>
+                    <button className="btn-primary" disabled={procesando === c.id_compra} onClick={() => confirmar(c.id_compra)}>
+                      {procesando === c.id_compra ? "Confirmando..." : "Confirmar"}
+                    </button>
+                    <button className="btn-danger" disabled={procesando === c.id_compra} onClick={() => anular(c.id_compra)}>
+                      {procesando === c.id_compra ? "Anulando..." : "Anular"}
+                    </button>
                   </div>
                 )}
               </div>

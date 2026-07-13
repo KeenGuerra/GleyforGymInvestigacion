@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 # pyrefly: ignore [missing-import]
 from sqlalchemy import func
-from typing import Annotated
-from datetime import datetime
+from typing import Annotated, Optional
+from datetime import datetime, date
 
 from app.database import get_db
 from app import models, schemas
@@ -191,9 +191,9 @@ def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def reporte_ventas(
-    fecha_inicio: str = None,
-    fecha_fin: str = None,
-    db: Annotated[Session, Depends(get_db)] = None
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+    db: Annotated[Session, Depends(get_db)]
 ):
     query = db.query(models.Venta).filter(
         models.Venta.estado == "CONFIRMADA"

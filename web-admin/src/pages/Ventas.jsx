@@ -6,6 +6,7 @@ function Ventas() {
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [procesando, setProcesando] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -88,8 +89,9 @@ function Ventas() {
 
   const anular = async (id) => {
     if (!globalThis.confirm("¿Anular esta venta? Se revertirá el inventario.")) return;
-    try { await api.post(`/ventas/${id}/anular`); await cargar(); }
+    try { setProcesando(id); await api.post(`/ventas/${id}/anular`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al anular"); }
+    finally { setProcesando(null); }
   };
 
   const filtradas = ventas.filter((v) => {
@@ -227,7 +229,9 @@ function Ventas() {
                 </div>
                 <p className="item-description">{new Date(v.fecha_venta).toLocaleString()}</p>
                 {v.estado === "CONFIRMADA" && (
-                  <button className="btn-danger" onClick={() => anular(v.id_venta)}>Anular</button>
+                  <button className="btn-danger" disabled={procesando === v.id_venta} onClick={() => anular(v.id_venta)}>
+                    {procesando === v.id_venta ? "Anulando..." : "Anular"}
+                  </button>
                 )}
               </div>
             ))}

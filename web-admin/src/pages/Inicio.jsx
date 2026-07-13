@@ -162,32 +162,29 @@ function Inicio() {
 
           <div className="cards-grid">
             {productos.slice(0, 8).map((prod) => (
-              <div key={prod.id_producto} className="card item-card">
-                <div className="item-card-top">
-                  <span className="badge">{prod.nombre_categoria || "PRODUCTO"}</span>
-                  <span className="badge badge-success">S/ {Number(prod.precio_venta).toFixed(2)}</span>
+              <div key={prod.id_producto} className="card item-card product-card">
+                <div className="product-image">
+                  {prod.imagen_url ? (
+                    <img src={prod.imagen_url} alt={prod.nombre} />
+                  ) : (
+                    <div className="product-image-placeholder">
+                      <span>{prod.nombre.charAt(0)}</span>
+                    </div>
+                  )}
                 </div>
-
-                <h3>{prod.nombre}</h3>
-
-                {prod.descripcion && (
-                  <p className="item-description">{prod.descripcion}</p>
-                )}
-
-                <div className="mini-stats-grid">
-                  <div>
-                    <strong>{prod.stock_actual || 0}</strong>
-                    <span>Disponible</span>
+                <div className="product-info">
+                  <div className="item-card-top">
+                    <span className="badge">{prod.nombre_categoria || "PRODUCTO"}</span>
+                    <span className="badge badge-success">S/ {Number(prod.precio_venta).toFixed(2)}</span>
                   </div>
-                  <div>
-                    <strong>{prod.unidad_medida || "UNIDAD"}</strong>
-                    <span>Unidad</span>
-                  </div>
+                  <h3>{prod.nombre}</h3>
+                  {prod.descripcion && (
+                    <p className="item-description">{prod.descripcion}</p>
+                  )}
+                  <button className="btn-primary" onClick={irAcceso}>
+                    {token ? "Ver en panel" : "Consultar precio"}
+                  </button>
                 </div>
-
-                <button className="btn-primary" onClick={irAcceso}>
-                  {token ? "Ver en panel" : "Consultar precio"}
-                </button>
               </div>
             ))}
           </div>

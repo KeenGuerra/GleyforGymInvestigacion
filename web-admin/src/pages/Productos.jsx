@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import api from "../api/api";
 
 function Productos() {
@@ -9,6 +9,7 @@ function Productos() {
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editando, setEditando] = useState(null);
+  const fileRef = useRef(null);
 
   const formInicial = {
     id_categoria: "",
@@ -24,6 +25,8 @@ function Productos() {
   };
 
   const [form, setForm] = useState(formInicial);
+  const [imagen, setImagen] = useState(null);
+  const [preview, setPreview] = useState(null);
 
   const cargar = async () => {
     try {
@@ -47,7 +50,23 @@ function Productos() {
     setForm({ ...form, [name]: type === "checkbox" ? checked : value });
   };
 
-  const limpiar = () => { setForm(formInicial); setError(""); setMostrarFormulario(false); setEditando(null); };
+  const cambiarImagen = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImagen(file);
+      setPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const limpiar = () => {
+    setForm(formInicial);
+    setImagen(null);
+    setPreview(null);
+    setError("");
+    setMostrarFormulario(false);
+    setEditando(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const validar = () => {
     if (!form.nombre.trim()) return "Ingrese el nombre del producto";
@@ -63,23 +82,27 @@ function Productos() {
 
     try {
       setCargando(true);
-      const data = {
-        id_categoria: form.id_categoria ? Number(form.id_categoria) : null,
-        nombre: form.nombre,
-        descripcion: form.descripcion || null,
-        precio_compra: Number(form.precio_compra) || 0,
-        precio_venta: Number(form.precio_venta) || 0,
-        unidad_medida: form.unidad_medida,
-        stock_minimo: Number(form.stock_minimo) || 0,
-        controla_lote: form.controla_lote,
-        controla_vencimiento: form.controla_vencimiento,
-        estado: form.estado,
-      };
+      const data = new FormData();
+      data.append("nombre", form.nombre);
+      if (form.id_categoria) data.append("id_categoria", form.id_categoria);
+      data.append("descripcion", form.descripcion || "");
+      data.append("precio_compra", Number(form.precio_compra) || 0);
+      data.append("precio_venta", Number(form.precio_venta) || 0);
+      data.append("unidad_medida", form.unidad_medida);
+      data.append("stock_minimo", Number(form.stock_minimo) || 0);
+      data.append("controla_lote", form.controla_lote);
+      data.append("controla_vencimiento", form.controla_vencimiento);
+      data.append("estado", form.estado);
+      if (imagen) data.append("imagen", imagen);
 
       if (editando) {
-        await api.put(`/productos/${editando.id_producto}`, data);
+        await api.put(`/productos/${editando.id_producto}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       } else {
-        await api.post("/productos/", data);
+        await api.post("/productos/", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
       limpiar();
       await cargar();
@@ -104,6 +127,7 @@ function Productos() {
       controla_vencimiento: p.controla_vencimiento || false,
       estado: p.estado,
     });
+    setPreview(p.imagen_url || null);
     setEditando(p);
     setMostrarFormulario(true);
   };
@@ -128,9 +152,9 @@ function Productos() {
         <div>
           <span className="badge">COMERCIO</span>
           <h1>Productos y suplementos</h1>
-          <p>Registra productos, precios, stock mínimo y control de lotes.</p>
+          <p>Registra productos con imagen, precios, stock y control de lotes.</p>
         </div>
-        <button className="btn-primary" onClick={() => { setMostrarFormulario(true); setForm(formInicial); setEditando(null); }}>
+        <button className="btn-primary" onClick={() => { setMostrarFormulario(true); setForm(formInicial); setEditando(null); setImagen(null); setPreview(null); setError(""); }}>
           + Nuevo producto
         </button>
       </section>
@@ -191,14 +215,23 @@ function Productos() {
               </select>
             </div>
             <div className="form-field">
-              <label><input type="checkbox" name="controla_lote" checked={form.controla_lote} onChange={cambiar} /> Controla lote</label>
+              <label className="checkbox-label"><input type="checkbox" name="controla_lote" checked={form.controla_lote} onChange={cambiar} /> Controla lote</label>
             </div>
             <div className="form-field">
-              <label><input type="checkbox" name="controla_vencimiento" checked={form.controla_vencimiento} onChange={cambiar} /> Controla vencimiento</label>
+              <label className="checkbox-label"><input type="checkbox" name="controla_vencimiento" checked={form.controla_vencimiento} onChange={cambiar} /> Controla vencimiento</label>
             </div>
             <div className="form-field field-large">
               <label>Descripción</label>
               <textarea name="descripcion" value={form.descripcion} onChange={cambiar} />
+            </div>
+            <div className="form-field field-large">
+              <label>Imagen del producto</label>
+              <input ref={fileRef} type="file" accept="image/*" onChange={cambiarImagen} />
+              {preview && (
+                <div className="image-preview">
+                  <img src={preview} alt="Vista previa" />
+                </div>
+              )}
             </div>
           </div>
           <div className="form-actions">
@@ -218,22 +251,33 @@ function Productos() {
         ) : (
           <div className="cards-grid">
             {filtrados.map((p) => (
-              <div key={p.id_producto} className="card item-card">
-                <div className="item-card-top">
-                  <span className="badge">{p.nombre_categoria || "SIN CAT."}</span>
-                  <span className="badge">{p.estado}</span>
+              <div key={p.id_producto} className="card item-card product-card">
+                <div className="product-image">
+                  {p.imagen_url ? (
+                    <img src={p.imagen_url} alt={p.nombre} />
+                  ) : (
+                    <div className="product-image-placeholder">
+                      <span>{p.nombre.charAt(0)}</span>
+                    </div>
+                  )}
                 </div>
-                <h3>{p.nombre}</h3>
-                <div className="mini-stats-grid">
-                  <div><strong>S/{p.precio_venta}</strong><span>Venta</span></div>
-                  <div><strong>S/{p.precio_compra}</strong><span>Compra</span></div>
-                  <div><strong>{p.stock_actual || 0}</strong><span>Stock</span></div>
-                  <div><strong>{p.unidad_medida}</strong><span>Unidad</span></div>
-                </div>
-                {p.descripcion && <p className="item-description">{p.descripcion}</p>}
-                <div className="item-actions">
-                  <button className="btn-secondary" onClick={() => editar(p)}>Editar</button>
-                  <button className="btn-danger" onClick={() => desactivar(p.id_producto)}>Desactivar</button>
+                <div className="product-info">
+                  <div className="item-card-top">
+                    <span className="badge">{p.nombre_categoria || "SIN CAT."}</span>
+                    <span className="badge">{p.estado}</span>
+                  </div>
+                  <h3>{p.nombre}</h3>
+                  <div className="mini-stats-grid">
+                    <div><strong>S/{p.precio_venta}</strong><span>Venta</span></div>
+                    <div><strong>S/{p.precio_compra}</strong><span>Compra</span></div>
+                    <div><strong>{p.stock_actual || 0}</strong><span>Stock</span></div>
+                    <div><strong>{p.unidad_medida}</strong><span>Unidad</span></div>
+                  </div>
+                  {p.descripcion && <p className="item-description">{p.descripcion}</p>}
+                  <div className="item-actions">
+                    <button className="btn-secondary" onClick={() => editar(p)}>Editar</button>
+                    <button className="btn-danger" onClick={() => desactivar(p.id_producto)}>Desactivar</button>
+                  </div>
                 </div>
               </div>
             ))}
