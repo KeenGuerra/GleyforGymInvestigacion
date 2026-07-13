@@ -8,6 +8,7 @@ import cloudinary.uploader
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
+from sqlalchemy import text as sa_text
 from typing import Annotated, Optional
 
 from app.database import get_db
@@ -27,19 +28,15 @@ def _ensure_columns(db: Session):
     if _column_check_done:
         return
     try:
-        from sqlalchemy import text as sa_text, inspect as sa_inspect
-        engine = db.get_bind()
-        inspector = sa_inspect(engine)
-        cols = [c["name"] for c in inspector.get_columns("productos")]
-        if "cloudinary_public_id" not in cols:
-            with engine.connect() as conn:
-                conn.execute(sa_text("ALTER TABLE productos ADD COLUMN cloudinary_public_id VARCHAR(255)"))
-                conn.commit()
-            print("MIGRATED: added cloudinary_public_id to productos")
-        _column_check_done = True
+        db.execute(sa_text(
+            "ALTER TABLE productos ADD COLUMN IF NOT EXISTS cloudinary_public_id VARCHAR(255)"
+        ))
+        db.commit()
+        print("MIGRATED: cloudinary_public_id ensured")
     except Exception as e:
-        print(f"WARN: column check failed: {e}")
-        _column_check_done = True
+        print(f"WARN: migration skip: {e}")
+        db.rollback()
+    _column_check_done = True
 
 if cloudinary_url:
     parsed_url = urlparse(cloudinary_url)
@@ -138,7 +135,7 @@ def listar_productos(db: Annotated[Session, Depends(get_db)]):
         return [_producto_con_stock(db, p) for p in productos]
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error consultando productos: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PRODUCTOS_ERROR: {type(e).__name__}: {str(e)[:500]}")
 
 
 @router.get(
@@ -155,7 +152,7 @@ def listar_productos_disponibles(db: Annotated[Session, Depends(get_db)]):
         return [_producto_con_stock(db, p) for p in productos]
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error consultando productos: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PRODUCTOS_ERROR: {type(e).__name__}: {str(e)[:500]}")
 
 
 @router.get(
