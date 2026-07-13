@@ -34,9 +34,19 @@ app = FastAPI(
 )
 
 
+ALLOWED_ORIGINS = [
+    "https://gleyforgym-frontend.onrender.com",
+    "https://gleyforgym-backend.onrender.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+for origin in CORS_ORIGINS:
+    if origin.strip() and origin.strip() != "*":
+        ALLOWED_ORIGINS.append(origin.strip())
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

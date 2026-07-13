@@ -9,7 +9,7 @@ from app import models, schemas
 from app.security import obtener_usuario_actual
 from app.constants import ESTADO_INACTIVO, MSG_CATEGORIA_NO_ENCONTRADA, MSG_CATEGORIA_YA_EXISTE
 
-router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
+router = APIRouter()
 
 
 @router.post(
@@ -22,7 +22,8 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 )
 def crear_categoria(
     categoria: schemas.CategoriaCreate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual),
 ):
     existente = db.query(models.Categoria).filter(
         models.Categoria.nombre == categoria.nombre
@@ -82,7 +83,8 @@ def obtener_categoria(
 def actualizar_categoria(
     id_categoria: int,
     datos: schemas.CategoriaUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual),
 ):
     categoria = db.query(models.Categoria).filter(
         models.Categoria.id_categoria == id_categoria
@@ -116,7 +118,8 @@ def actualizar_categoria(
 )
 def eliminar_categoria(
     id_categoria: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual),
 ):
     categoria = db.query(models.Categoria).filter(
         models.Categoria.id_categoria == id_categoria
