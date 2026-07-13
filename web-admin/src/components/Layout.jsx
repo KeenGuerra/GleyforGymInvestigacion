@@ -81,6 +81,14 @@ export default function Layout() {
               <NavLink to="/comidas">Comidas</NavLink>
               <NavLink to="/rutinas">Rutinas IA</NavLink>
               <NavLink to="/nutricion">Nutrición IA</NavLink>
+
+              <p className="menu-label">Comercio</p>
+              <NavLink to="/categorias">Categorías</NavLink>
+              <NavLink to="/productos">Productos</NavLink>
+              <NavLink to="/proveedores">Proveedores</NavLink>
+              <NavLink to="/compras">Compras</NavLink>
+              <NavLink to="/inventario">Inventario</NavLink>
+              <NavLink to="/ventas">Ventas</NavLink>
             </>
           )}
 

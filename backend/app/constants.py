@@ -55,3 +55,27 @@ MSG_PROGRESO_NO_ENCONTRADO = "Progreso no encontrado"
 MSG_CLIENTE_NO_ENCONTRADO_USUARIO = "Cliente no encontrado para este usuario"
 MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA = "Membresía del cliente no encontrada"
 
+# Estado comercial
+ESTADO_PENDIENTE = "PENDIENTE"
+ESTADO_CONFIRMADA = "CONFIRMADA"
+
+# Gestión comercial - Mensajes de error
+MSG_CATEGORIA_NO_ENCONTRADA = "Categoría no encontrada"
+MSG_CATEGORIA_YA_EXISTE = "Ya existe una categoría con ese nombre"
+MSG_PRODUCTO_NO_ENCONTRADO = "Producto no encontrado"
+MSG_PROVEEDOR_NO_ENCONTRADO = "Proveedor no encontrado"
+MSG_COMPRA_NO_ENCONTRADA = "Compra no encontrada"
+MSG_COMPRA_YA_CONFIRMADA = "La compra ya fue confirmada"
+MSG_COMPRA_NO_PENDIENTE = "Solo se pueden confirmar compras en estado PENDIENTE"
+MSG_VENTA_NO_ENCONTRADA = "Venta no encontrada"
+MSG_VENTA_YA_CONFIRMADA = "La venta ya fue confirmada"
+MSG_VENTA_NO_PENDIENTE = "Solo se pueden confirmar ventas en estado PENDIENTE"
+MSG_STOCK_INSUFICIENTE = "Stock insuficiente para el producto"
+MSG_PRODUCTO_INACTIVO = "El producto está inactivo"
+MSG_INVENTARIO_NO_ENCONTRADO = "Inventario no encontrado para este producto"
+MSG_LOTE_NO_ENCONTRADO = "Lote no encontrado"
+MSG_CANTIDAD_INVALIDA = "La cantidad debe ser mayor a cero"
+MSG_PRECIO_INVALIDO = "El precio debe ser mayor o igual a cero"
+MSG_DETALLE_VACIO = "La venta debe incluir al menos un producto"
+MSG_SIN_PERMISO_VENTAS = "No tiene permisos para realizar ventas"
+

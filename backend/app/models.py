@@ -264,3 +264,179 @@ class Comida(Base):
 
     objetivo = Column(String, nullable=True)
     estado = Column(String, default="ACTIVO")
+
+
+# =========================
+# GESTIÓN COMERCIAL
+# =========================
+
+class Categoria(Base):
+    __tablename__ = "categorias"
+
+    id_categoria = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), unique=True, nullable=False)
+    descripcion = Column(Text, nullable=True)
+    estado = Column(String(20), default="ACTIVO")
+    fecha_creacion = Column(DateTime, default=datetime.now)
+
+    productos = relationship("Producto", back_populates="categoria")
+
+
+class Producto(Base):
+    __tablename__ = "productos"
+
+    id_producto = Column(Integer, primary_key=True, index=True)
+    id_categoria = Column(Integer, ForeignKey("categorias.id_categoria"), nullable=True)
+    nombre = Column(String(150), nullable=False)
+    descripcion = Column(Text, nullable=True)
+    precio_compra = Column(Float, nullable=False, default=0)
+    precio_venta = Column(Float, nullable=False, default=0)
+    unidad_medida = Column(String(30), nullable=False, default="UNIDAD")
+    stock_minimo = Column(Float, nullable=False, default=0)
+    controla_lote = Column(Boolean, default=False)
+    controla_vencimiento = Column(Boolean, default=False)
+    estado = Column(String(20), default="ACTIVO")
+    fecha_creacion = Column(DateTime, default=datetime.now)
+
+    categoria = relationship("Categoria", back_populates="productos")
+    inventario = relationship("Inventario", back_populates="producto", uselist=False)
+    lotes = relationship("Lote", back_populates="producto")
+    movimientos = relationship("MovimientoStock", back_populates="producto")
+    detalle_compras = relationship("DetalleCompra", back_populates="producto")
+    detalle_ventas = relationship("DetalleVenta", back_populates="producto")
+
+
+class Proveedor(Base):
+    __tablename__ = "proveedores"
+
+    id_proveedor = Column(Integer, primary_key=True, index=True)
+    razon_social = Column(String(150), nullable=False)
+    ruc = Column(String(11), nullable=True)
+    telefono = Column(String(20), nullable=True)
+    correo = Column(String(100), nullable=True)
+    direccion = Column(String(200), nullable=True)
+    contacto = Column(String(100), nullable=True)
+    estado = Column(String(20), default="ACTIVO")
+    fecha_creacion = Column(DateTime, default=datetime.now)
+
+    compras = relationship("Compra", back_populates="proveedor")
+
+
+class Compra(Base):
+    __tablename__ = "compras"
+
+    id_compra = Column(Integer, primary_key=True, index=True)
+    id_proveedor = Column(Integer, ForeignKey("proveedores.id_proveedor"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=False)
+    fecha_compra = Column(DateTime, default=datetime.now)
+    subtotal = Column(Float, nullable=False, default=0)
+    igv = Column(Float, nullable=False, default=0)
+    total = Column(Float, nullable=False, default=0)
+    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ANULADA
+    observaciones = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    proveedor = relationship("Proveedor", back_populates="compras")
+    usuario = relationship("Usuario")
+    detalles = relationship("DetalleCompra", back_populates="compra", cascade="all, delete-orphan")
+
+
+class DetalleCompra(Base):
+    __tablename__ = "detalle_compras"
+
+    id_detalle_compra = Column(Integer, primary_key=True, index=True)
+    id_compra = Column(Integer, ForeignKey("compras.id_compra"), nullable=False)
+    id_producto = Column(Integer, ForeignKey("productos.id_producto"), nullable=False)
+    cantidad = Column(Float, nullable=False)
+    precio_unitario = Column(Float, nullable=False)
+    subtotal = Column(Float, nullable=False, default=0)
+
+    compra = relationship("Compra", back_populates="detalles")
+    producto = relationship("Producto", back_populates="detalle_compras")
+
+
+class Inventario(Base):
+    __tablename__ = "inventario"
+
+    id_inventario = Column(Integer, primary_key=True, index=True)
+    id_producto = Column(Integer, ForeignKey("productos.id_producto"), unique=True, nullable=False)
+    stock_actual = Column(Float, nullable=False, default=0)
+    stock_minimo = Column(Float, nullable=False, default=0)
+    ultimo_costo = Column(Float, nullable=True)
+    fecha_actualizacion = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    producto = relationship("Producto", back_populates="inventario")
+
+
+class Lote(Base):
+    __tablename__ = "lotes"
+
+    id_lote = Column(Integer, primary_key=True, index=True)
+    id_producto = Column(Integer, ForeignKey("productos.id_producto"), nullable=False)
+    numero_lote = Column(String(50), nullable=False)
+    cantidad = Column(Float, nullable=False, default=0)
+    fecha_vencimiento = Column(Date, nullable=True)
+    fecha_ingreso = Column(DateTime, default=datetime.now)
+    estado = Column(String(20), default="ACTIVO")  # ACTIVO, VENCIDO, AGOTADO
+
+    producto = relationship("Producto", back_populates="lotes")
+    movimientos = relationship("MovimientoStock", back_populates="lote")
+
+
+class MovimientoStock(Base):
+    __tablename__ = "movimientos_stock"
+
+    id_movimiento = Column(Integer, primary_key=True, index=True)
+    id_producto = Column(Integer, ForeignKey("productos.id_producto"), nullable=False)
+    id_lote = Column(Integer, ForeignKey("lotes.id_lote"), nullable=True)
+    tipo_movimiento = Column(String(30), nullable=False)  # ENTRADA_COMPRA, SALIDA_VENTA, ENTRADA_ANULACION_VENTA, SALIDA_ANULACION_COMPRA, AJUSTE
+    referencia_tipo = Column(String(30), nullable=True)  # COMPRA, VENTA, AJUSTE
+    referencia_id = Column(Integer, nullable=True)
+    cantidad = Column(Float, nullable=False)
+    costo_unitario = Column(Float, nullable=True)
+    descripcion = Column(Text, nullable=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    fecha_movimiento = Column(DateTime, default=datetime.now)
+
+    producto = relationship("Producto", back_populates="movimientos")
+    lote = relationship("Lote", back_populates="movimientos")
+    usuario = relationship("Usuario")
+
+
+class Venta(Base):
+    __tablename__ = "ventas"
+
+    id_venta = Column(Integer, primary_key=True, index=True)
+    id_cliente = Column(Integer, ForeignKey(FK_CLIENTES_ID_CLIENTE), nullable=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=False)
+    fecha_venta = Column(DateTime, default=datetime.now)
+    subtotal = Column(Float, nullable=False, default=0)
+    descuento = Column(Float, nullable=False, default=0)
+    total = Column(Float, nullable=False, default=0)
+    metodo_pago = Column(String(50), nullable=False, default="EFECTIVO")
+    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ANULADA
+    observaciones = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    cliente = relationship("Cliente")
+    usuario = relationship("Usuario")
+    detalles = relationship("DetalleVenta", back_populates="venta", cascade="all, delete-orphan")
+
+
+class DetalleVenta(Base):
+    __tablename__ = "detalle_ventas"
+
+    id_detalle_venta = Column(Integer, primary_key=True, index=True)
+    id_venta = Column(Integer, ForeignKey("ventas.id_venta"), nullable=False)
+    id_producto = Column(Integer, ForeignKey("productos.id_producto"), nullable=False)
+    id_lote = Column(Integer, ForeignKey("lotes.id_lote"), nullable=True)
+    cantidad = Column(Float, nullable=False)
+    precio_unitario = Column(Float, nullable=False)
+    descuento = Column(Float, nullable=False, default=0)
+    subtotal = Column(Float, nullable=False, default=0)
+
+    venta = relationship("Venta", back_populates="detalles")
+    producto = relationship("Producto", back_populates="detalle_ventas")
+    lote = relationship("Lote")

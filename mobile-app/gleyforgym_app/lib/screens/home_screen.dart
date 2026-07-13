@@ -4,6 +4,7 @@ import 'nutricion_screen.dart';
 import 'pagos_screen.dart';
 import 'progreso_screen.dart';
 import 'membresia_screen.dart';
+import 'productos_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final int idCliente;
@@ -25,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
       PagosScreen(idCliente: widget.idCliente),
       ProgresoScreen(idCliente: widget.idCliente),
       MembresiaScreen(idCliente: widget.idCliente),
+      const ProductosScreen(),
     ];
 
     return Scaffold(
@@ -62,6 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.card_membership),
             label: "Membresía",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_bag),
+            label: "Tienda",
           ),
         ],
       ),

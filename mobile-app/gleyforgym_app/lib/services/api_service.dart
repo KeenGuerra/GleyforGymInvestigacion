@@ -83,4 +83,9 @@ class ApiService {
     final data = await _get("/rutinas/$idRutina/detalle", "Error al obtener detalle de rutina");
     return data as Map<String, dynamic>;
   }
+
+  Future<List<dynamic>> obtenerProductos() async {
+    final data = await _get("/productos/disponibles", "Error al obtener productos");
+    return data as List<dynamic>;
+  }
 }
