@@ -20,6 +20,23 @@ router = APIRouter()
 
 cloudinary_url = CLOUDINARY_URL
 
+_column_check_done = False
+
+def _ensure_columns(db: Session):
+    global _column_check_done
+    if _column_check_done:
+        return
+    try:
+        from sqlalchemy import text
+        result = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='productos' AND column_name='cloudinary_public_id'"))
+        if not result.fetchone():
+            db.execute(text("ALTER TABLE productos ADD COLUMN cloudinary_public_id VARCHAR(255)"))
+            db.commit()
+            print("Migrated: added cloudinary_public_id to productos")
+    except Exception:
+        pass
+    _column_check_done = True
+
 if cloudinary_url:
     parsed_url = urlparse(cloudinary_url)
     cloudinary.config(
@@ -109,6 +126,7 @@ async def crear_producto(
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_productos(db: Annotated[Session, Depends(get_db)]):
+    _ensure_columns(db)
     productos = db.query(models.Producto).order_by(
         models.Producto.id_producto.desc()
     ).all()
@@ -121,6 +139,7 @@ def listar_productos(db: Annotated[Session, Depends(get_db)]):
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_productos_disponibles(db: Annotated[Session, Depends(get_db)]):
+    _ensure_columns(db)
     productos = db.query(models.Producto).filter(
         models.Producto.estado == "ACTIVO"
     ).order_by(models.Producto.nombre).all()
@@ -272,8 +291,8 @@ def _producto_con_stock(db: Session, producto: models.Producto) -> schemas.Produ
         id_categoria=producto.id_categoria,
         nombre=producto.nombre,
         descripcion=producto.descripcion,
-        imagen_url=producto.imagen_url,
-        cloudinary_public_id=producto.cloudinary_public_id,
+        imagen_url=getattr(producto, "imagen_url", None),
+        cloudinary_public_id=getattr(producto, "cloudinary_public_id", None),
         precio_compra=producto.precio_compra,
         precio_venta=producto.precio_venta,
         unidad_medida=producto.unidad_medida,
