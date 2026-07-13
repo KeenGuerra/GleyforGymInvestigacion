@@ -27,15 +27,19 @@ def _ensure_columns(db: Session):
     if _column_check_done:
         return
     try:
-        from sqlalchemy import text
-        result = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='productos' AND column_name='cloudinary_public_id'"))
-        if not result.fetchone():
-            db.execute(text("ALTER TABLE productos ADD COLUMN cloudinary_public_id VARCHAR(255)"))
-            db.commit()
-            print("Migrated: added cloudinary_public_id to productos")
-    except Exception:
-        pass
-    _column_check_done = True
+        from sqlalchemy import text as sa_text, inspect as sa_inspect
+        engine = db.get_bind()
+        inspector = sa_inspect(engine)
+        cols = [c["name"] for c in inspector.get_columns("productos")]
+        if "cloudinary_public_id" not in cols:
+            with engine.connect() as conn:
+                conn.execute(sa_text("ALTER TABLE productos ADD COLUMN cloudinary_public_id VARCHAR(255)"))
+                conn.commit()
+            print("MIGRATED: added cloudinary_public_id to productos")
+        _column_check_done = True
+    except Exception as e:
+        print(f"WARN: column check failed: {e}")
+        _column_check_done = True
 
 if cloudinary_url:
     parsed_url = urlparse(cloudinary_url)
