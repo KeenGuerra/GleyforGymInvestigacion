@@ -41,6 +41,7 @@ export default function App() {
         {/* RUTAS PÚBLICAS */}
         <Route path="/" element={<Inicio />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/tienda" element={<Tienda />} />
 
         {/* RUTAS PRIVADAS CON LAYOUT */}
         <Route
@@ -225,12 +226,6 @@ export default function App() {
                 <DetalleRutina />
               </ProtectedRoute>
             }
-          />
-
-          {/* TIENDA - TODOS LOS ROLES */}
-          <Route
-            path="/tienda"
-            element={<Tienda />}
           />
 
           <Route
