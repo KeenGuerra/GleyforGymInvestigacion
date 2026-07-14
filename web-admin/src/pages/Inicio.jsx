@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import Navbar from "../components/Navbar";
 
-import logoGleyforGym from "../assets/logo-gleyforgym.jpeg";
 import gymHero from "../assets/gym-hero.jpeg";
 import { FaFacebookF, FaInstagram, FaWhatsapp, FaTiktok} from "react-icons/fa";
 
@@ -57,34 +57,7 @@ function Inicio() {
 
   return (
     <div className="public-page">
-      <header className="public-navbar">
-        <button
-          className="public-brand-logo"
-          onClick={() => navigate("/")}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
-        >
-          <img src={logoGleyforGym} alt="Logo GleyforGym" />
-        </button>
-
-        <nav className="public-menu">
-          <a href="#inicio">Inicio</a>
-          <a href="#beneficios">Beneficios</a>
-          <button
-            onClick={() => navigate("/tienda")}
-            style={{ background: "none", border: "none", color: "#d4d4d8", fontWeight: 600, fontSize: "14px", cursor: "pointer", fontFamily: "inherit", transition: "color 0.25s ease" }}
-            onMouseEnter={(e) => e.target.style.color = "var(--orange)"}
-            onMouseLeave={(e) => e.target.style.color = "#d4d4d8"}
-          >
-            Tienda
-          </button>
-          <a href="#planes">Planes</a>
-          <a href="#contacto">Contacto</a>
-        </nav>
-
-        <button className="btn-primary" onClick={irAcceso}>
-          {token ? `Ir al panel ${rol}` : "Iniciar sesión"}
-        </button>
-      </header>
+      <Navbar />
 
       <section className="public-hero-full" id="inicio">
   <img src={gymHero} alt="Gimnasio GleyforGym" className="public-hero-bg" />

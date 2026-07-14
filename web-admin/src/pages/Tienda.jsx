@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
-import logoGleyforGym from "../assets/logo-gleyforgym.jpeg";
+import Navbar from "../components/Navbar";
 
 const CART_KEY = "carrito_tienda";
 
@@ -116,35 +116,7 @@ function Tienda() {
 
   return (
     <div className="public-page">
-      <header className="public-navbar">
-        <button
-          className="public-brand-logo"
-          onClick={() => navigate("/")}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
-        >
-          <img src={logoGleyforGym} alt="Logo GleyforGym" />
-        </button>
-
-        <nav className="public-menu">
-          <a href="/">Inicio</a>
-          <a href="/tienda" style={{ color: "var(--orange)" }}>Tienda</a>
-        </nav>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {isLoggedIn && carrito.length > 0 && (
-            <button
-              className="btn-secondary"
-              onClick={() => setTab("carrito")}
-              style={{ position: "relative" }}
-            >
-              Carrito ({totalCarrito})
-            </button>
-          )}
-          <button className="btn-primary" onClick={() => navigate(isLoggedIn ? "/dashboard" : "/login")}>
-            {isLoggedIn ? "Ir al panel" : "Iniciar sesión"}
-          </button>
-        </div>
-      </header>
+      <Navbar cartCount={totalCarrito} onCartClick={() => setTab("carrito")} />
 
       <section className="public-section" id="tienda" style={{ minHeight: "calc(100vh - 76px)" }}>
         <div className="section-title" style={{ textAlign: "center" }}>
