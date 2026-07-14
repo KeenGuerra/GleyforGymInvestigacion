@@ -55,7 +55,7 @@ function DetalleRutina() {
         <span className="badge">{rutina.generada_por_ia ? "IA" : "Manual"}</span>
       </section>
 
-      {rutina.ejercicios?.length === 0 ? (
+      {(!rutina.ejercicios || rutina.ejercicios.length === 0) ? (
         <section className="card empty-state">
           <h3>Esta rutina no tiene ejercicios</h3>
           <p>Cuando se agreguen ejercicios, aparecerán aquí.</p>
