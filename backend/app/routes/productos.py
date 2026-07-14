@@ -94,6 +94,7 @@ async def crear_producto(
     precio_venta: Annotated[float, Form()] = 0,
     unidad_medida: Annotated[str, Form()] = "UNIDAD",
     stock_minimo: Annotated[float, Form()] = 0,
+    stock_inicial: Annotated[float, Form()] = 0,
     controla_lote: Annotated[bool, Form()] = False,
     controla_vencimiento: Annotated[bool, Form()] = False,
     estado: Annotated[str, Form()] = "ACTIVO",
@@ -139,11 +140,24 @@ async def crear_producto(
 
     inventario = models.Inventario(
         id_producto=nuevo.id_producto,
-        stock_actual=0,
+        stock_actual=stock_inicial,
         stock_minimo=nuevo.stock_minimo,
         ultimo_costo=nuevo.precio_compra
     )
     db.add(inventario)
+
+    if stock_inicial > 0:
+        movimiento = models.MovimientoStock(
+            id_producto=nuevo.id_producto,
+            tipo_movimiento="ENTRADA",
+            referencia_tipo="AJUSTE",
+            cantidad=stock_inicial,
+            costo_unitario=nuevo.precio_compra,
+            descripcion="Stock inicial al crear producto",
+            id_usuario=usuario.id_usuario,
+        )
+        db.add(movimiento)
+
     db.commit()
 
     return _producto_con_stock(db, nuevo)
