@@ -64,7 +64,6 @@ export default function Layout() {
 
         <nav className="sidebar-menu" onClick={() => setMenuOpen(false)}>
           <NavLink to="/dashboard">Panel principal</NavLink>
-          <NavLink to="/tienda">Tienda</NavLink>
 
           {rol === "ADMIN" && (
             <>
