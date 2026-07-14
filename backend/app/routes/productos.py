@@ -154,7 +154,7 @@ async def crear_producto(
             cantidad=stock_inicial,
             costo_unitario=nuevo.precio_compra,
             descripcion="Stock inicial al crear producto",
-            id_usuario=usuario.id_usuario,
+            id_usuario=usuario["id_usuario"],
         )
         db.add(movimiento)
 
