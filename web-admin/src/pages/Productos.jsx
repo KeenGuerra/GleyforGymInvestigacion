@@ -19,6 +19,7 @@ function Productos() {
     precio_venta: "",
     unidad_medida: "UNIDAD",
     stock_minimo: "",
+    stock_inicial: "",
     controla_lote: false,
     controla_vencimiento: false,
     estado: "ACTIVO",
@@ -90,6 +91,7 @@ function Productos() {
       data.append("precio_venta", Number(form.precio_venta) || 0);
       data.append("unidad_medida", form.unidad_medida);
       data.append("stock_minimo", Number(form.stock_minimo) || 0);
+      if (!editando) data.append("stock_inicial", Number(form.stock_inicial) || 0);
       data.append("controla_lote", form.controla_lote);
       data.append("controla_vencimiento", form.controla_vencimiento);
       data.append("estado", form.estado);
@@ -207,6 +209,12 @@ function Productos() {
               <label>Stock mínimo</label>
               <input name="stock_minimo" type="number" value={form.stock_minimo} onChange={cambiar} />
             </div>
+            {!editando && (
+              <div className="form-field">
+                <label>Stock inicial</label>
+                <input name="stock_inicial" type="number" min="0" value={form.stock_inicial} onChange={cambiar} placeholder="0" />
+              </div>
+            )}
             <div className="form-field">
               <label>Estado</label>
               <select name="estado" value={form.estado} onChange={cambiar}>
