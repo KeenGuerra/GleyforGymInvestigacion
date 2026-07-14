@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
+import logoGleyforGym from "../assets/logo-gleyforgym.jpeg";
 
 const CART_KEY = "carrito_tienda";
 
@@ -117,29 +118,30 @@ function Tienda() {
     <div className="public-page">
       <header className="public-navbar">
         <button
-          className="public-brand"
+          className="public-brand-logo"
           onClick={() => navigate("/")}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "#fff" }}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
         >
-          Gleyfor<span>Gym</span>
+          <img src={logoGleyforGym} alt="Logo GleyforGym" />
         </button>
 
         <nav className="public-menu">
-          <a href="/" style={{ color: "#d4d4d8" }}>Inicio</a>
+          <a href="/">Inicio</a>
+          <a href="/tienda" style={{ color: "var(--orange)" }}>Tienda</a>
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {isLoggedIn && carrito.length > 0 && (
             <button
-              className="btn-primary"
+              className="btn-secondary"
               onClick={() => setTab("carrito")}
-              style={{ position: "relative", padding: "8px 16px", fontSize: "13px" }}
+              style={{ position: "relative" }}
             >
               Carrito ({totalCarrito})
             </button>
           )}
           <button className="btn-primary" onClick={() => navigate(isLoggedIn ? "/dashboard" : "/login")}>
-            {isLoggedIn ? "Mi panel" : "Iniciar sesión"}
+            {isLoggedIn ? "Ir al panel" : "Iniciar sesión"}
           </button>
         </div>
       </header>

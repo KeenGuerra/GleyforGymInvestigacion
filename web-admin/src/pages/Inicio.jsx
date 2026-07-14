@@ -69,7 +69,14 @@ function Inicio() {
         <nav className="public-menu">
           <a href="#inicio">Inicio</a>
           <a href="#beneficios">Beneficios</a>
-          <a href="#tienda">Tienda</a>
+          <button
+            onClick={() => navigate("/tienda")}
+            style={{ background: "none", border: "none", color: "#d4d4d8", fontWeight: 600, fontSize: "14px", cursor: "pointer", fontFamily: "inherit", transition: "color 0.25s ease" }}
+            onMouseEnter={(e) => e.target.style.color = "var(--orange)"}
+            onMouseLeave={(e) => e.target.style.color = "#d4d4d8"}
+          >
+            Tienda
+          </button>
           <a href="#planes">Planes</a>
           <a href="#contacto">Contacto</a>
         </nav>
