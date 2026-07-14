@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import logoGleyforGym from "../assets/logo-gleyforgym.jpeg";
 
 export default function Navbar({ cartCount = 0, onCartClick }) {
@@ -37,13 +37,13 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
 
       <nav className="public-menu">
         {navLinks.map((link) => (
-          <a
+          <Link
             key={link.to}
-            href={link.to}
+            to={link.to}
             style={path === link.to ? { color: "var(--orange)" } : undefined}
           >
             {link.label}
-          </a>
+          </Link>
         ))}
       </nav>
 

@@ -10,7 +10,6 @@ function Inicio() {
   const navigate = useNavigate();
 
   const token = localStorage.getItem("token");
-  const rol = localStorage.getItem("rol");
 
   const [planes, setPlanes] = useState([]);
   const [error, setError] = useState("");

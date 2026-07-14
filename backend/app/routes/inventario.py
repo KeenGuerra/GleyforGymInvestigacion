@@ -44,41 +44,6 @@ def listar_inventario(db: Annotated[Session, Depends(get_db)]):
 
 
 @router.get(
-    "/{id_producto}",
-    response_model=schemas.InventarioResponse,
-    responses={
-        401: {"description": "Token inválido o expirado"},
-        404: {"description": "Inventario no encontrado"}
-    }
-)
-def obtener_inventario_producto(
-    id_producto: int,
-    db: Annotated[Session, Depends(get_db)]
-):
-    inv = db.query(models.Inventario).filter(
-        models.Inventario.id_producto == id_producto
-    ).first()
-
-    if not inv:
-        raise HTTPException(status_code=404, detail=MSG_INVENTARIO_NO_ENCONTRADO)
-
-    prod = db.query(models.Producto).filter(
-        models.Producto.id_producto == id_producto
-    ).first()
-
-    return schemas.InventarioResponse(
-        id_inventario=inv.id_inventario,
-        id_producto=inv.id_producto,
-        stock_actual=inv.stock_actual,
-        stock_minimo=inv.stock_minimo,
-        ultimo_costo=inv.ultimo_costo,
-        fecha_actualizacion=inv.fecha_actualizacion,
-        nombre_producto=prod.nombre if prod else None,
-        unidad_medida=prod.unidad_medida if prod else None
-    )
-
-
-@router.get(
     "/movimientos/",
     response_model=list[schemas.MovimientoStockResponse],
     responses={401: {"description": "Token inválido o expirado"}}
@@ -320,3 +285,38 @@ def listar_lotes(
             nombre_producto=prod.nombre if prod else None
         ))
     return resultado
+
+
+@router.get(
+    "/{id_producto}",
+    response_model=schemas.InventarioResponse,
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Inventario no encontrado"}
+    }
+)
+def obtener_inventario_producto(
+    id_producto: int,
+    db: Annotated[Session, Depends(get_db)]
+):
+    inv = db.query(models.Inventario).filter(
+        models.Inventario.id_producto == id_producto
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail=MSG_INVENTARIO_NO_ENCONTRADO)
+
+    prod = db.query(models.Producto).filter(
+        models.Producto.id_producto == id_producto
+    ).first()
+
+    return schemas.InventarioResponse(
+        id_inventario=inv.id_inventario,
+        id_producto=inv.id_producto,
+        stock_actual=inv.stock_actual,
+        stock_minimo=inv.stock_minimo,
+        ultimo_costo=inv.ultimo_costo,
+        fecha_actualizacion=inv.fecha_actualizacion,
+        nombre_producto=prod.nombre if prod else None,
+        unidad_medida=prod.unidad_medida if prod else None
+    )
