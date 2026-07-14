@@ -33,6 +33,7 @@ import Compras from "./pages/Compras";
 import Inventario from "./pages/Inventario";
 import Ventas from "./pages/Ventas";
 import Tienda from "./pages/Tienda";
+import Avisos from "./pages/Avisos";
 
 export default function App() {
   return (
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/" element={<Inicio />} />
         <Route path="/login" element={<Login />} />
         <Route path="/tienda" element={<Tienda />} />
+        <Route path="/avisos" element={<Avisos />} />
 
         {/* RUTAS PRIVADAS CON LAYOUT */}
         <Route
