@@ -13,7 +13,6 @@ function Inicio() {
   const rol = localStorage.getItem("rol");
 
   const [planes, setPlanes] = useState([]);
-  const [productos, setProductos] = useState([]);
   const [error, setError] = useState("");
 
   const irAcceso = () => {
@@ -32,18 +31,8 @@ function Inicio() {
     }
   };
 
-  const cargarProductos = async () => {
-    try {
-      const res = await api.get("/productos/disponibles");
-      setProductos(res.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   useEffect(() => {
     cargarPlanes();
-    cargarProductos();
   }, []);
 
   const obtenerBeneficios = (plan) => {
@@ -132,50 +121,6 @@ function Inicio() {
           </div>
         </div>
       </section>
-
-      {productos.length > 0 && (
-        <section className="public-section" id="tienda">
-          <div className="section-title">
-            <span className="badge">Tienda</span>
-            <h2>Productos y suplementos</h2>
-          </div>
-
-          <div className="cards-grid">
-            {productos.slice(0, 8).map((prod) => (
-              <div key={prod.id_producto} className="card item-card product-card">
-                <div className="product-image">
-                  {prod.imagen_url ? (
-                    <img src={prod.imagen_url} alt={prod.nombre} />
-                  ) : (
-                    <div className="product-image-placeholder">
-                      <span>{prod.nombre.charAt(0)}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="product-info">
-                  <div className="item-card-top">
-                    <span className="badge">{prod.nombre_categoria || "PRODUCTO"}</span>
-                    <span className="badge badge-success">S/ {Number(prod.precio_venta).toFixed(2)}</span>
-                  </div>
-                  <h3>{prod.nombre}</h3>
-                  {prod.descripcion && (
-                    <p className="item-description">{prod.descripcion}</p>
-                  )}
-                  <button className="btn-primary" onClick={() => navigate(token ? "/tienda" : "/login")}>
-                    {token ? "Ir a la tienda" : "Iniciar sesión para comprar"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="form-actions" style={{ justifyContent: "center", marginTop: "1.5rem" }}>
-            <button className="btn-primary" onClick={() => navigate(token ? "/tienda" : "/login")}>
-              {token ? "Ver todos los productos" : "Ir a la tienda"}
-            </button>
-          </div>
-        </section>
-      )}
 
       <section className="public-section" id="planes">
         <div className="section-title">
