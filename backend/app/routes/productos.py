@@ -30,6 +30,10 @@ _MIGRATIONS = [
     ("cliente_membresias", "precio_asignado", "FLOAT"),
 ]
 
+_COLUMN_ALTERATIONS = [
+    ("proveedores", "ruc", "VARCHAR(20)"),
+]
+
 def _ensure_columns(db: Session):
     global _column_check_done
     if _column_check_done:
@@ -47,6 +51,15 @@ def _ensure_columns(db: Session):
                     f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
                 ))
                 print(f"MIGRATED: {table}.{column} added")
+        for table, column, col_type in _COLUMN_ALTERATIONS:
+            if table not in existing_tables:
+                continue
+            cols = [c["name"] for c in insp.get_columns(table)]
+            if column in cols:
+                db.execute(sa_text(
+                    f"ALTER TABLE {table} ALTER COLUMN {column} TYPE {col_type}"
+                ))
+                print(f"MIGRATED: {table}.{column} altered to {col_type}")
         db.commit()
     except Exception as e:
         print(f"WARN: migration skip: {e}")

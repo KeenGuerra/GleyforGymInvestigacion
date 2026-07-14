@@ -24,6 +24,7 @@ function Proveedores() {
 
   const validar = () => {
     if (!form.razon_social.trim()) return "Ingrese la razón social";
+    if (form.ruc && !/^\d{11,13}$/.test(form.ruc)) return "El RUC debe tener entre 11 y 13 dígitos numéricos";
     return "";
   };
 

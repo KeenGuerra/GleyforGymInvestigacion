@@ -313,7 +313,7 @@ class Proveedor(Base):
 
     id_proveedor = Column(Integer, primary_key=True, index=True)
     razon_social = Column(String(150), nullable=False)
-    ruc = Column(String(11), nullable=True)
+    ruc = Column(String(20), nullable=True)
     telefono = Column(String(20), nullable=True)
     correo = Column(String(100), nullable=True)
     direccion = Column(String(200), nullable=True)
