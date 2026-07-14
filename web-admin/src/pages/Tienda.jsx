@@ -31,16 +31,13 @@ function Tienda() {
       setError("");
       const resProd = await api.get("/productos/disponibles");
       setProductos(resProd.data);
-
       if (isLoggedIn) {
         try {
           const resPed = await api.get("/ventas/mis-pedidos");
           setPedidos(resPed.data);
-        } catch {
-          setPedidos([]);
-        }
+        } catch { setPedidos([]); }
       }
-    } catch (err) {
+    } catch {
       setError("Error al cargar productos");
     }
   };
@@ -49,10 +46,7 @@ function Tienda() {
 
   const agregarAlCarrito = (producto) => {
     if (!isLoggedIn) { navigate("/login"); return; }
-    if ((producto.stock_actual || 0) <= 0) {
-      setError("Producto sin stock");
-      return;
-    }
+    if ((producto.stock_actual || 0) <= 0) { setError("Producto sin stock"); return; }
     setCarrito((prev) => {
       const existente = prev.find((c) => c.id_producto === producto.id_producto);
       if (existente) {
@@ -61,19 +55,13 @@ function Tienda() {
           return prev;
         }
         return prev.map((c) =>
-          c.id_producto === producto.id_producto
-            ? { ...c, cantidad: c.cantidad + 1 }
-            : c
+          c.id_producto === producto.id_producto ? { ...c, cantidad: c.cantidad + 1 } : c
         );
       }
       return [...prev, {
-        id_producto: producto.id_producto,
-        nombre: producto.nombre,
-        precio_venta: producto.precio_venta,
-        stock_actual: producto.stock_actual,
-        unidad_medida: producto.unidad_medida,
-        nombre_categoria: producto.nombre_categoria,
-        cantidad: 1,
+        id_producto: producto.id_producto, nombre: producto.nombre,
+        precio_venta: producto.precio_venta, stock_actual: producto.stock_actual,
+        unidad_medida: producto.unidad_medida, nombre_categoria: producto.nombre_categoria, cantidad: 1,
       }];
     });
     setError("");
@@ -81,16 +69,11 @@ function Tienda() {
 
   const actualizarCantidad = (id_producto, nuevaCantidad) => {
     const cantidad = Math.max(1, Number(nuevaCantidad) || 1);
-    setCarrito((prev) =>
-      prev.map((c) => {
-        if (c.id_producto !== id_producto) return c;
-        if (cantidad > c.stock_actual) {
-          setError(`Stock insuficiente: ${c.nombre} (disponible: ${c.stock_actual})`);
-          return c;
-        }
-        return { ...c, cantidad };
-      })
-    );
+    setCarrito((prev) => prev.map((c) => {
+      if (c.id_producto !== id_producto) return c;
+      if (cantidad > c.stock_actual) { setError(`Stock insuficiente: ${c.nombre}`); return c; }
+      return { ...c, cantidad };
+    }));
   };
 
   const eliminarDelCarrito = (id_producto) => {
@@ -104,34 +87,22 @@ function Tienda() {
     if (!isLoggedIn) { navigate("/login"); return; }
     if (carrito.length === 0) { setError("El carrito está vacío"); return; }
     try {
-      setProcesando(true);
-      setError("");
+      setProcesando(true); setError("");
       await api.post("/ventas/solicitar", {
-        metodo_pago: metodoPago,
-        descuento: 0,
+        metodo_pago: metodoPago, descuento: 0,
         observaciones: observaciones || null,
-        detalles: carrito.map((c) => ({
-          id_producto: c.id_producto,
-          cantidad: c.cantidad,
-        })),
+        detalles: carrito.map((c) => ({ id_producto: c.id_producto, cantidad: c.cantidad })),
       });
-      setCarrito([]);
-      setObservaciones("");
-      setTab("pedidos");
-      await cargar();
+      setCarrito([]); setObservaciones(""); setTab("pedidos"); await cargar();
     } catch (err) {
       setError(err.response?.data?.detail || "Error al realizar el pedido");
-    } finally {
-      setProcesando(false);
-    }
+    } finally { setProcesando(false); }
   };
 
   const filtrados = productos.filter((p) => {
     const t = busqueda.toLowerCase();
-    return (
-      String(p.nombre || "").toLowerCase().includes(t) ||
-      String(p.nombre_categoria || "").toLowerCase().includes(t)
-    );
+    return String(p.nombre || "").toLowerCase().includes(t) ||
+      String(p.nombre_categoria || "").toLowerCase().includes(t);
   });
 
   const badgeColor = (estado) => {
@@ -140,64 +111,76 @@ function Tienda() {
     return "badge";
   };
 
+  const totalCarrito = carrito.reduce((s, c) => s + c.cantidad, 0);
+
   return (
     <div className="public-page">
       <header className="public-navbar">
         <button
-          className="public-brand-logo"
+          className="public-brand"
           onClick={() => navigate("/")}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          style={{ background: "none", border: "none", cursor: "pointer", color: "#fff" }}
         >
-          <span style={{ fontSize: "1.5rem", fontWeight: 700 }}>Gleyfor<span style={{ color: "#f97316" }}>Gym</span></span>
+          Gleyfor<span>Gym</span>
         </button>
 
         <nav className="public-menu">
-          <a href="#tienda">Tienda</a>
+          <a href="/" style={{ color: "#d4d4d8" }}>Inicio</a>
         </nav>
 
-        <button className="btn-primary" onClick={() => navigate(isLoggedIn ? "/dashboard" : "/login")}>
-          {isLoggedIn ? "Mi panel" : "Iniciar sesión"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {isLoggedIn && carrito.length > 0 && (
+            <button
+              className="btn-primary"
+              onClick={() => setTab("carrito")}
+              style={{ position: "relative", padding: "8px 16px", fontSize: "13px" }}
+            >
+              Carrito ({totalCarrito})
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => navigate(isLoggedIn ? "/dashboard" : "/login")}>
+            {isLoggedIn ? "Mi panel" : "Iniciar sesión"}
+          </button>
+        </div>
       </header>
 
-      <section className="public-section" id="tienda" style={{ paddingTop: "6rem" }}>
-        <div className="section-title">
+      <section className="public-section" id="tienda" style={{ minHeight: "calc(100vh - 76px)" }}>
+        <div className="section-title" style={{ textAlign: "center" }}>
           <span className="badge">Tienda</span>
           <h2>Productos y suplementos</h2>
         </div>
 
-        <div style={{ maxWidth: "500px", margin: "0 auto 2rem" }}>
+        <div style={{ maxWidth: "480px", margin: "0 auto 2rem" }}>
           <input
             className="search-input"
             placeholder="Buscar producto..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            style={{ width: "100%", padding: "0.75rem 1rem", fontSize: "1rem" }}
+            style={{ width: "100%", padding: "12px 16px", fontSize: "15px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "#fff" }}
           />
         </div>
 
-        {error && <p className="error-message">{error}</p>}
+        {error && <p className="error-message" style={{ textAlign: "center" }}>{error}</p>}
 
         {isLoggedIn && (
-          <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", marginBottom: "1.5rem" }}>
-            {["tienda", "carrito", "pedidos"].map((t) => (
-              <button key={t} className={tab === t ? "btn-primary" : "btn-secondary"} onClick={() => setTab(t)}>
-                {t === "tienda" ? "Tienda" : t === "carrito" ? `Carrito (${carrito.length})` : `Mis pedidos (${pedidos.length})`}
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", marginBottom: "2rem" }}>
+            <button className={tab === "tienda" ? "btn-primary" : "btn-secondary"} onClick={() => setTab("tienda")}>Tienda</button>
+            <button className={tab === "carrito" ? "btn-primary" : "btn-secondary"} onClick={() => setTab("carrito")}>Carrito ({totalCarrito})</button>
+            <button className={tab === "pedidos" ? "btn-primary" : "btn-secondary"} onClick={() => setTab("pedidos")}>Mis pedidos ({pedidos.length})</button>
           </div>
         )}
 
         {!isLoggedIn && (
-          <p style={{ textAlign: "center", color: "#aaa", marginBottom: "1.5rem" }}>
-            <a href="/login" style={{ color: "#f97316" }}>Inicia sesión</a> para agregar productos al carrito.
+          <p style={{ textAlign: "center", color: "#a1a1aa", marginBottom: "2rem", fontSize: "15px" }}>
+            <a href="/login" style={{ color: "var(--orange)", textDecoration: "none", fontWeight: 600 }}>Inicia sesión</a> para agregar productos al carrito.
           </p>
         )}
 
+        {/* TAB: TIENDA */}
         {tab === "tienda" && (
           <div className="cards-grid">
             {filtrados.length === 0 ? (
-              <p className="empty-message" style={{ gridColumn: "1 / -1" }}>No hay productos disponibles.</p>
+              <p className="empty-message" style={{ gridColumn: "1 / -1", textAlign: "center" }}>No hay productos disponibles.</p>
             ) : (
               filtrados.map((p) => (
                 <div key={p.id_producto} className="card item-card product-card">
@@ -222,7 +205,7 @@ function Tienda() {
                       disabled={(p.stock_actual || 0) <= 0}
                       onClick={() => agregarAlCarrito(p)}
                     >
-                      {(p.stock_actual || 0) <= 0 ? "Sin stock" : isLoggedIn ? "+ Agregar al carrito" : "Iniciar sesión para comprar"}
+                      {(p.stock_actual || 0) <= 0 ? "Sin stock" : isLoggedIn ? "+ Agregar" : "Iniciar sesión para comprar"}
                     </button>
                   </div>
                 </div>
@@ -231,50 +214,33 @@ function Tienda() {
           </div>
         )}
 
+        {/* TAB: CARRITO */}
         {isLoggedIn && tab === "carrito" && (
-          <section className="table-card">
-            <div className="card-header">
-              <div><h2>Mi carrito</h2></div>
-            </div>
+          <div style={{ maxWidth: "700px", margin: "0 auto" }}>
             {carrito.length === 0 ? (
-              <p className="empty-message">Tu carrito está vacío.</p>
+              <p className="empty-message" style={{ textAlign: "center" }}>Tu carrito está vacío.</p>
             ) : (
               <>
-                <div className="cards-grid">
-                  {carrito.map((c) => (
-                    <div key={c.id_producto} className="card item-card">
-                      <div className="item-card-top">
-                        <span className="badge">{c.nombre_categoria || "PRODUCTO"}</span>
-                        <span className="badge badge-success">S/ {(c.cantidad * c.precio_venta).toFixed(2)}</span>
-                      </div>
-                      <h3>{c.nombre}</h3>
-                      <div className="mini-stats-grid">
-                        <div>
-                          <strong>S/ {c.precio_venta.toFixed(2)}</strong>
-                          <span>Precio unit.</span>
-                        </div>
-                        <div>
-                          <input
-                            type="number"
-                            min="1"
-                            max={c.stock_actual}
-                            value={c.cantidad}
-                            onChange={(e) => actualizarCantidad(c.id_producto, e.target.value)}
-                            style={{ width: "60px", padding: "0.3rem", borderRadius: "6px", border: "1px solid #444", background: "#1a1a2e", color: "#fff", textAlign: "center" }}
-                          />
-                          <span>Cant.</span>
-                        </div>
-                      </div>
-                      <button className="btn-danger" onClick={() => eliminarDelCarrito(c.id_producto)}>
-                        Eliminar
-                      </button>
+                {carrito.map((c) => (
+                  <div key={c.id_producto} className="card item-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", padding: "16px 20px" }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: 0, fontSize: "16px" }}>{c.nombre}</h3>
+                      <p className="item-description" style={{ margin: 0 }}>S/ {c.precio_venta.toFixed(2)} c/u</p>
                     </div>
-                  ))}
-                </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <input
+                        type="number" min="1" max={c.stock_actual} value={c.cantidad}
+                        onChange={(e) => actualizarCantidad(c.id_producto, e.target.value)}
+                        style={{ width: "50px", padding: "6px", borderRadius: "8px", border: "1px solid #444", background: "#1a1a2e", color: "#fff", textAlign: "center" }}
+                      />
+                      <strong style={{ minWidth: "70px", textAlign: "right" }}>S/ {(c.cantidad * c.precio_venta).toFixed(2)}</strong>
+                      <button className="btn-danger" onClick={() => eliminarDelCarrito(c.id_producto)} style={{ padding: "6px 12px", fontSize: "13px" }}>X</button>
+                    </div>
+                  </div>
+                ))}
 
-                <div className="form-card" style={{ marginTop: "1rem" }}>
-                  <div className="card-header"><div><h2>Finalizar pedido</h2></div></div>
-                  <div className="form-grid">
+                <div className="card" style={{ padding: "24px", marginTop: "1rem" }}>
+                  <div className="form-grid" style={{ marginBottom: "1rem" }}>
                     <div className="form-field">
                       <label>Método de pago</label>
                       <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)}>
@@ -287,45 +253,39 @@ function Tienda() {
                     </div>
                     <div className="form-field field-large">
                       <label>Observaciones</label>
-                      <input
-                        value={observaciones}
-                        onChange={(e) => setObservaciones(e.target.value)}
-                        placeholder="Nota opcional para tu pedido"
-                      />
+                      <input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Nota opcional" />
                     </div>
                   </div>
-                  <div style={{ textAlign: "right", marginTop: "1rem", fontSize: "1.1rem" }}>
+                  <div style={{ textAlign: "right", marginBottom: "1rem", fontSize: "1.1rem" }}>
                     <p>Subtotal: <strong>S/ {subtotal.toFixed(2)}</strong></p>
                     <p><strong>Total: S/ {total.toFixed(2)}</strong></p>
                   </div>
-                  <div className="form-actions">
+                  <div className="form-actions" style={{ justifyContent: "flex-end" }}>
+                    <button className="btn-secondary" onClick={() => setCarrito([])}>Vaciar</button>
                     <button className="btn-primary" disabled={procesando} onClick={checkout}>
                       {procesando ? "Procesando..." : "Confirmar pedido"}
                     </button>
-                    <button className="btn-secondary" onClick={() => setCarrito([])}>Vaciar carrito</button>
                   </div>
                 </div>
               </>
             )}
-          </section>
+          </div>
         )}
 
+        {/* TAB: PEDIDOS */}
         {isLoggedIn && tab === "pedidos" && (
-          <section className="table-card">
-            <div className="card-header">
-              <div><h2>Mis pedidos</h2></div>
-            </div>
+          <div style={{ maxWidth: "700px", margin: "0 auto" }}>
             {pedidos.length === 0 ? (
-              <p className="empty-message">No tienes pedidos registrados.</p>
+              <p className="empty-message" style={{ textAlign: "center" }}>No tienes pedidos registrados.</p>
             ) : (
-              <div className="cards-grid">
+              <div className="cards-grid" style={{ gridTemplateColumns: "1fr" }}>
                 {pedidos.map((v) => (
-                  <div key={v.id_venta} className="card item-card">
+                  <div key={v.id_venta} className="card item-card" style={{ padding: "20px" }}>
                     <div className="item-card-top">
                       <span className={badgeColor(v.estado)}>{v.estado}</span>
                       <span className="badge">#{v.id_venta}</span>
                     </div>
-                    <div className="mini-stats-grid">
+                    <div className="mini-stats-grid" style={{ marginTop: "0.5rem" }}>
                       <div><strong>S/ {v.total?.toFixed(2)}</strong><span>Total</span></div>
                       <div><strong>{v.metodo_pago}</strong><span>Método</span></div>
                       <div><strong>{v.detalles?.length || 0}</strong><span>Productos</span></div>
@@ -344,7 +304,7 @@ function Tienda() {
                 ))}
               </div>
             )}
-          </section>
+          </div>
         )}
       </section>
 
