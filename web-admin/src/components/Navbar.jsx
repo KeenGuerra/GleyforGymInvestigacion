@@ -17,6 +17,7 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
 
   const navLinks = [
     { label: "Inicio", to: "/" },
+    { label: "Avisos", to: "/avisos" },
     { label: "Tienda", to: "/tienda" },
   ];
 
