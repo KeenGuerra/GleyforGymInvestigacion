@@ -8,6 +8,7 @@ from app import models, schemas
 from app.database import get_db
 from app.security import encriptar_password, verificar_password, crear_token, obtener_usuario_actual, requerir_roles
 from app.rate_limit import excedio_intentos, registrar_intento_fallido, limpiar_intentos
+from app.auditoria import registrar as registrar_auditoria
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -27,7 +28,6 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=schemas.UsuarioResponse,
-    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         400: {"description": "Correo ya registrado"},
         401: {"description": "Token inválido o expirado"}
@@ -35,7 +35,8 @@ router = APIRouter()
 )
 def crear_usuario(
     usuario: schemas.UsuarioCreate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN"))],
 ):
 
     existente = db.query(models.Usuario).filter(
@@ -55,6 +56,11 @@ def crear_usuario(
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
+
+    registrar_auditoria(
+        db, usuario_actual, "CREAR", "Usuario", nuevo_usuario.id_usuario,
+        f"correo={nuevo_usuario.correo}, rol={nuevo_usuario.rol}",
+    )
 
     return nuevo_usuario
 
@@ -107,7 +113,6 @@ def obtener_usuario(
 @router.put(
     "/{id_usuario}",
     response_model=schemas.UsuarioResponse,
-    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         400: {"description": "Correo ya registrado por otro usuario"},
         401: {"description": "Token inválido o expirado"},
@@ -117,7 +122,8 @@ def obtener_usuario(
 def actualizar_usuario(
     id_usuario: int,
     datos: schemas.UsuarioUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN"))],
 ):
     usuario = db.query(models.Usuario).filter(
         models.Usuario.id_usuario == id_usuario
@@ -156,6 +162,11 @@ def actualizar_usuario(
     db.commit()
     db.refresh(usuario)
 
+    registrar_auditoria(
+        db, usuario_actual, "EDITAR", "Usuario", usuario.id_usuario,
+        f"campos={list(datos_actualizados.keys())}",
+    )
+
     return usuario
 
 
@@ -164,7 +175,6 @@ def actualizar_usuario(
 # =========================
 @router.delete(
     "/{id_usuario}",
-    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Usuario no encontrado"}
@@ -172,7 +182,8 @@ def actualizar_usuario(
 )
 def eliminar_usuario(
     id_usuario: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN"))],
 ):
 
     usuario = db.query(models.Usuario).filter(
@@ -191,6 +202,8 @@ def eliminar_usuario(
         usuario.entrenador.estado = ESTADO_INACTIVO
 
     db.commit()
+
+    registrar_auditoria(db, usuario_actual, "ANULAR", "Usuario", usuario.id_usuario, f"correo={usuario.correo}")
 
     return {"mensaje": "Usuario desactivado correctamente"}
 

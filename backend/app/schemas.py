@@ -824,3 +824,21 @@ class ResumenVentas(BaseModel):
     ingresos_mes: float = 0
     productos_bajo_stock: int = 0
     productos_por_vencer: int = 0
+
+
+# =========================
+# AUDITORÍA
+# =========================
+
+class RegistroAuditoriaResponse(BaseModel):
+    id_registro: int
+    id_usuario: Optional[int] = None
+    correo_usuario: Optional[str] = None
+    accion: str
+    entidad: str
+    id_entidad: Optional[int] = None
+    detalle: Optional[str] = None
+    fecha: datetime
+
+    class Config:
+        from_attributes = True

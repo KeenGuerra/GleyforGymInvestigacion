@@ -8,6 +8,7 @@ from typing import Annotated
 from app import models, schemas
 from app.database import get_db
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
+from app.auditoria import registrar as registrar_auditoria
 from app.constants import (
     MSG_CLIENTE_NO_ENCONTRADO,
     MSG_CLIENTE_INACTIVO,
@@ -40,7 +41,6 @@ def actualizar_membresias_vencidas(db: Session):
 @router.post(
     "/",
     response_model=schemas.ClienteMembresiaResponse,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El cliente no está activo o la membresía no está activa"},
         401: {"description": "Token inválido o expirado"},
@@ -49,7 +49,8 @@ def actualizar_membresias_vencidas(db: Session):
 )
 def asignar_membresia(
     data: schemas.ClienteMembresiaCreate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
 ):
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == data.id_cliente
@@ -85,6 +86,11 @@ def asignar_membresia(
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
+
+    registrar_auditoria(
+        db, usuario_actual, "CREAR", "ClienteMembresia", nueva.id_cliente_membresia,
+        f"cliente={nueva.id_cliente}, membresia={nueva.id_membresia}, precio={nueva.precio_asignado}",
+    )
 
     return nueva
 
@@ -137,7 +143,6 @@ def listar_membresias_cliente(
 @router.put(
     "/{id_cliente_membresia}",
     response_model=schemas.ClienteMembresiaResponse,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "La membresía no está activa"},
         401: {"description": "Token inválido o expirado"},
@@ -147,7 +152,8 @@ def listar_membresias_cliente(
 def actualizar_cliente_membresia(
     id_cliente_membresia: int,
     data: schemas.ClienteMembresiaUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
 ):
     cliente_membresia = db.query(models.ClienteMembresia).filter(
         models.ClienteMembresia.id_cliente_membresia == id_cliente_membresia
@@ -184,6 +190,12 @@ def actualizar_cliente_membresia(
 
     db.commit()
     db.refresh(cliente_membresia)
+
+    if "estado" in datos:
+        registrar_auditoria(
+            db, usuario_actual, "EDITAR", "ClienteMembresia", cliente_membresia.id_cliente_membresia,
+            f"nuevo_estado={datos['estado']}",
+        )
 
     return cliente_membresia
 

@@ -449,3 +449,19 @@ class DetalleVenta(Base):
     venta = relationship("Venta", back_populates="detalles")
     producto = relationship("Producto", back_populates="detalle_ventas")
     lote = relationship("Lote")
+
+
+class RegistroAuditoria(Base):
+    """RN-039 / RF-165: trazabilidad de operaciones críticas (dinero y accesos)."""
+    __tablename__ = "registros_auditoria"
+
+    id_registro = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    correo_usuario = Column(String, nullable=True)  # copia al momento del evento, sobrevive si el usuario cambia de correo
+    accion = Column(String(30), nullable=False)  # CREAR, EDITAR, ANULAR, CONFIRMAR, LOGIN_FALLIDO...
+    entidad = Column(String(50), nullable=False)  # "Usuario", "Pago", "ClienteMembresia", "Venta", "Compra"...
+    id_entidad = Column(Integer, nullable=True)
+    detalle = Column(String, nullable=True)
+    fecha = Column(DateTime, default=datetime.now)
+
+    usuario = relationship("Usuario")

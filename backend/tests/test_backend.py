@@ -1382,6 +1382,48 @@ def test_rutinas_extra_coverage():
 # RBAC (control de acceso por rol)
 # =========================
 
+def test_auditoria_registra_operaciones_criticas():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    # Crear un pago (con membresía) debe dejar rastro en auditoría
+    res_membresia = client.post(
+        "/cliente-membresias/",
+        json={"id_cliente": 1, "id_membresia": 1},
+        headers=headers_admin,
+    )
+    assert res_membresia.status_code == 200
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    res_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1,
+            "id_cliente_membresia": id_cm,
+            "monto": 100.0,
+            "metodo_pago": "YAPE",
+            "fecha_pago": "2026-06-01",
+        },
+        headers=headers_admin,
+    )
+    assert res_pago.status_code == 200
+
+    res_auditoria = client.get("/auditoria/", headers=headers_admin)
+    assert res_auditoria.status_code == 200
+    entidades = {r["entidad"] for r in res_auditoria.json()}
+    assert "Pago" in entidades
+    assert "ClienteMembresia" in entidades
+
+    # Filtro por entidad
+    solo_pagos = client.get("/auditoria/?entidad=Pago", headers=headers_admin)
+    assert solo_pagos.status_code == 200
+    assert all(r["entidad"] == "Pago" for r in solo_pagos.json())
+
+    # Un CLIENTE no puede ver la auditoría
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get("/auditoria/", headers=headers_cliente).status_code == 403
+
+
 def test_eliminar_asistencia_es_borrado_logico():
     """RN-024: las asistencias no deben eliminarse físicamente."""
     populate_db_for_coverage()

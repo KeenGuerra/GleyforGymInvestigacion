@@ -10,6 +10,7 @@ from datetime import datetime
 from app.database import get_db
 from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles
+from app.auditoria import registrar as registrar_auditoria
 from app.constants import (
     MSG_COMPRA_NO_ENCONTRADA, MSG_COMPRA_YA_CONFIRMADA,
     MSG_COMPRA_NO_PENDIENTE, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -205,6 +206,8 @@ def confirmar_compra(
     db.commit()
     db.refresh(compra)
 
+    registrar_auditoria(db, usuario, "CONFIRMAR", "Compra", compra.id_compra, f"total={compra.total}")
+
     return _compra_con_detalles(db, compra)
 
 
@@ -260,6 +263,8 @@ def anular_compra(
     compra.estado = "ANULADA"
     db.commit()
     db.refresh(compra)
+
+    registrar_auditoria(db, usuario, "ANULAR", "Compra", compra.id_compra, f"total={compra.total}")
 
     return _compra_con_detalles(db, compra)
 

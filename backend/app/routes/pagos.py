@@ -7,6 +7,7 @@ from typing import Annotated
 from app.database import get_db
 from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
+from app.auditoria import registrar as registrar_auditoria
 from app.constants import (
     MSG_PAGO_NO_ENCONTRADO,
     MSG_CLIENTE_NO_ENCONTRADO,
@@ -22,7 +23,6 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.post(
     "/",
     response_model=schemas.PagoResponse,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El cliente no está activo o la membresía no pertenece a este cliente"},
         401: {"description": "Token inválido o expirado"},
@@ -31,7 +31,8 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 )
 def crear_pago(
     pago: schemas.PagoCreate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
 ):
     if pago.monto <= 0:
         raise HTTPException(status_code=400, detail="El monto debe ser mayor a 0")
@@ -67,6 +68,11 @@ def crear_pago(
     db.add(nuevo_pago)
     db.commit()
     db.refresh(nuevo_pago)
+
+    registrar_auditoria(
+        db, usuario_actual, "CREAR", "Pago", nuevo_pago.id_pago,
+        f"cliente={nuevo_pago.id_cliente}, monto={nuevo_pago.monto}, metodo={nuevo_pago.metodo_pago}",
+    )
 
     return nuevo_pago
 
@@ -164,7 +170,6 @@ def actualizar_pago(
 
 @router.delete(
     "/{id_pago}",
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Pago no encontrado"}
@@ -172,7 +177,8 @@ def actualizar_pago(
 )
 def eliminar_pago(
     id_pago: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
 ):
 
     pago_db = db.query(models.Pago).filter(
@@ -185,5 +191,7 @@ def eliminar_pago(
     pago_db.estado = ESTADO_ANULADO
 
     db.commit()
+
+    registrar_auditoria(db, usuario_actual, "ANULAR", "Pago", pago_db.id_pago, f"monto={pago_db.monto}")
 
     return {"mensaje": "Pago anulado correctamente"}

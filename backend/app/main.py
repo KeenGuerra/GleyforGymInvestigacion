@@ -27,6 +27,7 @@ from app.routes import (
     inventario,
     ventas,
     reportes,
+    auditoria,
 )
 
 from app.routes.ia import ia_rutina, ia_nutricion
@@ -117,6 +118,7 @@ app.include_router(ia_rutina.router, prefix="/ia/rutina", tags=["IA Rutina"])
 app.include_router(ia_nutricion.router, prefix="/ia/nutricion", tags=["IA Nutrición"])
 
 app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])
+app.include_router(auditoria.router, prefix="/auditoria", tags=["Auditoría"])
 
 
 @app.get("/")
