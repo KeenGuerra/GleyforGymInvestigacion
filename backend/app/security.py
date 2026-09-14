@@ -8,7 +8,10 @@ from typing import Annotated
 from fastapi import Depends, HTTPException
 # pyrefly: ignore [missing-import]
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+# pyrefly: ignore [missing-import]
+from sqlalchemy.orm import Session
 from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.database import get_db
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
@@ -26,15 +29,29 @@ def crear_token(data: dict):
     return jwt.encode(datos, SECRET_KEY, algorithm=ALGORITHM)
 
 def obtener_usuario_actual(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)]
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
+
+    # RF-161: no basta con que el JWT tenga firma/expiración válidas — si el
+    # usuario fue desactivado o eliminado después de emitirse el token, su
+    # sesión debe dejar de servir de inmediato en vez de esperar a que expire.
+    from app import models  # import local para evitar ciclo con models.py
+
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.id_usuario == payload.get("id_usuario")
+    ).first()
+
+    if not usuario or usuario.estado != "ACTIVO":
+        raise HTTPException(status_code=401, detail="Usuario inactivo o inexistente")
+
+    return payload
 
 def requerir_admin(usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)]) -> dict:
     if usuario_actual.get("rol") != "ADMIN":

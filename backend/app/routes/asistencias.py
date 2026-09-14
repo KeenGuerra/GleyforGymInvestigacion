@@ -65,7 +65,9 @@ def registrar_asistencia(
     }
 )
 def listar_asistencias(db: Annotated[Session, Depends(get_db)]):
-    return db.query(models.Asistencia).order_by(
+    return db.query(models.Asistencia).filter(
+        models.Asistencia.estado == ESTADO_ACTIVO
+    ).order_by(
         models.Asistencia.fecha.desc(),
         models.Asistencia.hora_entrada.desc()
     ).all()
@@ -94,7 +96,8 @@ def listar_asistencias_cliente(
         raise HTTPException(status_code=404, detail=MSG_CLIENTE_NO_ENCONTRADO)
 
     return db.query(models.Asistencia).filter(
-        models.Asistencia.id_cliente == id_cliente
+        models.Asistencia.id_cliente == id_cliente,
+        models.Asistencia.estado == ESTADO_ACTIVO
     ).order_by(
         models.Asistencia.fecha.desc(),
         models.Asistencia.hora_entrada.desc()
@@ -163,7 +166,9 @@ def eliminar_asistencia(
     if not asistencia_db:
         raise HTTPException(status_code=404, detail=MSG_ASISTENCIA_NO_ENCONTRADA)
 
-    db.delete(asistencia_db)
+    # RN-024: las asistencias no se eliminan físicamente, se anulan para
+    # preservar el historial del cliente.
+    asistencia_db.estado = "ANULADO"
     db.commit()
 
-    return {"mensaje": "Asistencia eliminada correctamente"}
+    return {"mensaje": "Asistencia anulada correctamente"}

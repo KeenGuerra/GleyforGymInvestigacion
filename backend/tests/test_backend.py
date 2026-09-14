@@ -1207,7 +1207,7 @@ def test_pagos_extra_coverage():
     assert res.status_code == 400
     assert "La membresía no pertenece" in res.json()["detail"]
 
-    # 3. Create payment with no membership linked (success)
+    # 3. RN-021: todo pago debe estar asociado a una membresía asignada
     res_no_memb = client.post(
         "/pagos/",
         json={
@@ -1219,8 +1219,7 @@ def test_pagos_extra_coverage():
         },
         headers=headers
     )
-    assert res_no_memb.status_code == 200
-    assert res_no_memb.json()["id_cliente_membresia"] is None
+    assert res_no_memb.status_code == 422
 
     # 4. Get payments for non-existent client
     assert client.get("/pagos/cliente/9999", headers=headers).status_code == 404
@@ -1382,6 +1381,83 @@ def test_rutinas_extra_coverage():
 # =========================
 # RBAC (control de acceso por rol)
 # =========================
+
+def test_eliminar_asistencia_es_borrado_logico():
+    """RN-024: las asistencias no deben eliminarse físicamente."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    res = client.post(
+        "/asistencias/",
+        json={"id_cliente": 1, "fecha": "2026-06-01", "hora_entrada": "08:00:00"},
+        headers=headers,
+    )
+    assert res.status_code == 200
+    id_asistencia = res.json()["id_asistencia"]
+
+    assert client.delete(f"/asistencias/{id_asistencia}", headers=headers).status_code == 200
+
+    # Sigue existiendo en la BD (anulada), no se borró físicamente
+    db = TestingSessionLocal()
+    asistencia = db.query(models.Asistencia).filter(
+        models.Asistencia.id_asistencia == id_asistencia
+    ).first()
+    assert asistencia is not None
+    assert asistencia.estado == "ANULADO"
+    db.close()
+
+    # Ya no aparece en los listados (que solo muestran ACTIVO)
+    listado = client.get("/asistencias/", headers=headers).json()
+    assert all(a["id_asistencia"] != id_asistencia for a in listado)
+
+
+def test_password_corta_o_vacia_es_rechazada():
+    """RF-001: la contraseña no debe poder estar vacía ni ser muy corta,
+    validado en el backend (antes solo lo hacía el frontend)."""
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    for password_invalida in ["", "123"]:
+        res = client.post(
+            "/usuarios/",
+            json={"correo": "quiensea@gleyforgym.com", "password": password_invalida, "rol": "ENTRENADOR"},
+            headers=headers_admin,
+        )
+        assert res.status_code == 422
+
+    res_entrenador = client.post(
+        "/entrenadores/",
+        json={"dni": "88888888", "nombres": "A", "apellidos": "B", "correo": "corta@gleyforgym.com", "password": "123"},
+        headers=headers_admin,
+    )
+    assert res_entrenador.status_code == 422
+
+
+def test_token_deja_de_servir_si_usuario_se_desactiva():
+    """RF-161: no basta con que el JWT sea válido; si el usuario fue
+    desactivado después de emitido el token, debe dejar de poder usarlo."""
+    populate_db_for_coverage()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    # El token funciona mientras el usuario está activo
+    assert client.get("/clientes/usuario/2", headers=headers_cliente).status_code == 200
+
+    db = TestingSessionLocal()
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == 2).first()
+    usuario.estado = "INACTIVO"
+    db.commit()
+    db.close()
+
+    # El mismo token, ahora con el usuario desactivado, ya no debe servir
+    res = client.get("/clientes/usuario/2", headers=headers_cliente)
+    assert res.status_code == 401
+
+
+def test_token_con_usuario_inexistente_es_rechazado():
+    populate_db_for_coverage()
+    headers_fantasma = get_auth_headers(rol="ADMIN", id_usuario=99999)
+    assert client.get("/clientes/", headers=headers_fantasma).status_code == 401
+
 
 def test_cliente_no_puede_crear_usuario_admin():
     populate_db_for_coverage()

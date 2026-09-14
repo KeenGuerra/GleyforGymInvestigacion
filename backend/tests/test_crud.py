@@ -30,6 +30,20 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
+# obtener_usuario_actual ahora revalida contra la BD que el usuario del token
+# siga existiendo y activo (RF-161), así que el usuario que respaldan los
+# tokens de prueba debe existir realmente.
+_seed_db = TestingSessionLocal()
+_seed_db.add(models.Usuario(
+    id_usuario=1,
+    correo="test@gleyforgym.com",
+    password_hash=encriptar_password("test123"),
+    rol="ADMIN",
+    estado="ACTIVO",
+))
+_seed_db.commit()
+_seed_db.close()
+
 def override_get_db():
     db = TestingSessionLocal()
     try:

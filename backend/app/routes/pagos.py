@@ -46,19 +46,17 @@ def crear_pago(
     if cliente.estado != ESTADO_ACTIVO:
         raise HTTPException(status_code=400, detail=MSG_CLIENTE_INACTIVO)
 
-    cliente_membresia = None
-    if pago.id_cliente_membresia:
-        cliente_membresia = db.query(models.ClienteMembresia).filter(
-            models.ClienteMembresia.id_cliente_membresia == pago.id_cliente_membresia
-        ).first()
+    cliente_membresia = db.query(models.ClienteMembresia).filter(
+        models.ClienteMembresia.id_cliente_membresia == pago.id_cliente_membresia
+    ).first()
 
-    if pago.id_cliente_membresia and not cliente_membresia:
+    if not cliente_membresia:
         raise HTTPException(
             status_code=404,
             detail=MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA
         )
 
-    if cliente_membresia and cliente_membresia.id_cliente != pago.id_cliente:
+    if cliente_membresia.id_cliente != pago.id_cliente:
         raise HTTPException(
             status_code=400,
             detail="La membresía no pertenece a este cliente"

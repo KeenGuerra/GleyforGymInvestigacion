@@ -136,6 +136,7 @@ class Asistencia(Base):
     hora_entrada = Column(Time, nullable=False)
     hora_salida = Column(Time, nullable=True)
     observacion = Column(String, nullable=True)
+    estado = Column(String, default="ACTIVO")  # ACTIVO, ANULADO (RN-024: no se borra físicamente)
 
     cliente = relationship("Cliente", back_populates="asistencias")
 

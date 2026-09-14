@@ -1,5 +1,5 @@
 # pyrefly: ignore [missing-import]
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import date, datetime, time
 from typing import Optional, List, Literal
 
@@ -29,7 +29,7 @@ class UsuarioBase(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    password: str
+    password: str = Field(min_length=6)
 
 
 class UsuarioUpdate(BaseModel):
@@ -76,7 +76,7 @@ class ClienteBase(BaseModel):
 
 class ClienteCreate(ClienteBase):
     correo: EmailStr
-    password: str
+    password: str = Field(min_length=6)
 
 
 class ClienteUpdate(BaseModel):
@@ -126,7 +126,7 @@ class EntrenadorBase(BaseModel):
 
 class EntrenadorCreate(EntrenadorBase):
     correo: EmailStr
-    password: str
+    password: str = Field(min_length=6)
 
 
 class EntrenadorUpdate(BaseModel):
@@ -219,7 +219,7 @@ class ClienteMembresiaResponse(BaseModel):
 
 class PagoCreate(BaseModel):
     id_cliente: int
-    id_cliente_membresia: Optional[int] = None
+    id_cliente_membresia: int  # RN-021: todo pago debe estar asociado a una membresía asignada
     monto: float
     metodo_pago: MetodoPago
     fecha_pago: date
@@ -264,6 +264,7 @@ class AsistenciaUpdate(BaseModel):
 
 class AsistenciaResponse(AsistenciaCreate):
     id_asistencia: int
+    estado: str = "ACTIVO"
 
     class Config:
         from_attributes = True

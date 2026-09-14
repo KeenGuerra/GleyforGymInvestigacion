@@ -64,6 +64,14 @@ describe("Pagos Page Component", () => {
     // Select client
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
 
+    // 1b. Missing membership
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => {
+      expect(screen.getByText("Seleccione la membresía asociada a este pago")).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText("Membresía"), { target: { value: "10" } });
+
     // 2. Monto zero or negative
     fireEvent.change(screen.getByLabelText("Monto (S/)"), { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
@@ -217,6 +225,7 @@ describe("Pagos Page Component", () => {
     });
 
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Membresía"), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText("Monto (S/)"), { target: { value: "120" } });
     fireEvent.change(screen.getByLabelText("Método de pago"), { target: { value: "YAPE" } });
 

@@ -64,6 +64,7 @@ function Pagos() {
 
   const validarFormulario = () => {
     if (!form.id_cliente) return "Seleccione un cliente";
+    if (!form.id_cliente_membresia) return "Seleccione la membresía asociada a este pago";
     if (!form.monto || Number(form.monto) <= 0)
       return "El monto debe ser mayor a 0";
     if (!form.metodo_pago) return "Seleccione un método de pago";
