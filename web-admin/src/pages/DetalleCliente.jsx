@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/api";
+import { etiquetasRestricciones, etiquetaNivelActividad } from "../constants/opciones";
 
 function DetalleCliente() {
   const { id } = useParams();
@@ -76,10 +77,17 @@ function DetalleCliente() {
             <div><span>Nivel</span><strong>{cliente.nivel || "-"}</strong></div>
             <div><span>Fecha nacimiento</span><strong>{formatearFecha(cliente.fecha_nacimiento)}</strong></div>
             <div><span>Dirección</span><strong>{cliente.direccion || "-"}</strong></div>
+            <div><span>Nivel de actividad</span><strong>{etiquetaNivelActividad(cliente.nivel_actividad)}</strong></div>
             <div className="detail-full">
-              <span>Restricciones</span>
-              <strong>{cliente.restricciones_medicas || "-"}</strong>
+              <span>Restricciones médicas</span>
+              <strong>{etiquetasRestricciones(cliente.restricciones_medicas)}</strong>
             </div>
+            {cliente.restricciones_otras && (
+              <div className="detail-full">
+                <span>Otras observaciones</span>
+                <strong>{cliente.restricciones_otras}</strong>
+              </div>
+            )}
           </div>
         </div>
 

@@ -83,7 +83,7 @@ describe("Ejercicios Page Component", () => {
 
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Curl de bíceps" } });
     fireEvent.change(screen.getByLabelText("Grupo muscular"), { target: { value: "Bíceps" } });
-    fireEvent.change(screen.getByLabelText("Nivel"), { target: { value: "PRINCIPIANTE" } });
+    fireEvent.change(screen.getByLabelText("Nivel"), { target: { value: "Principiante" } });
     
     // Select video file
     const file = new File(["test"], "test.mp4", { type: "video/mp4" });
@@ -189,7 +189,7 @@ describe("Ejercicios Page Component", () => {
 
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Sentadilla" } });
     fireEvent.change(screen.getByLabelText("Grupo muscular"), { target: { value: "Piernas" } });
-    fireEvent.change(screen.getByLabelText("Nivel"), { target: { value: "PRINCIPIANTE" } });
+    fireEvent.change(screen.getByLabelText("Nivel"), { target: { value: "Principiante" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar ejercicio" }));
 

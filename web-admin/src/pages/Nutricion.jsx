@@ -168,23 +168,45 @@ function Nutricion() {
 
                 <div className="mini-stats-grid">
                   <div>
-                    <span>Calorías</span>
+                    <span>Calorías objetivo</span>
                     <strong>{plan.calorias_diarias || 0} kcal</strong>
                   </div>
 
                   <div>
-                    <span>Proteínas</span>
+                    <span>Proteínas objetivo</span>
                     <strong>{plan.proteinas || 0} g</strong>
                   </div>
 
                   <div>
-                    <span>Carbohidratos</span>
+                    <span>Carbohidratos objetivo</span>
                     <strong>{plan.carbohidratos || 0} g</strong>
                   </div>
 
                   <div>
-                    <span>Grasas</span>
+                    <span>Grasas objetivo</span>
                     <strong>{plan.grasas || 0} g</strong>
+                  </div>
+                </div>
+
+                <div className="mini-stats-grid">
+                  <div>
+                    <span>Calorías reales (comidas)</span>
+                    <strong>{plan.calorias_reales || 0} kcal</strong>
+                  </div>
+
+                  <div>
+                    <span>Proteínas reales</span>
+                    <strong>{plan.proteinas_reales || 0} g</strong>
+                  </div>
+
+                  <div>
+                    <span>Carbohidratos reales</span>
+                    <strong>{plan.carbohidratos_reales || 0} g</strong>
+                  </div>
+
+                  <div>
+                    <span>Grasas reales</span>
+                    <strong>{plan.grasas_reales || 0} g</strong>
                   </div>
                 </div>
 

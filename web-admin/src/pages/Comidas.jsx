@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { OBJETIVOS } from "../constants/opciones";
 
 function Comidas() {
   const [comidas, setComidas] = useState([]);
@@ -202,10 +203,10 @@ function Comidas() {
               <label htmlFor="objetivo">Objetivo</label>
               <select id="objetivo" name="objetivo" value={form.objetivo} onChange={cambiar}>
                 <option value="">Seleccionar objetivo</option>
-                <option value="GENERAL">GENERAL</option>
-                <option value="BAJAR PESO">BAJAR PESO</option>
-                <option value="GANAR MASA MUSCULAR">GANAR MASA MUSCULAR</option>
-                <option value="MANTENER PESO">MANTENER PESO</option>
+                <option value="General">General (aplica a cualquier objetivo)</option>
+                {OBJETIVOS.map((o) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
               </select>
             </div>
 

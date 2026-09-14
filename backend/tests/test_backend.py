@@ -1334,16 +1334,16 @@ def test_calcular_macros_mifflin_st_jeor_con_datos_completos():
 
     class ClienteFalso:
         peso = 80
-        estatura = 180
+        estatura = 1.80  # metros, como se guarda en toda la app
         sexo = "Masculino"
         objetivo = "Ganar masa muscular"
         nivel_actividad = "MODERADO"
-        fecha_nacimiento = date(1994, 1, 1)  # 30-31 años según la fecha de hoy
+        fecha_nacimiento = date(1994, 1, 1)  # 30-32 años según la fecha de hoy
 
     resultado = calcular_macros(ClienteFalso())
 
-    # BMR = 10*80 + 6.25*180 - 5*30 + 5 = 800 + 1125 - 150 + 5 = 1780
-    # TDEE = 1780 * 1.55 = 2759 ; objetivo "ganar" => +350
+    # BMR = 10*80 + 6.25*180 - 5*32 + 5 = 800 + 1125 - 160 + 5 = 1770
+    # TDEE = 1770 * 1.55 = 2743.5 ; objetivo "ganar" => +350 = 3093.5
     assert 3000 <= resultado["calorias"] <= 3200
     assert resultado["proteinas"] == round(80 * 1.8)
     assert resultado["calorias"] > 0
@@ -1356,7 +1356,7 @@ def test_calcular_macros_varia_segun_objetivo():
 
     class ClienteBase:
         peso = 70
-        estatura = 170
+        estatura = 1.70  # metros
         sexo = "Femenino"
         nivel_actividad = "MODERADO"
         fecha_nacimiento = date(1994, 1, 1)

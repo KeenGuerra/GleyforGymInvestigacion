@@ -51,11 +51,13 @@ def calcular_macros(cliente) -> dict:
       calorías objetivo = TDEE ajustado por el objetivo del cliente (déficit/superávit)
     """
     peso = cliente.peso or PESO_DEFECTO_KG
-    estatura = cliente.estatura or ESTATURA_DEFECTO_CM
+    # cliente.estatura se guarda en metros en toda la app (ej. 1.75, ver
+    # MiProgreso.jsx:calcularIMC) — Mifflin-St Jeor necesita centímetros.
+    estatura_cm = cliente.estatura * 100 if cliente.estatura else ESTATURA_DEFECTO_CM
     edad = _calcular_edad(cliente.fecha_nacimiento)
     constante_sexo = _constante_sexo(cliente.sexo)
 
-    bmr = 10 * peso + 6.25 * estatura - 5 * edad + constante_sexo
+    bmr = 10 * peso + 6.25 * estatura_cm - 5 * edad + constante_sexo
 
     nivel_actividad = (cliente.nivel_actividad or NIVEL_ACTIVIDAD_DEFECTO).upper()
     multiplicador = NIVEL_ACTIVIDAD_MULTIPLICADORES.get(

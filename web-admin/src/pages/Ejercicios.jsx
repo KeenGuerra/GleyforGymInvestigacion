@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "../api/api";
+import { OBJETIVOS, NIVELES, GRUPOS_MUSCULARES } from "../constants/opciones";
 
 function Ejercicios() {
   const [ejercicios, setEjercicios] = useState([]);
@@ -177,16 +178,21 @@ function Ejercicios() {
 
             <div className="form-field">
               <label htmlFor="grupo_muscular">Grupo muscular</label>
-              <input id="grupo_muscular" name="grupo_muscular" value={form.grupo_muscular} onChange={cambiar} />
+              <select id="grupo_muscular" name="grupo_muscular" value={form.grupo_muscular} onChange={cambiar}>
+                <option value="">Seleccionar</option>
+                {GRUPOS_MUSCULARES.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
             </div>
 
             <div className="form-field">
               <label htmlFor="nivel">Nivel</label>
               <select id="nivel" name="nivel" value={form.nivel} onChange={cambiar}>
                 <option value="">Seleccionar</option>
-                <option>PRINCIPIANTE</option>
-                <option>INTERMEDIO</option>
-                <option>AVANZADO</option>
+                {NIVELES.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
               </select>
             </div>
 
@@ -194,10 +200,9 @@ function Ejercicios() {
               <label htmlFor="objetivo">Objetivo</label>
               <select id="objetivo" name="objetivo" value={form.objetivo} onChange={cambiar}>
                 <option value="">Seleccionar</option>
-                <option>BAJAR PESO</option>
-                <option>GANAR MASA MUSCULAR</option>
-                <option>RESISTENCIA</option>
-                <option>FUERZA</option>
+                {OBJETIVOS.map((o) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
               </select>
             </div>
 

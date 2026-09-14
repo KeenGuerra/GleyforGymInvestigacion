@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
+import {
+  OBJETIVOS,
+  NIVELES,
+  RESTRICCIONES_MEDICAS,
+  NIVELES_ACTIVIDAD,
+  codigosATexto,
+  textoACodigos,
+} from "../constants/opciones";
 
 function Clientes() {
   const navigate = useNavigate();
@@ -26,6 +34,8 @@ function Clientes() {
     objetivo: "",
     nivel: "",
     restricciones_medicas: "",
+    restricciones_otras: "",
+    nivel_actividad: "",
   };
 
   const [form, setForm] = useState(formInicial);
@@ -62,6 +72,14 @@ function Clientes() {
 
   const cambiar = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const alternarRestriccion = (codigo) => {
+    const actuales = textoACodigos(form.restricciones_medicas);
+    const nuevas = actuales.includes(codigo)
+      ? actuales.filter((c) => c !== codigo)
+      : [...actuales, codigo];
+    setForm({ ...form, restricciones_medicas: codigosATexto(nuevas) });
   };
 
   const limpiarFormulario = () => {
@@ -118,6 +136,8 @@ function Clientes() {
       objetivo: cliente.objetivo || "",
       nivel: cliente.nivel || "",
       restricciones_medicas: cliente.restricciones_medicas || "",
+      restricciones_otras: cliente.restricciones_otras || "",
+      nivel_actividad: cliente.nivel_actividad || "",
     });
 
     globalThis.scrollTo({ top: 0, behavior: "smooth" });
@@ -351,8 +371,9 @@ function Clientes() {
               <label htmlFor="objetivo">Objetivo</label>
               <select id="objetivo" name="objetivo" value={form.objetivo} onChange={cambiar}>
                 <option value="">Seleccione objetivo</option>
-                <option>Bajar de peso</option>
-                <option>Ganar masa muscular</option>
+                {OBJETIVOS.map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
               </select>
             </div>
 
@@ -360,19 +381,52 @@ function Clientes() {
               <label htmlFor="nivel">Nivel</label>
               <select id="nivel" name="nivel" value={form.nivel} onChange={cambiar}>
                 <option value="">Seleccione nivel</option>
-                <option>Principiante</option>
-                <option>Intermedio</option>
-                <option>Avanzado</option>
+                {NIVELES.map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="nivel_actividad">Nivel de actividad diaria</label>
+              <select
+                id="nivel_actividad"
+                name="nivel_actividad"
+                value={form.nivel_actividad}
+                onChange={cambiar}
+              >
+                <option value="">Seleccione nivel de actividad</option>
+                {NIVELES_ACTIVIDAD.map((n) => (
+                  <option key={n.value} value={n.value}>
+                    {n.label}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="form-field field-large">
-              <label htmlFor="restricciones_medicas">Restricciones médicas</label>
+              <label>Restricciones médicas</label>
+              <div className="checkbox-group">
+                {RESTRICCIONES_MEDICAS.map((r) => (
+                  <label key={r.value} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={textoACodigos(form.restricciones_medicas).includes(r.value)}
+                      onChange={() => alternarRestriccion(r.value)}
+                    />
+                    {r.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-field field-large">
+              <label htmlFor="restricciones_otras">Otras restricciones u observaciones</label>
               <input
-                id="restricciones_medicas"
-                name="restricciones_medicas"
-                placeholder="Ejemplo: lesión de rodilla"
-                value={form.restricciones_medicas}
+                id="restricciones_otras"
+                name="restricciones_otras"
+                placeholder="Ejemplo: hipertensión controlada"
+                value={form.restricciones_otras}
                 onChange={cambiar}
               />
             </div>

@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import {
+  OBJETIVOS,
+  NIVELES,
+  RESTRICCIONES_MEDICAS,
+  NIVELES_ACTIVIDAD,
+  codigosATexto,
+  textoACodigos,
+  etiquetasRestricciones,
+  etiquetaNivelActividad,
+} from "../constants/opciones";
 
 function MiPerfil() {
   const [cliente, setCliente] = useState(null);
@@ -16,6 +26,8 @@ function MiPerfil() {
     objetivo: "",
     nivel: "",
     restricciones_medicas: "",
+    restricciones_otras: "",
+    nivel_actividad: "",
   });
 
   const cargarPerfil = async () => {
@@ -34,6 +46,8 @@ function MiPerfil() {
         objetivo: res.data.objetivo || "",
         nivel: res.data.nivel || "",
         restricciones_medicas: res.data.restricciones_medicas || "",
+        restricciones_otras: res.data.restricciones_otras || "",
+        nivel_actividad: res.data.nivel_actividad || "",
       });
     } catch (error) {
       console.error("Error cargando perfil:", error);
@@ -63,6 +77,8 @@ function MiPerfil() {
         objetivo: form.objetivo || null,
         nivel: form.nivel || null,
         restricciones_medicas: form.restricciones_medicas || null,
+        restricciones_otras: form.restricciones_otras || null,
+        nivel_actividad: form.nivel_actividad || null,
       });
 
       setMensaje("Perfil actualizado correctamente ✔");
@@ -175,12 +191,9 @@ function MiPerfil() {
                   onChange={(e) => setForm({ ...form, objetivo: e.target.value })}
                 >
                   <option value="">Seleccionar</option>
-                  <option value="Bajar de peso">Bajar de peso</option>
-                  <option value="Ganar masa muscular">Ganar masa muscular</option>
-                  <option value="Mantener condición física">
-                    Mantener condición física
-                  </option>
-                  <option value="Mejorar resistencia">Mejorar resistencia</option>
+                  {OBJETIVOS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
                 </select>
               </div>
 
@@ -192,20 +205,58 @@ function MiPerfil() {
                   onChange={(e) => setForm({ ...form, nivel: e.target.value })}
                 >
                   <option value="">Seleccionar</option>
-                  <option value="Principiante">Principiante</option>
-                  <option value="Intermedio">Intermedio</option>
-                  <option value="Avanzado">Avanzado</option>
+                  {NIVELES.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="nivel_actividad">Nivel de actividad diaria</label>
+                <select
+                  id="nivel_actividad"
+                  value={form.nivel_actividad}
+                  onChange={(e) => setForm({ ...form, nivel_actividad: e.target.value })}
+                >
+                  <option value="">Seleccionar</option>
+                  {NIVELES_ACTIVIDAD.map((n) => (
+                    <option key={n.value} value={n.value}>{n.label}</option>
+                  ))}
                 </select>
               </div>
 
               <div className="form-field field-large">
-                <label htmlFor="restricciones_medicas">Restricciones médicas</label>
+                <label>Restricciones médicas</label>
+                <div className="checkbox-group">
+                  {RESTRICCIONES_MEDICAS.map((r) => {
+                    const seleccionadas = textoACodigos(form.restricciones_medicas);
+                    return (
+                      <label key={r.value} className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={seleccionadas.includes(r.value)}
+                          onChange={() => {
+                            const nuevas = seleccionadas.includes(r.value)
+                              ? seleccionadas.filter((c) => c !== r.value)
+                              : [...seleccionadas, r.value];
+                            setForm({ ...form, restricciones_medicas: codigosATexto(nuevas) });
+                          }}
+                        />
+                        {r.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="form-field field-large">
+                <label htmlFor="restricciones_otras">Otras restricciones u observaciones</label>
                 <textarea
-                  id="restricciones_medicas"
-                  rows="3"
-                  value={form.restricciones_medicas}
+                  id="restricciones_otras"
+                  rows="2"
+                  value={form.restricciones_otras}
                   onChange={(e) =>
-                    setForm({ ...form, restricciones_medicas: e.target.value })
+                    setForm({ ...form, restricciones_otras: e.target.value })
                   }
                 />
               </div>
@@ -257,9 +308,13 @@ function MiPerfil() {
               <div className="detail-list">
                 <p><span>Objetivo</span><strong>{cliente.objetivo || "No definido"}</strong></p>
                 <p><span>Nivel</span><strong>{cliente.nivel || "No definido"}</strong></p>
+                <p><span>Nivel de actividad</span><strong>{etiquetaNivelActividad(cliente.nivel_actividad)}</strong></p>
                 <p><span>Peso</span><strong>{cliente.peso || "-"} kg</strong></p>
                 <p><span>Estatura</span><strong>{cliente.estatura || "-"} m</strong></p>
-                <p><span>Restricciones</span><strong>{cliente.restricciones_medicas || "Ninguna"}</strong></p>
+                <p><span>Restricciones médicas</span><strong>{etiquetasRestricciones(cliente.restricciones_medicas)}</strong></p>
+                {cliente.restricciones_otras && (
+                  <p><span>Otras observaciones</span><strong>{cliente.restricciones_otras}</strong></p>
+                )}
               </div>
             </div>
           </section>
