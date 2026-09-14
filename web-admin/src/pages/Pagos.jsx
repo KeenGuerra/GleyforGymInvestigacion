@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { exportarCsv } from "../utils/exportarCsv";
+import { descargarBlob } from "../utils/descargarArchivo";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 
 function Pagos() {
@@ -151,6 +153,16 @@ function Pagos() {
     }
   };
 
+  const descargarRecibo = async (id_pago) => {
+    try {
+      const res = await api.get(`/pagos/${id_pago}/recibo`, { responseType: "blob" });
+      descargarBlob(res.data, `recibo-pago-${id_pago}.pdf`);
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo descargar el recibo");
+    }
+  };
+
   const pagosFiltrados = pagos.filter((pago) => {
     const texto = busqueda.toLowerCase();
     return (
@@ -172,6 +184,26 @@ function Pagos() {
           <h1>Gestión de pagos</h1>
           <p>Registra y controla los pagos del gimnasio.</p>
         </div>
+
+        <button
+          className="btn-secondary"
+          onClick={() =>
+            exportarCsv(
+              "pagos.csv",
+              [
+                { etiqueta: "ID", valor: "id_pago" },
+                { etiqueta: "Cliente", valor: "id_cliente" },
+                { etiqueta: "Monto", valor: "monto" },
+                { etiqueta: "Método", valor: "metodo_pago" },
+                { etiqueta: "Fecha", valor: "fecha_pago" },
+                { etiqueta: "Estado", valor: "estado" },
+              ],
+              pagosFiltrados
+            )
+          }
+        >
+          Exportar CSV
+        </button>
       </section>
 
       <div className="stats-grid">
@@ -324,6 +356,7 @@ function Pagos() {
                 </td>
                 <td className="table-actions">
                   <button onClick={() => editarPago(p)}>Editar</button>
+                  <button onClick={() => descargarRecibo(p.id_pago)}>Recibo</button>
                   <button
                     className="btn-danger"
                     onClick={() => anularPago(p.id_pago)}

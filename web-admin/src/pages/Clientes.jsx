@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
+import { exportarCsv } from "../utils/exportarCsv";
 import {
   OBJETIVOS,
   NIVELES,
@@ -15,6 +16,7 @@ function Clientes() {
 
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState("");
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -56,9 +58,13 @@ function Clientes() {
     return String(edad);
   };
 
-  const cargarClientes = async () => {
+  const cargarClientes = async (filtros = {}) => {
     try {
-      const res = await api.get("/clientes/");
+      const params = {};
+      if (filtros.q) params.q = filtros.q;
+      if (filtros.estado) params.estado = filtros.estado;
+
+      const res = await api.get("/clientes/", { params });
       setClientes(res.data);
     } catch (error) {
       console.error(error);
@@ -66,9 +72,15 @@ function Clientes() {
     }
   };
 
+  // Filtro/búsqueda en el backend (antes era 100% en memoria y no permitía
+  // ver solo los inactivos): con un pequeño debounce para no disparar una
+  // petición por cada tecla.
   useEffect(() => {
-    cargarClientes();
-  }, []);
+    const temporizador = setTimeout(() => {
+      cargarClientes({ q: busqueda, estado: estadoFiltro });
+    }, 300);
+    return () => clearTimeout(temporizador);
+  }, [busqueda, estadoFiltro]);
 
   const cambiar = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -120,7 +132,7 @@ function Clientes() {
       }
 
       limpiarFormulario();
-      cargarClientes();
+      cargarClientes({ q: busqueda, estado: estadoFiltro });
     } catch (error) {
       console.error(error);
       setError(error.response?.data?.detail || "Error al guardar cliente");
@@ -169,18 +181,15 @@ function Clientes() {
         estado: nuevoEstado,
       });
 
-      cargarClientes();
+      cargarClientes({ q: busqueda, estado: estadoFiltro });
     } catch (error) {
       console.error(error);
       setError(error.response?.data?.detail || "Error al cambiar estado");
     }
   };
 
-  const clientesFiltrados = clientes.filter((c) =>
-    `${c.nombres} ${c.apellidos} ${c.dni} ${c.correo}`
-      .toLowerCase()
-      .includes(busqueda.toLowerCase())
-  );
+  // El filtrado ya lo hace el backend (?q=, ?estado=); clientes ya viene filtrado.
+  const clientesFiltrados = clientes;
 
   const iniciales = (c) =>
     `${c.nombres} ${c.apellidos}`
@@ -199,17 +208,40 @@ function Clientes() {
           <p>Administra los socios registrados del gimnasio GleyforGym.</p>
         </div>
 
-        <button
-          className="btn-primary"
-          onClick={() => {
-            setMostrarFormulario(true);
-            setEditandoId(null);
-            setForm(formInicial);
-            setError("");
-          }}
-        >
-          + Registrar cliente
-        </button>
+        <div className="header-actions">
+          <button
+            className="btn-secondary"
+            onClick={() =>
+              exportarCsv(
+                "clientes.csv",
+                [
+                  { etiqueta: "DNI", valor: "dni" },
+                  { etiqueta: "Nombres", valor: "nombres" },
+                  { etiqueta: "Apellidos", valor: "apellidos" },
+                  { etiqueta: "Correo", valor: "correo" },
+                  { etiqueta: "Teléfono", valor: "telefono" },
+                  { etiqueta: "Nivel", valor: "nivel" },
+                  { etiqueta: "Estado", valor: "estado" },
+                ],
+                clientesFiltrados
+              )
+            }
+          >
+            Exportar CSV
+          </button>
+
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setMostrarFormulario(true);
+              setEditandoId(null);
+              setForm(formInicial);
+              setError("");
+            }}
+          >
+            + Registrar cliente
+          </button>
+        </div>
       </section>
 
       <section className="stats-grid">
@@ -467,12 +499,24 @@ function Clientes() {
             <p>Consulta, edita o cambia el estado de cada socio.</p>
           </div>
 
-          <input
-            className="search-input"
-            placeholder="Buscar por nombre, DNI o correo..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
+          <div className="table-filters">
+            <input
+              className="search-input"
+              placeholder="Buscar por nombre, DNI o correo..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
+
+            <select
+              aria-label="Filtrar por estado"
+              value={estadoFiltro}
+              onChange={(e) => setEstadoFiltro(e.target.value)}
+            >
+              <option value="">Todos los estados</option>
+              <option value="ACTIVO">Solo activos</option>
+              <option value="INACTIVO">Solo inactivos</option>
+            </select>
+          </div>
         </div>
 
         <div className="table-wrapper">

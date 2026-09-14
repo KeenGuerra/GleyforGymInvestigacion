@@ -52,8 +52,26 @@ def calcular_edad(fecha_nacimiento: date | datetime | None) -> int | None:
         401: {"description": "Token inválido o expirado"}
     }
 )
-def obtener_clientes(db: Annotated[Session, Depends(get_db)]):
-    clientes = db.query(models.Cliente).order_by(models.Cliente.id_cliente).all()
+def obtener_clientes(
+    db: Annotated[Session, Depends(get_db)],
+    q: str | None = None,
+    estado: str | None = None,
+):
+    query = db.query(models.Cliente)
+
+    if estado:
+        query = query.filter(models.Cliente.estado == estado)
+
+    if q:
+        patron = f"%{q}%"
+        query = query.join(models.Usuario, models.Cliente.id_usuario == models.Usuario.id_usuario).filter(
+            (models.Cliente.nombres.ilike(patron))
+            | (models.Cliente.apellidos.ilike(patron))
+            | (models.Cliente.dni.ilike(patron))
+            | (models.Usuario.correo.ilike(patron))
+        )
+
+    clientes = query.order_by(models.Cliente.id_cliente).all()
 
     resultado = []
 
@@ -375,6 +393,30 @@ def obtener_detalle_cliente(
         .first()
     )
 
+    # RF-027/032: el detalle antes solo traía el último pago/progreso y nada
+    # de asistencias/rutinas/nutrición — no era un "historial completo".
+    asistencias_recientes = (
+        db.query(models.Asistencia)
+        .filter(models.Asistencia.id_cliente == id_cliente, models.Asistencia.estado == ESTADO_ACTIVO)
+        .order_by(desc(models.Asistencia.fecha))
+        .limit(5)
+        .all()
+    )
+
+    rutina_activa = (
+        db.query(models.Rutina)
+        .filter(models.Rutina.id_cliente == id_cliente, models.Rutina.estado == "ACTIVA")
+        .order_by(desc(models.Rutina.fecha_creacion))
+        .first()
+    )
+
+    plan_nutricional_activo = (
+        db.query(models.PlanNutricional)
+        .filter(models.PlanNutricional.id_cliente == id_cliente, models.PlanNutricional.estado == ESTADO_ACTIVO)
+        .order_by(desc(models.PlanNutricional.fecha_creacion))
+        .first()
+    )
+
     cliente_correo = None
     if cliente.usuario:
         cliente_correo = cliente.usuario.correo
@@ -448,4 +490,32 @@ def obtener_detalle_cliente(
         "membresia_actual": membresia_dict,
         "ultimo_pago": pago_dict,
         "ultimo_progreso": progreso_dict,
+        "asistencias_recientes": [
+            {
+                "id_asistencia": a.id_asistencia,
+                "fecha": a.fecha,
+                "hora_entrada": a.hora_entrada,
+                "hora_salida": a.hora_salida,
+            }
+            for a in asistencias_recientes
+        ],
+        "rutina_activa": (
+            {
+                "id_rutina": rutina_activa.id_rutina,
+                "nombre": rutina_activa.nombre,
+                "objetivo": rutina_activa.objetivo,
+                "dias_semana": rutina_activa.dias_semana,
+                "generada_por_ia": rutina_activa.generada_por_ia,
+            }
+            if rutina_activa else None
+        ),
+        "plan_nutricional_activo": (
+            {
+                "id_plan": plan_nutricional_activo.id_plan,
+                "objetivo": plan_nutricional_activo.objetivo,
+                "calorias_diarias": plan_nutricional_activo.calorias_diarias,
+                "generada_por_ia": plan_nutricional_activo.generada_por_ia,
+            }
+            if plan_nutricional_activo else None
+        ),
     }

@@ -1,6 +1,8 @@
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException
 # pyrefly: ignore [missing-import]
+from fastapi.responses import Response
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
 
@@ -9,6 +11,7 @@ from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
 from app.pagos_gateway import gateway
+from app.recibos import generar_recibo_pago
 from app.constants import (
     MSG_PAGO_NO_ENCONTRADO,
     MSG_CLIENTE_NO_ENCONTRADO,
@@ -236,3 +239,35 @@ def eliminar_pago(
     registrar_auditoria(db, usuario_actual, "ANULAR", "Pago", pago_db.id_pago, f"monto={pago_db.monto}")
 
     return {"mensaje": "Pago anulado correctamente"}
+
+
+@router.get(
+    "/{id_pago}/recibo",
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Pago no encontrado"}
+    }
+)
+def descargar_recibo_pago(
+    id_pago: int,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+
+    if not pago_db:
+        raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
+
+    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db)
+
+    cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == pago_db.id_cliente).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail=MSG_CLIENTE_NO_ENCONTRADO)
+
+    pdf_bytes = generar_recibo_pago(pago_db, cliente)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=recibo-pago-{pago_db.id_pago}.pdf"},
+    )

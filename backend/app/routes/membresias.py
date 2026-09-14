@@ -6,10 +6,11 @@ from typing import Annotated
 
 from app import models, schemas
 from app.database import get_db
-from app.security import obtener_usuario_actual, requerir_roles
+from app.security import obtener_usuario_actual, requerir_roles, obtener_usuario_opcional
 from app.constants import (
     MSG_MEMBRESIA_NO_ENCONTRADA,
-    ESTADO_INACTIVO
+    ESTADO_INACTIVO,
+    ESTADO_ACTIVO
 )
 
 router = APIRouter()
@@ -48,8 +49,18 @@ def crear_membresia(
     "/",
     response_model=list[schemas.MembresiaResponse]
 )
-def listar_membresias(db: Annotated[Session, Depends(get_db)]):
-    return db.query(models.Membresia).order_by(models.Membresia.id_membresia).all()
+def listar_membresias(
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict | None, Depends(obtener_usuario_opcional)],
+):
+    query = db.query(models.Membresia)
+
+    # RF-040/047: el público (sin sesión) solo debe ver los planes activos;
+    # antes este filtro solo vivía en Inicio.jsx del lado del frontend.
+    if not usuario_actual:
+        query = query.filter(models.Membresia.estado == ESTADO_ACTIVO)
+
+    return query.order_by(models.Membresia.id_membresia).all()
 
 
 @router.get(

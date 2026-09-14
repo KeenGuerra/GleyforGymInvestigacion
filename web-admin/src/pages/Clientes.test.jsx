@@ -41,7 +41,29 @@ const mockClientes = [
 describe("Clientes Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    api.get.mockResolvedValue({ data: mockClientes });
+    // Simula el filtrado que ahora hace el backend (?q=, ?estado=), para que
+    // los tests de búsqueda sigan viendo el mismo comportamiento visible.
+    api.get.mockImplementation((url, config) => {
+      if (url !== "/clientes/") return Promise.resolve({ data: [] });
+
+      const q = config?.params?.q?.toLowerCase();
+      const estado = config?.params?.estado;
+
+      let resultado = mockClientes;
+      if (q) {
+        resultado = resultado.filter(
+          (c) =>
+            c.nombres.toLowerCase().includes(q) ||
+            c.apellidos.toLowerCase().includes(q) ||
+            c.dni.includes(q) ||
+            c.correo.toLowerCase().includes(q)
+        );
+      }
+      if (estado) {
+        resultado = resultado.filter((c) => c.estado === estado);
+      }
+      return Promise.resolve({ data: resultado });
+    });
   });
 
   // ── Caja negra: renderizado inicial ───────────────────────────────────────
@@ -71,8 +93,10 @@ describe("Clientes Page Component", () => {
       { target: { value: "Juan" } }
     );
 
-    // María no debe estar visible después de filtrar
-    expect(screen.queryByText("Gomez")).toBeNull();
+    // María no debe estar visible después de que el debounce dispare la búsqueda
+    await waitFor(() => {
+      expect(screen.queryByText("Gomez")).toBeNull();
+    });
   });
 
   // ── Boundary Value: DNI vacío → error de validación ───────────────────────

@@ -32,7 +32,15 @@ function DetalleCliente() {
   if (error) return <p className="error-message">{error}</p>;
   if (!detalle) return <p className="empty-message">Cargando detalle...</p>;
 
-  const { cliente, membresia_actual, ultimo_pago, ultimo_progreso } = detalle;
+  const {
+    cliente,
+    membresia_actual,
+    ultimo_pago,
+    ultimo_progreso,
+    asistencias_recientes = [],
+    rutina_activa,
+    plan_nutricional_activo,
+  } = detalle;
 
   return (
     <div className="page-container">
@@ -159,6 +167,69 @@ function DetalleCliente() {
           </div>
         ) : (
           <p className="empty-message">No tiene progreso registrado.</p>
+        )}
+      </section>
+
+      <section className="content-grid">
+        <div className="card info-card">
+          <h2>Rutina activa</h2>
+          {rutina_activa ? (
+            <div className="detail-list">
+              <p><span>Nombre</span><strong>{rutina_activa.nombre}</strong></p>
+              <p><span>Objetivo</span><strong>{rutina_activa.objetivo || "-"}</strong></p>
+              <p><span>Días por semana</span><strong>{rutina_activa.dias_semana || "-"}</strong></p>
+              <p><span>Generada por IA</span><strong>{rutina_activa.generada_por_ia ? "Sí" : "No"}</strong></p>
+            </div>
+          ) : (
+            <p className="empty-message">No tiene una rutina activa.</p>
+          )}
+        </div>
+
+        <div className="card info-card">
+          <h2>Plan nutricional activo</h2>
+          {plan_nutricional_activo ? (
+            <div className="detail-list">
+              <p><span>Objetivo</span><strong>{plan_nutricional_activo.objetivo || "-"}</strong></p>
+              <p><span>Calorías objetivo</span><strong>{plan_nutricional_activo.calorias_diarias || "-"} kcal</strong></p>
+              <p><span>Generado por IA</span><strong>{plan_nutricional_activo.generada_por_ia ? "Sí" : "No"}</strong></p>
+            </div>
+          ) : (
+            <p className="empty-message">No tiene un plan nutricional activo.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Asistencias recientes</h2>
+            <p>Últimos ingresos registrados del cliente.</p>
+          </div>
+        </div>
+
+        {asistencias_recientes.length > 0 ? (
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Hora de entrada</th>
+                  <th>Hora de salida</th>
+                </tr>
+              </thead>
+              <tbody>
+                {asistencias_recientes.map((a) => (
+                  <tr key={a.id_asistencia}>
+                    <td>{formatearFecha(a.fecha)}</td>
+                    <td>{a.hora_entrada || "-"}</td>
+                    <td>{a.hora_salida || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty-message">No tiene asistencias registradas.</p>
         )}
       </section>
     </div>

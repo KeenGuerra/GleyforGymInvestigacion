@@ -1,4 +1,14 @@
 import React, { useEffect, useState } from "react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from "recharts";
 import api from "../api/api";
 
 function MiProgreso() {
@@ -469,6 +479,40 @@ function MiProgreso() {
           )}
         </aside>
       </section>
+
+      {progresos.length > 1 && (
+        <section className="table-card">
+          <div className="card-header">
+            <div>
+              <h2>Evolución de tu progreso</h2>
+              <p>Peso y % de grasa corporal a lo largo del tiempo.</p>
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart
+              data={[...progresos]
+                .slice()
+                .reverse()
+                .map((p) => ({
+                  fecha: formatearFecha(p.fecha_registro),
+                  peso: p.peso,
+                  grasa: p.porcentaje_grasa,
+                }))}
+              margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="fecha" />
+              <YAxis yAxisId="peso" />
+              <YAxis yAxisId="grasa" orientation="right" />
+              <Tooltip />
+              <Legend />
+              <Line yAxisId="peso" type="monotone" dataKey="peso" name="Peso (kg)" stroke="#ff8a3d" strokeWidth={2} />
+              <Line yAxisId="grasa" type="monotone" dataKey="grasa" name="% Grasa" stroke="#4dabf7" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
+      )}
 
       <section className="table-card">
         <div className="card-header">

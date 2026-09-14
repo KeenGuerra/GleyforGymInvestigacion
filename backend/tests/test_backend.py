@@ -945,6 +945,27 @@ def test_entrenadores_crud():
     assert res_del.status_code == 200
 
 
+def test_clientes_filtro_busqueda_y_estado():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    # Búsqueda por nombre
+    res_q = client.get("/clientes/?q=Juan", headers=headers)
+    assert res_q.status_code == 200
+    assert all("juan" in c["nombres"].lower() for c in res_q.json())
+
+    res_q_sin_match = client.get("/clientes/?q=NoExiste123", headers=headers)
+    assert res_q_sin_match.json() == []
+
+    # Filtro por estado
+    res_inactivos = client.get("/clientes/?estado=INACTIVO", headers=headers)
+    assert res_inactivos.status_code == 200
+    assert all(c["estado"] == "INACTIVO" for c in res_inactivos.json())
+
+    res_activos = client.get("/clientes/?estado=ACTIVO", headers=headers)
+    assert all(c["estado"] == "ACTIVO" for c in res_activos.json())
+
+
 def test_clientes_extra_coverage():
     populate_db_for_coverage()
     headers = get_auth_headers()
@@ -1037,6 +1058,31 @@ def test_clientes_extra_coverage():
     assert res_det.json()["cliente"]["estado"] == "INACTIVO"
     assert res_det.json()["ultimo_pago"] is None
     assert res_det.json()["ultimo_progreso"] is None
+
+
+def test_membresias_publicas_solo_muestran_activas():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    db = TestingSessionLocal()
+    inactiva = models.Membresia(
+        id_membresia=99, nombre="Plan descontinuado", descripcion="x",
+        duracion_dias=30, precio=10, estado="INACTIVO",
+    )
+    db.add(inactiva)
+    db.commit()
+    db.close()
+
+    # Sin token: solo ve las activas (RF-040/047)
+    res_publico = client.get("/membresias/")
+    assert res_publico.status_code == 200
+    assert all(m["estado"] == "ACTIVO" for m in res_publico.json())
+    assert not any(m["id_membresia"] == 99 for m in res_publico.json())
+
+    # Con token: ve todas (necesario para administrarlas)
+    res_admin = client.get("/membresias/", headers=headers_admin)
+    assert res_admin.status_code == 200
+    assert any(m["id_membresia"] == 99 for m in res_admin.json())
 
 
 def test_membresias_extra_coverage():
@@ -1381,6 +1427,48 @@ def test_rutinas_extra_coverage():
 # =========================
 # RBAC (control de acceso por rol)
 # =========================
+
+def test_descargar_recibo_pago_pdf():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    res_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 120.0,
+            "metodo_pago": "EFECTIVO", "fecha_pago": "2026-06-01",
+        },
+        headers=headers_admin,
+    )
+    id_pago = res_pago.json()["id_pago"]
+
+    res_recibo = client.get(f"/pagos/{id_pago}/recibo", headers=headers_admin)
+    assert res_recibo.status_code == 200
+    assert res_recibo.headers["content-type"] == "application/pdf"
+    assert res_recibo.content.startswith(b"%PDF")
+
+    # Un CLIENTE puede descargar su propio recibo
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(f"/pagos/{id_pago}/recibo", headers=headers_cliente).status_code == 200
+
+    # No el de otro cliente
+    res_otro_cliente = client.post(
+        "/clientes/",
+        json={
+            "dni": "11223344", "nombres": "Otro", "apellidos": "Cliente",
+            "correo": "otro.cliente@gleyforgym.com", "password": "12345678",
+        },
+        headers=headers_admin,
+    )
+    id_usuario_otro = res_otro_cliente.json()["id_usuario"]
+    headers_otro = get_auth_headers(rol="CLIENTE", id_usuario=id_usuario_otro)
+    assert client.get(f"/pagos/{id_pago}/recibo", headers=headers_otro).status_code == 403
+
 
 def test_flujo_reset_password():
     populate_db_for_coverage()

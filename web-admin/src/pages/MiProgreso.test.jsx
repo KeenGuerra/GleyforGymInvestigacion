@@ -56,6 +56,28 @@ describe("MiProgreso Page Component", () => {
     });
   });
 
+  it("shows the evolution chart when there is more than one record", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/usuario/")) {
+        return Promise.resolve({ data: { id_cliente: 1, nombres: "Juan", peso: 80, estatura: 1.75 } });
+      }
+      if (url.includes("/progreso/cliente/")) {
+        return Promise.resolve({
+          data: [
+            { id_progreso: 2, peso: 78, porcentaje_grasa: 18, fecha_registro: "2026-07-01", observacion: "Mes 2" },
+            { id_progreso: 1, peso: 80, porcentaje_grasa: 20, fecha_registro: "2026-06-01", observacion: "Inicio" },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<MiProgreso />);
+    await waitFor(() => {
+      expect(screen.getByText("Evolución de tu progreso")).toBeDefined();
+    });
+  });
+
   it("shows form and calls post/put on saving new progress entry", async () => {
     api.post.mockResolvedValue({ data: {} });
     api.put.mockResolvedValue({ data: {} });

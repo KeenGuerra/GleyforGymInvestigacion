@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { exportarCsv } from "../utils/exportarCsv";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 
 function Asistencias() {
@@ -161,17 +162,39 @@ function Asistencias() {
           <p>Controla el ingreso, salida y observaciones de clientes activos.</p>
         </div>
 
-        <button
-          className="btn-primary"
-          onClick={() => {
-            setMostrarFormulario(true);
-            setEditandoId(null);
-            setForm(formInicial);
-            setError("");
-          }}
-        >
-          + Registrar asistencia
-        </button>
+        <div className="header-actions">
+          <button
+            className="btn-secondary"
+            onClick={() =>
+              exportarCsv(
+                "asistencias.csv",
+                [
+                  { etiqueta: "ID", valor: "id_asistencia" },
+                  { etiqueta: "Cliente", valor: "id_cliente" },
+                  { etiqueta: "Fecha", valor: "fecha" },
+                  { etiqueta: "Hora entrada", valor: "hora_entrada" },
+                  { etiqueta: "Hora salida", valor: "hora_salida" },
+                  { etiqueta: "Observación", valor: "observacion" },
+                ],
+                asistenciasFiltradas
+              )
+            }
+          >
+            Exportar CSV
+          </button>
+
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setMostrarFormulario(true);
+              setEditandoId(null);
+              setForm(formInicial);
+              setError("");
+            }}
+          >
+            + Registrar asistencia
+          </button>
+        </div>
       </section>
 
       <section className="stats-grid">

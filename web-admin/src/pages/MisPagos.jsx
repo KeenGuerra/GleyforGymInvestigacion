@@ -1,9 +1,24 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { descargarBlob } from "../utils/descargarArchivo";
 
 function MisPagos() {
   const [pagos, setPagos] = useState([]);
   const [error, setError] = useState("");
+  const [descargando, setDescargando] = useState(null);
+
+  const descargarRecibo = async (idPago) => {
+    setDescargando(idPago);
+    try {
+      const res = await api.get(`/pagos/${idPago}/recibo`, { responseType: "blob" });
+      descargarBlob(res.data, `recibo-pago-${idPago}.pdf`);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo descargar el recibo.");
+    } finally {
+      setDescargando(null);
+    }
+  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -84,6 +99,16 @@ function MisPagos() {
                   <span>Observación</span>
                   <strong>{pago.observacion || "Sin observaciones"}</strong>
                 </p>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  className="btn-secondary"
+                  disabled={descargando === pago.id_pago}
+                  onClick={() => descargarRecibo(pago.id_pago)}
+                >
+                  {descargando === pago.id_pago ? "Descargando..." : "Descargar recibo"}
+                </button>
               </div>
             </article>
           ))}

@@ -15,6 +15,7 @@ from app.database import get_db
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
+bearer_scheme_opcional = HTTPBearer(auto_error=False)
 
 def encriptar_password(password: str):
     return pwd_context.hash(password)
@@ -52,6 +53,23 @@ def obtener_usuario_actual(
         raise HTTPException(status_code=401, detail="Usuario inactivo o inexistente")
 
     return payload
+
+
+def obtener_usuario_opcional(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme_opcional)],
+    db: Annotated[Session, Depends(get_db)],
+) -> dict | None:
+    """Como obtener_usuario_actual, pero para endpoints públicos que además
+    quieren comportarse distinto si el caller sí está autenticado (ej. el
+    catálogo de membresías: el público solo ve las activas, el staff las ve
+    todas). Nunca lanza 401 — sin token o con uno inválido, devuelve None."""
+    if not credentials:
+        return None
+    try:
+        return obtener_usuario_actual(credentials, db)
+    except HTTPException:
+        return None
+
 
 def requerir_admin(usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)]) -> dict:
     if usuario_actual.get("rol") != "ADMIN":

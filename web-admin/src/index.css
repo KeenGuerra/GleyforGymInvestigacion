@@ -1218,6 +1218,18 @@ tr:hover td {
   font-size: 11px;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .link-button {
   background: none;
   border: none;
