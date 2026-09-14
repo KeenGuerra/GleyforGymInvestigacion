@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 
@@ -10,21 +19,24 @@ function DashboardAdmin() {
   const [membresiasCliente, setMembresiasCliente] = useState([]);
   const [pagos, setPagos] = useState([]);
   const [asistencias, setAsistencias] = useState([]);
+  const [kpis, setKpis] = useState(null);
 
   const cargarDatos = async () => {
     try {
-      const [resClientes, resClienteMembresias, resPagos, resAsistencias] =
+      const [resClientes, resClienteMembresias, resPagos, resAsistencias, resKpis] =
         await Promise.all([
           api.get("/clientes/"),
           api.get("/cliente-membresias/"),
           api.get("/pagos/"),
           api.get("/asistencias/"),
+          api.get("/reportes/kpis"),
         ]);
 
       setClientes(resClientes.data);
       setMembresiasCliente(resClienteMembresias.data);
       setPagos(resPagos.data);
       setAsistencias(resAsistencias.data);
+      setKpis(Array.isArray(resKpis.data) ? null : resKpis.data);
     } catch (error) {
       console.error("Error al cargar dashboard:", error);
     }
@@ -123,6 +135,55 @@ function DashboardAdmin() {
           <strong>{asistenciasHoy.length}</strong>
         </div>
       </section>
+
+      {kpis && (
+        <section className="content-grid">
+          <div className="table-card">
+            <div className="card-header">
+              <div>
+                <h2>KPIs del gimnasio</h2>
+                <p>Clientes activos vs. rutinas generadas por IA.</p>
+              </div>
+            </div>
+
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart
+                data={[
+                  { nombre: "Clientes activos", valor: kpis.clientes_activos || 0 },
+                  { nombre: "Rutinas IA", valor: kpis.rutinas_generadas_ia || 0 },
+                ]}
+                margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="nombre" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="valor" fill="#ff8a3d" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <aside className="side-column">
+            <div className="card info-card">
+              <h2>Recaudación del mes</h2>
+              <strong style={{ fontSize: "28px" }}>
+                S/ {Number(kpis.recaudacion_mes_actual || 0).toFixed(2)}
+              </strong>
+              <p>Pagos con estado PAGADO desde el día 1 del mes actual.</p>
+            </div>
+
+            <div className="card info-card">
+              <h2>Progreso promedio</h2>
+              <strong style={{ fontSize: "28px" }}>
+                {kpis.progreso_promedio_grasa_30_dias != null
+                  ? `${kpis.progreso_promedio_grasa_30_dias}% grasa`
+                  : "Sin datos"}
+              </strong>
+              <p>Promedio de % de grasa registrado en los últimos 30 días.</p>
+            </div>
+          </aside>
+        </section>
+      )}
 
       <section className="quick-actions-grid">
         <button className="card quick-action" onClick={() => navigate("/cliente-membresias")}>

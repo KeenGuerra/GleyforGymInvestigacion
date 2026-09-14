@@ -843,6 +843,90 @@ def test_cliente_membresias_extra_coverage():
     assert res_put2.json()["fecha_inicio"] == str(date.today() + timedelta(days=5))
 
 
+def test_kpis_dashboard():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res = client.get("/reportes/kpis", headers=headers_admin)
+    assert res.status_code == 200
+    data = res.json()
+    assert "clientes_activos" in data
+    assert "recaudacion_mes_actual" in data
+    assert "rutinas_generadas_ia" in data
+    assert "progreso_promedio_grasa_30_dias" in data
+
+    # Un CLIENTE no puede ver los KPIs administrativos
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get("/reportes/kpis", headers=headers_cliente).status_code == 403
+
+
+def test_entrenadores_crud():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    # Crear
+    res = client.post(
+        "/entrenadores/",
+        json={
+            "dni": "55555555",
+            "nombres": "Carla",
+            "apellidos": "Fit",
+            "telefono": "999888777",
+            "especialidad": "Crossfit",
+            "correo": "carla.entrenadora@gleyforgym.com",
+            "password": "12345678",
+        },
+        headers=headers_admin,
+    )
+    assert res.status_code == 200
+    id_entrenador = res.json()["id_entrenador"]
+
+    # Duplicado de correo -> 400
+    res_dup = client.post(
+        "/entrenadores/",
+        json={
+            "dni": "66666666",
+            "nombres": "Otra",
+            "apellidos": "Persona",
+            "correo": "carla.entrenadora@gleyforgym.com",
+            "password": "12345678",
+        },
+        headers=headers_admin,
+    )
+    assert res_dup.status_code == 400
+
+    # Listar y obtener
+    assert client.get("/entrenadores/", headers=headers_admin).status_code == 200
+    res_get = client.get(f"/entrenadores/{id_entrenador}", headers=headers_admin)
+    assert res_get.status_code == 200
+    assert res_get.json()["especialidad"] == "Crossfit"
+
+    # No encontrado
+    assert client.get("/entrenadores/9999", headers=headers_admin).status_code == 404
+
+    # Actualizar
+    res_put = client.put(
+        f"/entrenadores/{id_entrenador}",
+        json={"especialidad": "Powerlifting"},
+        headers=headers_admin,
+    )
+    assert res_put.status_code == 200
+    assert res_put.json()["especialidad"] == "Powerlifting"
+
+    # Un CLIENTE no puede gestionar entrenadores
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get("/entrenadores/", headers=headers_cliente).status_code == 403
+    assert client.post(
+        "/entrenadores/",
+        json={"dni": "77777777", "nombres": "X", "apellidos": "Y", "correo": "x@y.com", "password": "12345678"},
+        headers=headers_cliente,
+    ).status_code == 403
+
+    # Desactivar
+    res_del = client.delete(f"/entrenadores/{id_entrenador}", headers=headers_admin)
+    assert res_del.status_code == 200
+
+
 def test_clientes_extra_coverage():
     populate_db_for_coverage()
     headers = get_auth_headers()

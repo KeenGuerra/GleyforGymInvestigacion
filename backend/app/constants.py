@@ -53,6 +53,7 @@ MSG_COMIDA_NO_ENCONTRADA = "Comida no encontrada"
 MSG_EJERCICIO_NO_ENCONTRADO = "Ejercicio no encontrado"
 MSG_PROGRESO_NO_ENCONTRADO = "Progreso no encontrado"
 MSG_CLIENTE_NO_ENCONTRADO_USUARIO = "Cliente no encontrado para este usuario"
+MSG_ENTRENADOR_NO_ENCONTRADO = "Entrenador no encontrado"
 MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA = "Membresía del cliente no encontrada"
 
 # Estado comercial

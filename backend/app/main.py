@@ -1,4 +1,6 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,7 @@ from app.config import CORS_ORIGINS
 from app.routes import (
     usuarios,
     clientes,
+    entrenadores,
     membresias,
     cliente_membresias,
     pagos,
@@ -23,19 +26,47 @@ from app.routes import (
     compras,
     inventario,
     ventas,
+    reportes,
 )
 
 from app.routes.ia import ia_rutina, ia_nutricion
+
+logger = logging.getLogger("gleyforgym")
+
+INTERVALO_VENCIMIENTO_MEMBRESIAS_SEGUNDOS = 24 * 60 * 60  # una vez al día
+
+
+async def _tarea_periodica_vencimiento_membresias():
+    """RF06: antes esto solo corría cuando alguien pegaba a un GET de
+    cliente-membresias; ahora corre sola en el servidor sin depender de que
+    algún usuario abra esa pantalla ese día."""
+    from app.database import SessionLocal
+    from app.routes.cliente_membresias import actualizar_membresias_vencidas
+
+    while True:
+        db = SessionLocal()
+        try:
+            actualizar_membresias_vencidas(db)
+        except Exception:
+            logger.exception("Error actualizando membresías vencidas")
+        finally:
+            db.close()
+        await asyncio.sleep(INTERVALO_VENCIMIENTO_MEMBRESIAS_SEGUNDOS)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    tarea = asyncio.create_task(_tarea_periodica_vencimiento_membresias())
+    yield
+    tarea.cancel()
 
 
 app = FastAPI(
     title="API GLEYFORGYM",
     description="API para la gestión del gimnasio GLEYFORGYM",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
-
-
-logger = logging.getLogger("gleyforgym")
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,6 +95,7 @@ async def catch_all_handler(request: Request, exc: Exception):
 
 app.include_router(usuarios.router, prefix="/usuarios", tags=["Usuarios"])
 app.include_router(clientes.router, prefix="/clientes", tags=["Clientes"])
+app.include_router(entrenadores.router, prefix="/entrenadores", tags=["Entrenadores"])
 app.include_router(membresias.router, prefix="/membresias", tags=["Membresías"])
 app.include_router(cliente_membresias.router, prefix="/cliente-membresias", tags=["Cliente Membresías"])
 app.include_router(pagos.router, prefix="/pagos", tags=["Pagos"])
@@ -83,6 +115,8 @@ app.include_router(ventas.router, prefix="/ventas", tags=["Ventas"])
 
 app.include_router(ia_rutina.router, prefix="/ia/rutina", tags=["IA Rutina"])
 app.include_router(ia_nutricion.router, prefix="/ia/nutricion", tags=["IA Nutrición"])
+
+app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])
 
 
 @app.get("/")
