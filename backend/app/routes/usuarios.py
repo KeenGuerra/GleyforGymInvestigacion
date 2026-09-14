@@ -1,5 +1,5 @@
 # pyrefly: ignore [missing-import]
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
@@ -7,6 +7,7 @@ from typing import Annotated
 from app import models, schemas
 from app.database import get_db
 from app.security import encriptar_password, verificar_password, crear_token, obtener_usuario_actual, requerir_roles
+from app.rate_limit import excedio_intentos, registrar_intento_fallido, limpiar_intentos
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -201,23 +202,36 @@ def eliminar_usuario(
     "/login",
     responses={
         401: {"description": "Credenciales incorrectas"},
-        403: {"description": "Usuario inactivo"}
+        403: {"description": "Usuario inactivo"},
+        429: {"description": "Demasiados intentos fallidos, intenta más tarde"}
     }
 )
 def login(
     datos: schemas.LoginRequest,
+    request: Request,
     db: Annotated[Session, Depends(get_db)]
 ):
+    ip_cliente = request.client.host if request.client else "desconocida"
+    clave_intentos = f"{ip_cliente}:{datos.correo.lower()}"
+
+    if excedio_intentos(clave_intentos):
+        raise HTTPException(
+            status_code=429,
+            detail="Demasiados intentos fallidos. Intenta de nuevo en unos minutos."
+        )
 
     usuario = db.query(models.Usuario).filter(
         models.Usuario.correo == datos.correo
     ).first()
 
     if not usuario or not verificar_password(datos.password, usuario.password_hash):
+        registrar_intento_fallido(clave_intentos)
         raise HTTPException(status_code=401, detail=MSG_CREDENCIALES_INCORRECTAS)
 
     if usuario.estado != ESTADO_ACTIVO:
         raise HTTPException(status_code=403, detail=MSG_USUARIO_INACTIVO)
+
+    limpiar_intentos(clave_intentos)
 
     token = crear_token({
         "id_usuario": usuario.id_usuario,

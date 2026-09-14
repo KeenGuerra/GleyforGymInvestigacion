@@ -192,6 +192,24 @@ def test_login_wrong_credentials():
     )
     assert response.status_code == 401
 
+def test_login_rate_limit_tras_intentos_fallidos():
+    """Tras 5 intentos fallidos con el mismo correo, el login debe responder 429."""
+    correo = "rate.limit.test@gleyforgym.com"
+
+    for _ in range(5):
+        res = client.post(
+            "/usuarios/login",
+            json={"correo": correo, "password": "clave_incorrecta"}
+        )
+        assert res.status_code == 401
+
+    res_bloqueado = client.post(
+        "/usuarios/login",
+        json={"correo": correo, "password": "clave_incorrecta"}
+    )
+    assert res_bloqueado.status_code == 429
+
+
 def test_jwt_token_handling():
     """Test JWT token generation and decryption utilities."""
     token_data = {"id_usuario": 1, "correo": "admin@gleyforgym.com", "rol": "ADMIN"}
