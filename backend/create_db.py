@@ -60,6 +60,26 @@ def initialize_tables():
                 with engine.connect() as conn:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
                     conn.commit()
+
+    # Alteraciones de tipo sobre columnas ya existentes (antes vivía duplicado
+    # y sin proteccion de concurrencia en app/routes/productos.py:_ensure_columns).
+    alteraciones_tipo = [
+        ("proveedores", "ruc", "VARCHAR(20)"),
+    ]
+    for table, column, col_type in alteraciones_tipo:
+        if table in existing_tables:
+            cols = [c["name"] for c in inspector.get_columns(table)]
+            if column in cols:
+                # ALTER COLUMN ... TYPE es sintaxis de PostgreSQL; SQLite (usado
+                # en desarrollo/tests locales) no soporta cambiar el tipo de una
+                # columna existente, así que se omite ahí sin detener el arranque.
+                try:
+                    print(f"  Altering {table}.{column} to {col_type}...")
+                    with engine.connect() as conn:
+                        conn.execute(text(f"ALTER TABLE {table} ALTER COLUMN {column} TYPE {col_type}"))
+                        conn.commit()
+                except Exception as e:
+                    print(f"  Skipping type alteration for {table}.{column} (not supported on this DB): {e}")
     print("Schema migration completed.")
 
 def migrar_restricciones_medicas():

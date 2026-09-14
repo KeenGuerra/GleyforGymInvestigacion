@@ -2,17 +2,13 @@ import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { FaBars, FaTimes } from "react-icons/fa";
+import { cerrarSesion } from "../api/api";
 
 export default function Layout() {
   const navigate = useNavigate();
   const rol = localStorage.getItem("rol");
   const correo = localStorage.getItem("correo");
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const cerrarSesion = () => {
-    localStorage.clear();
-    navigate("/");
-  };
 
   let inicial = "C";
   if (rol === "ADMIN") {

@@ -1,3 +1,4 @@
+import logging
 from urllib.parse import urlparse
 
 # pyrefly: ignore [missing-import]
@@ -8,7 +9,6 @@ import cloudinary.uploader
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
-from sqlalchemy import text as sa_text
 from typing import Annotated, Optional
 
 from app.database import get_db
@@ -18,53 +18,9 @@ from app.security import requerir_roles
 from app.constants import ESTADO_INACTIVO, MSG_PRODUCTO_NO_ENCONTRADO
 
 router = APIRouter()
+logger = logging.getLogger("gleyforgym")
 
 cloudinary_url = CLOUDINARY_URL
-
-_column_check_done = False
-
-_MIGRATIONS = [
-    ("productos", "imagen_url", "TEXT"),
-    ("productos", "cloudinary_public_id", "VARCHAR(255)"),
-    ("membresias", "beneficios", "TEXT"),
-    ("cliente_membresias", "precio_asignado", "FLOAT"),
-]
-
-_COLUMN_ALTERATIONS = [
-    ("proveedores", "ruc", "VARCHAR(20)"),
-]
-
-def _ensure_columns(db: Session):
-    global _column_check_done
-    if _column_check_done:
-        return
-    try:
-        from sqlalchemy import inspect as sa_inspect
-        insp = sa_inspect(db.bind)
-        existing_tables = insp.get_table_names()
-        for table, column, col_type in _MIGRATIONS:
-            if table not in existing_tables:
-                continue
-            cols = [c["name"] for c in insp.get_columns(table)]
-            if column not in cols:
-                db.execute(sa_text(
-                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
-                ))
-                print(f"MIGRATED: {table}.{column} added")
-        for table, column, col_type in _COLUMN_ALTERATIONS:
-            if table not in existing_tables:
-                continue
-            cols = [c["name"] for c in insp.get_columns(table)]
-            if column in cols:
-                db.execute(sa_text(
-                    f"ALTER TABLE {table} ALTER COLUMN {column} TYPE {col_type}"
-                ))
-                print(f"MIGRATED: {table}.{column} altered to {col_type}")
-        db.commit()
-    except Exception as e:
-        print(f"WARN: migration skip: {e}")
-        db.rollback()
-    _column_check_done = True
 
 if cloudinary_url:
     parsed_url = urlparse(cloudinary_url)
@@ -170,15 +126,15 @@ async def crear_producto(
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_productos(db: Annotated[Session, Depends(get_db)]):
-    _ensure_columns(db)
     try:
         productos = db.query(models.Producto).order_by(
             models.Producto.id_producto.desc()
         ).all()
         return [_producto_con_stock(db, p) for p in productos]
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"PRODUCTOS_ERROR: {type(e).__name__}: {str(e)[:500]}")
+        logger.exception("Error listando productos")
+        raise HTTPException(status_code=500, detail="No se pudieron cargar los productos")
 
 
 @router.get(
@@ -187,15 +143,15 @@ def listar_productos(db: Annotated[Session, Depends(get_db)]):
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_productos_disponibles(db: Annotated[Session, Depends(get_db)]):
-    _ensure_columns(db)
     try:
         productos = db.query(models.Producto).filter(
             models.Producto.estado == "ACTIVO"
         ).order_by(models.Producto.nombre).all()
         return [_producto_con_stock(db, p) for p in productos]
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"PRODUCTOS_ERROR: {type(e).__name__}: {str(e)[:500]}")
+        logger.exception("Error listando productos disponibles")
+        raise HTTPException(status_code=500, detail="No se pudieron cargar los productos")
 
 
 @router.get(

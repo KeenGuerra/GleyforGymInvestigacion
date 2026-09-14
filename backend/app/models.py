@@ -398,7 +398,7 @@ class MovimientoStock(Base):
     id_movimiento = Column(Integer, primary_key=True, index=True)
     id_producto = Column(Integer, ForeignKey("productos.id_producto"), nullable=False)
     id_lote = Column(Integer, ForeignKey("lotes.id_lote"), nullable=True)
-    tipo_movimiento = Column(String(30), nullable=False)  # ENTRADA_COMPRA, SALIDA_VENTA, ENTRADA_ANULACION_VENTA, SALIDA_ANULACION_COMPRA, AJUSTE
+    tipo_movimiento = Column(String(30), nullable=False)  # ENTRADA (stock inicial), ENTRADA_COMPRA, SALIDA_VENTA, ENTRADA_ANULACION_VENTA, SALIDA_ANULACION_COMPRA, AJUSTE
     referencia_tipo = Column(String(30), nullable=True)  # COMPRA, VENTA, AJUSTE
     referencia_id = Column(Integer, nullable=True)
     cantidad = Column(Float, nullable=False)

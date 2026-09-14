@@ -67,4 +67,39 @@ describe("Configuración de API Axios", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("NO debe limpiar localStorage ni redirigir en caso de 403 (sesión válida, acción prohibida)", async () => {
+    let cleared = false;
+    let redirected = false;
+
+    vi.stubGlobal("localStorage", {
+      getItem: () => "token_de_prueba_jwt",
+      clear: () => { cleared = true; }
+    });
+
+    vi.stubGlobal('location', {
+      _href: '',
+      get href() { return this._href; },
+      set href(val) {
+        this._href = val;
+        redirected = true;
+      }
+    });
+
+    const errorInterceptor = api.interceptors.response.handlers[0].rejected;
+    const mockError = {
+      response: { status: 403, data: { detail: "Acceso restringido a: ADMIN" } }
+    };
+
+    try {
+      await errorInterceptor(mockError);
+    } catch {
+      // Ignorar el rechazo de la promesa; cada pantalla maneja su propio mensaje de error
+    }
+
+    expect(cleared).toBe(false);
+    expect(redirected).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
 });

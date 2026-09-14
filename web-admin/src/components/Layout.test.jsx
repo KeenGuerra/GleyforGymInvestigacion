@@ -55,9 +55,10 @@ describe("Layout Component", () => {
     expect(screen.getAllByText("CLIENTE").length).toBeGreaterThan(0);
   });
 
-  it("clears localStorage and navigates to home on logout click", () => {
+  it("clears localStorage and redirects to login on logout click", () => {
     localStorage.setItem("rol", "ADMIN");
     localStorage.setItem("correo", "admin@gym.com");
+    globalThis.location.href = "http://localhost/dashboard";
 
     render(
       <MemoryRouter>
@@ -69,7 +70,9 @@ describe("Layout Component", () => {
     fireEvent.click(logoutBtn);
 
     expect(localStorage.getItem("rol")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/");
+    // El logout usa la misma función cerrarSesion() que el interceptor de
+    // axios en un 401, así que redirige con location.href, no con navigate().
+    expect(globalThis.location.href).toBe("/login");
   });
 
   it("renders sidebar with ENTRENADOR links when role is ENTRENADOR", () => {

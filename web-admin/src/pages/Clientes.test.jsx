@@ -93,7 +93,7 @@ describe("Clientes Page Component", () => {
     fireEvent.click(screen.getByText("Registrar cliente", { selector: "button" }));
 
     await waitFor(() => {
-      expect(screen.getByText("DNI inválido")).toBeDefined();
+      expect(screen.getByText("El DNI debe tener exactamente 8 dígitos numéricos")).toBeDefined();
     });
   });
 
@@ -173,6 +173,8 @@ describe("Clientes Page Component", () => {
     await waitFor(() => expect(screen.getByText("Registrar cliente", { selector: "button" })).toBeDefined());
 
     fireEvent.change(screen.getByLabelText("DNI"), { target: { value: "12121212" } });
+    fireEvent.change(screen.getByLabelText("Correo"), { target: { value: "nuevo@test.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "123456" } });
     fireEvent.click(screen.getByText("Registrar cliente", { selector: "button" }));
 
     await waitFor(() => {

@@ -93,8 +93,18 @@ function Clientes() {
     e.preventDefault();
     setError("");
 
-    if (!form?.dni || form?.dni?.length !== 8) {
-      setError("DNI inválido");
+    if (!/^\d{8}$/.test(form?.dni || "")) {
+      setError("El DNI debe tener exactamente 8 dígitos numéricos");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form?.correo || "")) {
+      setError("Ingresa un correo electrónico válido");
+      return;
+    }
+
+    if (!editandoId && (form?.password || "").length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
       return;
     }
 

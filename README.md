@@ -42,7 +42,7 @@ Desglose de las actividades específicas que conforman cada uno de los procesos 
 *   **Act03-1**: Definición del catálogo de membresías (nombre, descripción, días de duración, precio, beneficios).
 *   **Act03-2**: Asignación de una membresía a la ficha de un cliente con fecha de inicio y finalización.
 *   **Act03-3**: Registro de pago del monto acordado (metodo_pago, monto, estado, observación).
-*   **Act03-4**: Ejecución diaria de la tarea automática en el servidor que actualiza el estado de las membresías vencidas a `VENCIDA`.
+*   **Act03-4**: Ejecución diaria de la tarea automática en el servidor que actualiza el estado de las membresías vencidas a `TERMINADA`.
 
 ### P04: Registro de Asistencia Diaria
 *   **Act04-1**: El socio registra su ingreso en portería a través de la interfaz cliente.
@@ -122,7 +122,7 @@ graph TD
 | **RF03** | Ficha Biométrica | El sistema debe almacenar peso, estatura, sexo, nivel, objetivo y restricciones médicas del socio. | Alta |
 | **RF04** | Catálogo de Membresías | El sistema debe permitir configurar planes de membresía parametrizables. | Media |
 | **RF05** | Asignación y Pagos | El sistema debe registrar pagos y vincular membresías activas a los perfiles de clientes. | Alta |
-| **RF06** | Control de Vencimientos | El sistema debe actualizar de forma automática el estado de membresías expiradas a "VENCIDA". | Alta |
+| **RF06** | Control de Vencimientos | El sistema debe actualizar de forma automática el estado de membresías expiradas a "TERMINADA". | Alta |
 | **RF07** | Catálogo de Ejercicios | El sistema debe permitir clasificar ejercicios por grupo muscular y asociar enlaces de Cloudinary. | Media |
 | **RF08** | Recomendador de Rutinas IA | El motor de IA debe generar planes de entrenamiento basados en objetivo, nivel y restricciones. | Alta |
 | **RF09** | Recomendador de Nutrición IA | El motor de IA debe calcular las calorías de mantenimiento y generar planes de comidas acordes. | Alta |

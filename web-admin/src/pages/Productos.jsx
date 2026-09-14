@@ -136,7 +136,7 @@ function Productos() {
 
   const desactivar = async (id) => {
     if (!globalThis.confirm("¿Seguro que deseas desactivar este producto?")) return;
-    try { await api.delete(`/productos/${id}`); await cargar(); } catch (err) { setError("Error al desactivar"); }
+    try { await api.delete(`/productos/${id}`); await cargar(); } catch { setError("Error al desactivar"); }
   };
 
   const filtrados = productos.filter((p) => {

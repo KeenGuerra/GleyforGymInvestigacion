@@ -23,7 +23,7 @@ function Ventas() {
         api.get("/clientes/"), api.get("/ventas/resumen"),
       ]);
       setVentas(r1.data); setProductos(r2.data); setClientes(r3.data); setResumen(r4.data);
-    } catch (err) { setError("Error al cargar datos"); }
+    } catch { setError("Error al cargar datos"); }
   };
 
   useEffect(() => { cargar(); }, []);

@@ -1,11 +1,8 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { FaClock, FaUserTie, FaMusic, FaBullhorn, FaTiktok } from "react-icons/fa";
 
 function Avisos() {
-  const navigate = useNavigate();
-
   return (
     <div className="public-page">
       <Navbar />

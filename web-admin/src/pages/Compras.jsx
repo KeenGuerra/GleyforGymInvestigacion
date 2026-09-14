@@ -21,7 +21,7 @@ function Compras() {
         api.get("/compras/"), api.get("/proveedores/"), api.get("/productos/")
       ]);
       setCompras(r1.data); setProveedores(r2.data); setProductos(r3.data);
-    } catch (err) { setError("Error al cargar datos"); }
+    } catch { setError("Error al cargar datos"); }
   };
 
   useEffect(() => { cargar(); }, []);

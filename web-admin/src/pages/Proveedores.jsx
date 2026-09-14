@@ -14,7 +14,7 @@ function Proveedores() {
 
   const cargar = async () => {
     try { setError(""); const res = await api.get("/proveedores/"); setProveedores(res.data); }
-    catch (err) { setError("Error al cargar proveedores"); }
+    catch { setError("Error al cargar proveedores"); }
   };
 
   useEffect(() => { cargar(); }, []);
@@ -48,7 +48,7 @@ function Proveedores() {
 
   const desactivar = async (id) => {
     if (!globalThis.confirm("¿Desactivar proveedor?")) return;
-    try { await api.delete(`/proveedores/${id}`); await cargar(); } catch (err) { setError("Error al desactivar"); }
+    try { await api.delete(`/proveedores/${id}`); await cargar(); } catch { setError("Error al desactivar"); }
   };
 
   const filtrados = proveedores.filter((p) => {

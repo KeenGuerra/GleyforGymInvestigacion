@@ -22,7 +22,7 @@ function Inventario() {
       ]);
       setInventario(r1.data); setMovimientos(r2.data);
       setAlertasStock(r3.data); setAlertasVencimiento(r4.data);
-    } catch (err) { setError("Error al cargar inventario"); }
+    } catch { setError("Error al cargar inventario"); }
   };
 
   useEffect(() => { cargar(); }, []);

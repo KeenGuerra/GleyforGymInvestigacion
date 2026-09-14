@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
@@ -27,7 +27,7 @@ function Tienda() {
     localStorage.setItem(CART_KEY, JSON.stringify(carrito));
   }, [carrito]);
 
-  const cargar = async () => {
+  const cargar = useCallback(async () => {
     try {
       setError("");
       const resProd = await api.get("/productos/disponibles");
@@ -41,9 +41,9 @@ function Tienda() {
     } catch {
       setError("Error al cargar productos");
     }
-  };
+  }, [isLoggedIn]);
 
-  useEffect(() => { cargar(); }, [isLoggedIn]);
+  useEffect(() => { cargar(); }, [cargar]);
 
   const agregarAlCarrito = (producto) => {
     if (!isLoggedIn) { navigate("/login"); return; }
