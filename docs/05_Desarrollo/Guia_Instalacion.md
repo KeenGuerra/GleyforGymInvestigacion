@@ -399,6 +399,8 @@ Contraseña:
 Admin123*
 ```
 
+⚠️ Estas credenciales son solo para desarrollo local. Cambiar la contraseña del admin de inmediato en cualquier entorno que no sea localhost.
+
 ---
 
 # 12. Problemas Frecuentes

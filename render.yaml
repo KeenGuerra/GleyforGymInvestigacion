@@ -21,7 +21,7 @@ services:
       - key: CLOUDINARY_URL
         sync: false # Set manually in Render dashboard
       - key: CORS_ORIGINS
-        value: "*" # Custom CORS configuration
+        value: "https://gleyforgym-frontend.onrender.com"
 
   # Frontend: React Static Site
   - type: web

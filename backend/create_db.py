@@ -9,7 +9,7 @@ sys.path.append(str(BASE_DIR))
 
 # Database configuration to create the database (connecting to default 'postgres' database)
 DEFAULT_DB_URL = "postgresql://postgres:keen123@localhost:5432/postgres"
-TARGET_DB_NAME = "gleyforgyminvestigacion"
+TARGET_DB_NAME = "gleyforgym"
 
 def create_database_if_not_exists():
     print(f"Connecting to default database to check/create '{TARGET_DB_NAME}'...")
@@ -57,6 +57,8 @@ def initialize_tables():
     print("Schema migration completed.")
 
 def seed_admin_user():
+    # Credenciales de ejemplo solo para desarrollo local. Cambiar la contraseña
+    # del admin inmediatamente en cualquier entorno que no sea localhost.
     print("Checking if default admin user exists...")
     from app.database import SessionLocal
     from app.models import Usuario

@@ -30,6 +30,7 @@ backend/*.db-journal
 web-admin/node_modules/
 web-admin/dist/
 web-admin/.env*
+!web-admin/.env.example
 web-admin/coverage/
 web-admin/.eslintcache
 
