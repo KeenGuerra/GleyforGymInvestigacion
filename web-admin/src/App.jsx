@@ -35,6 +35,7 @@ import Inventario from "./pages/Inventario";
 import Ventas from "./pages/Ventas";
 import Tienda from "./pages/Tienda";
 import Avisos from "./pages/Avisos";
+import GestionAvisos from "./pages/GestionAvisos";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -73,6 +74,15 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["ADMIN"]}>
                 <Membresias />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/gestion-avisos"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <GestionAvisos />
               </ProtectedRoute>
             }
           />

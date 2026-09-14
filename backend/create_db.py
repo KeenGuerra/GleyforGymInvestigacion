@@ -163,6 +163,44 @@ def seed_admin_user():
     finally:
         db.close()
 
+
+def seed_avisos_iniciales():
+    """
+    Avisos.jsx era 100% contenido estático hardcodeado (horarios, coaches,
+    clases de baile, comunicados). Al migrarlo a la tabla `avisos`, se siembra
+    ese mismo contenido una sola vez para no perderlo — de ahí en adelante el
+    admin lo edita desde el panel, no desde código.
+    """
+    print("Checking if initial avisos exist...")
+    from app.database import SessionLocal
+    from app.models import Aviso
+
+    db = SessionLocal()
+    try:
+        if db.query(Aviso).count() > 0:
+            print("Avisos already exist, skipping seed.")
+            return
+
+        print("Seeding initial avisos...")
+        avisos_iniciales = [
+            ("Lunes a Sábado", "6:00 am – 10:00 pm", "HORARIO"),
+            ("Domingos", "8:00 am – 12:00 pm", "HORARIO"),
+            ("Deyvi", "Lun – Vie: 6:00 am – 12:00 pm | 3:00 pm – 9:00 pm", "COACHES"),
+            ("Jhony", "Lun – Sáb: 3:00 pm – 8:00 pm", "COACHES"),
+            ("Alfrado", "Dom: 8:00 am – 12:00 pm | Sáb: 3:00 pm – 9:00 pm", "COACHES"),
+            ("Katy Cambias Fit", "Martes / Viernes: 7:00 pm – 8:00 pm", "BAILE"),
+            ("Miguel Rodriguez – Zumba", "Jueves: 7:00 pm – 8:00 pm", "BAILE"),
+            ("Yanina Barreto – X-tream", "Lun / Mié / Vie: 8:00 pm – 9:00 pm", "BAILE"),
+            ("Live en TikTok", "Jueves 7:00 pm – @gleyforgym. ¡Sortearemos un premio!", "EVENTO"),
+        ]
+        for titulo, contenido, tipo in avisos_iniciales:
+            db.add(Aviso(titulo=titulo, contenido=contenido, tipo=tipo, estado="ACTIVO"))
+        db.commit()
+        print(f"{len(avisos_iniciales)} avisos sembrados correctamente.")
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     try:
         try:
@@ -172,6 +210,7 @@ if __name__ == "__main__":
         initialize_tables()
         migrar_restricciones_medicas()
         seed_admin_user()
+        seed_avisos_iniciales()
         print("Database setup completed successfully.")
     except Exception as e:
         print(f"An error occurred: {e}")

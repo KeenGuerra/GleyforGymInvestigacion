@@ -1060,6 +1060,54 @@ def test_clientes_extra_coverage():
     assert res_det.json()["ultimo_progreso"] is None
 
 
+def test_avisos_crud_y_visibilidad_publica():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_crear = client.post(
+        "/avisos/",
+        json={"titulo": "Horario feriado", "contenido": "Cerramos a las 2pm", "tipo": "HORARIO"},
+        headers=headers_admin,
+    )
+    assert res_crear.status_code == 200
+    id_aviso = res_crear.json()["id_aviso"]
+
+    # Público (sin token) lo ve porque nace ACTIVO
+    res_publico = client.get("/avisos/")
+    assert res_publico.status_code == 200
+    assert any(a["id_aviso"] == id_aviso for a in res_publico.json())
+
+    # Se desactiva
+    res_editar = client.put(
+        f"/avisos/{id_aviso}", json={"estado": "INACTIVO"}, headers=headers_admin
+    )
+    assert res_editar.status_code == 200
+
+    # Ya no aparece para el público...
+    res_publico_2 = client.get("/avisos/")
+    assert not any(a["id_aviso"] == id_aviso for a in res_publico_2.json())
+
+    # ...pero sí para el staff logueado
+    res_staff = client.get("/avisos/", headers=headers_admin)
+    assert any(a["id_aviso"] == id_aviso for a in res_staff.json())
+
+    # Un CLIENTE no puede crear/editar avisos
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.post(
+        "/avisos/", json={"titulo": "x", "contenido": "y"}, headers=headers_cliente
+    ).status_code == 403
+
+    # Eliminar (borrado lógico)
+    res_eliminar = client.delete(f"/avisos/{id_aviso}", headers=headers_admin)
+    assert res_eliminar.status_code == 200
+
+    # No encontrado
+    assert client.put(
+        "/avisos/9999", json={"titulo": "x"}, headers=headers_admin
+    ).status_code == 404
+    assert client.delete("/avisos/9999", headers=headers_admin).status_code == 404
+
+
 def test_membresias_publicas_solo_muestran_activas():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")

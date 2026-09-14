@@ -862,3 +862,38 @@ class RegistroAuditoriaResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# =========================
+# AVISOS
+# =========================
+
+TipoAviso = Literal["HORARIO", "COACHES", "BAILE", "COMUNICADO", "EVENTO"]
+
+
+class AvisoBase(BaseModel):
+    titulo: str
+    contenido: str
+    tipo: TipoAviso = "COMUNICADO"
+    fecha_evento: Optional[date] = None
+    estado: EstadoGeneral = "ACTIVO"
+
+
+class AvisoCreate(AvisoBase):
+    pass
+
+
+class AvisoUpdate(BaseModel):
+    titulo: Optional[str] = None
+    contenido: Optional[str] = None
+    tipo: Optional[TipoAviso] = None
+    fecha_evento: Optional[date] = None
+    estado: Optional[EstadoGeneral] = None
+
+
+class AvisoResponse(AvisoBase):
+    id_aviso: int
+    fecha_creacion: datetime
+
+    class Config:
+        from_attributes = True

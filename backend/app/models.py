@@ -469,3 +469,17 @@ class RegistroAuditoria(Base):
     fecha = Column(DateTime, default=datetime.now)
 
     usuario = relationship("Usuario")
+
+
+class Aviso(Base):
+    """Avisos/horarios/comunicados públicos. Antes Avisos.jsx era 100%
+    contenido estático hardcodeado en el frontend."""
+    __tablename__ = "avisos"
+
+    id_aviso = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String(150), nullable=False)
+    contenido = Column(Text, nullable=False)
+    tipo = Column(String(30), default="COMUNICADO")  # HORARIO, COACHES, BAILE, COMUNICADO, EVENTO
+    fecha_evento = Column(Date, nullable=True)  # solo aplica si tipo=EVENTO
+    estado = Column(String, default="ACTIVO")
+    fecha_creacion = Column(DateTime, default=datetime.now)
