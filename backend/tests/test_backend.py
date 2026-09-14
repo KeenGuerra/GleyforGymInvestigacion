@@ -1382,6 +1382,133 @@ def test_rutinas_extra_coverage():
 # RBAC (control de acceso por rol)
 # =========================
 
+def test_flujo_reset_password():
+    populate_db_for_coverage()
+
+    # Correo inexistente responde igual (no filtra qué correos existen)
+    res_inexistente = client.post("/usuarios/solicitar-reset", json={"correo": "no.existe@gleyforgym.com"})
+    assert res_inexistente.status_code == 200
+
+    res_solicitar = client.post("/usuarios/solicitar-reset", json={"correo": "admin@gleyforgym.com"})
+    assert res_solicitar.status_code == 200
+
+    db = TestingSessionLocal()
+    admin = db.query(models.Usuario).filter(models.Usuario.correo == "admin@gleyforgym.com").first()
+    token = admin.reset_token
+    assert token is not None
+    db.close()
+
+    # Token inválido es rechazado
+    assert client.post(
+        "/usuarios/reset-password", json={"token": "token-invalido", "password_nueva": "nuevaClave123"}
+    ).status_code == 400
+
+    # Token válido cambia la contraseña
+    res_reset = client.post(
+        "/usuarios/reset-password", json={"token": token, "password_nueva": "nuevaClave123"}
+    )
+    assert res_reset.status_code == 200
+
+    # El nuevo login funciona con la contraseña nueva
+    res_login = client.post(
+        "/usuarios/login", json={"correo": "admin@gleyforgym.com", "password": "nuevaClave123"}
+    )
+    assert res_login.status_code == 200
+
+    # El token ya usado no sirve de nuevo
+    assert client.post(
+        "/usuarios/reset-password", json={"token": token, "password_nueva": "otraClave456"}
+    ).status_code == 400
+
+
+def test_checkout_y_webhook_de_pago_exitoso():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    res_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "TARJETA", "fecha_pago": "2026-06-01", "estado": "PENDIENTE",
+        },
+        headers=headers_admin,
+    )
+    id_pago = res_pago.json()["id_pago"]
+
+    # No se puede iniciar checkout de un pago que no está PENDIENTE
+    res_pago_pagado = client.post(
+        "/pagos/", json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 50.0,
+            "metodo_pago": "EFECTIVO", "fecha_pago": "2026-06-01",
+        }, headers=headers_admin,
+    )
+    id_pago_pagado = res_pago_pagado.json()["id_pago"]
+    assert client.post(f"/pagos/{id_pago_pagado}/checkout", headers=headers_admin).status_code == 400
+
+    # Iniciar checkout del pago PENDIENTE
+    res_checkout = client.post(f"/pagos/{id_pago}/checkout", headers=headers_admin)
+    assert res_checkout.status_code == 200
+    id_transaccion = res_checkout.json()["id_transaccion_externa"]
+    assert res_checkout.json()["url_checkout"]
+
+    # El webhook confirma el pago
+    res_webhook = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+    )
+    assert res_webhook.status_code == 200
+
+    db = TestingSessionLocal()
+    pago_final = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+    assert pago_final.estado == "PAGADO"
+    db.close()
+
+
+def test_checkout_y_webhook_de_pago_fallido():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    res_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "TARJETA", "fecha_pago": "2026-06-01", "estado": "PENDIENTE",
+        },
+        headers=headers_admin,
+    )
+    id_pago = res_pago.json()["id_pago"]
+
+    id_transaccion = client.post(f"/pagos/{id_pago}/checkout", headers=headers_admin).json()["id_transaccion_externa"]
+
+    res_webhook = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "FALLIDO"},
+    )
+    assert res_webhook.status_code == 200
+
+    db = TestingSessionLocal()
+    pago_final = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+    assert pago_final.estado == "FALLIDO"
+    db.close()
+
+    # Una transacción desconocida no debe reventar, debe dar 404
+    res_desconocida = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": "no-existe", "resultado": "EXITOSO"},
+    )
+    assert res_desconocida.status_code == 404
+
+
 def test_auditoria_registra_operaciones_criticas():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")

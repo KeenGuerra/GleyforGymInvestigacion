@@ -11,6 +11,7 @@ from app.database import get_db
 from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
+from app.pagos_gateway import gateway
 from app.constants import (
     MSG_VENTA_NO_ENCONTRADA, MSG_VENTA_YA_CONFIRMADA,
     MSG_VENTA_NO_PENDIENTE, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -256,6 +257,49 @@ def mis_pedidos(
     return [_venta_con_detalles(db, v) for v in ventas]
 
 
+@router.post(
+    "/{id_venta}/checkout",
+    responses={
+        400: {"description": "La venta no está en estado PENDIENTE"},
+        401: {"description": "Token inválido o expirado"},
+        403: {"description": "No puedes pagar el pedido de otro cliente"},
+        404: {"description": "Venta no encontrada"}
+    }
+)
+def iniciar_checkout_venta(
+    id_venta: int,
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(obtener_usuario_actual),
+):
+    """Arquitectura lista para conectar una pasarela real (ver app/pagos_gateway);
+    hoy usa MockGateway. El resultado llega vía POST /webhooks/pagos."""
+    venta = db.query(models.Venta).filter(models.Venta.id_venta == id_venta).first()
+
+    if not venta:
+        raise HTTPException(status_code=404, detail=MSG_VENTA_NO_ENCONTRADA)
+
+    if usuario.get("rol") not in ("ADMIN", "ENTRENADOR"):
+        cliente = db.query(models.Cliente).filter(
+            models.Cliente.id_usuario == usuario.get("id_usuario")
+        ).first()
+        if not cliente or venta.id_cliente != cliente.id_cliente:
+            raise HTTPException(status_code=403, detail="No puedes pagar el pedido de otro cliente")
+
+    if venta.estado != "PENDIENTE":
+        raise HTTPException(status_code=400, detail="La venta no está en estado PENDIENTE")
+
+    sesion = gateway.crear_checkout(venta.total, referencia=f"venta-{venta.id_venta}")
+
+    venta.id_transaccion_externa = sesion["id_transaccion_externa"]
+    db.commit()
+
+    return {
+        "id_venta": venta.id_venta,
+        "url_checkout": sesion["url_checkout"],
+        "id_transaccion_externa": sesion["id_transaccion_externa"],
+    }
+
+
 @router.get(
     "/{id_venta}",
     response_model=schemas.VentaResponse,
@@ -451,8 +495,24 @@ def confirmar_venta(
     if venta.estado != "PENDIENTE":
         raise HTTPException(status_code=409, detail="Solo se pueden confirmar ventas en estado PENDIENTE")
 
+    aplicar_confirmacion_venta(db, venta, id_usuario=usuario.get("id_usuario"))
+    db.refresh(venta)
+
+    registrar_auditoria(db, usuario, "CONFIRMAR", "Venta", venta.id_venta, f"total={venta.total}")
+
+    return _venta_con_detalles(db, venta)
+
+
+def aplicar_confirmacion_venta(db: Session, venta: models.Venta, id_usuario: int | None) -> None:
+    """
+    Descuenta stock y registra el movimiento de inventario de una venta
+    PENDIENTE -> CONFIRMADA. Se extrajo de confirmar_venta() para que el
+    webhook de pagos (POST /webhooks/pagos) pueda aplicar el mismo efecto
+    de inventario cuando el pago se confirma en línea, en vez de solo
+    cambiar el estado y dejar el stock desincronizado.
+    """
     detalles = db.query(models.DetalleVenta).filter(
-        models.DetalleVenta.id_venta == id_venta
+        models.DetalleVenta.id_venta == venta.id_venta
     ).all()
 
     for detalle in detalles:
@@ -473,17 +533,12 @@ def confirmar_venta(
             cantidad=detalle.cantidad,
             costo_unitario=inventario.ultimo_costo if inventario else 0,
             descripcion=f"Venta #{venta.id_venta} confirmada",
-            id_usuario=usuario.get("id_usuario")
+            id_usuario=id_usuario
         )
         db.add(movimiento)
 
     venta.estado = "CONFIRMADA"
     db.commit()
-    db.refresh(venta)
-
-    registrar_auditoria(db, usuario, "CONFIRMAR", "Venta", venta.id_venta, f"total={venta.total}")
-
-    return _venta_con_detalles(db, venta)
 
 
 def _venta_con_detalles(db: Session, venta: models.Venta) -> schemas.VentaResponse:
@@ -530,6 +585,7 @@ def _venta_con_detalles(db: Session, venta: models.Venta) -> schemas.VentaRespon
         metodo_pago=venta.metodo_pago,
         estado=venta.estado,
         observaciones=venta.observaciones,
+        id_transaccion_externa=venta.id_transaccion_externa,
         detalles=detalles_resp,
         nombre_cliente=cliente,
         nombre_usuario=usuario.correo if usuario else None

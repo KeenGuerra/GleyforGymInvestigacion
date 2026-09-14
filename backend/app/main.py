@@ -28,6 +28,7 @@ from app.routes import (
     ventas,
     reportes,
     auditoria,
+    webhooks,
 )
 
 from app.routes.ia import ia_rutina, ia_nutricion
@@ -119,6 +120,7 @@ app.include_router(ia_nutricion.router, prefix="/ia/nutricion", tags=["IA Nutric
 
 app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])
 app.include_router(auditoria.router, prefix="/auditoria", tags=["Auditoría"])
+app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 
 
 @app.get("/")

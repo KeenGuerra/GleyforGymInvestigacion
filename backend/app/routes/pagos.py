@@ -8,6 +8,7 @@ from app.database import get_db
 from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
+from app.pagos_gateway import gateway
 from app.constants import (
     MSG_PAGO_NO_ENCONTRADO,
     MSG_CLIENTE_NO_ENCONTRADO,
@@ -75,6 +76,46 @@ def crear_pago(
     )
 
     return nuevo_pago
+
+
+@router.post(
+    "/{id_pago}/checkout",
+    responses={
+        400: {"description": "El pago no está en estado PENDIENTE"},
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Pago no encontrado"}
+    }
+)
+def iniciar_checkout_pago(
+    id_pago: int,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    """
+    Arquitectura lista para conectar una pasarela real (ver app/pagos_gateway):
+    hoy usa MockGateway, que no mueve dinero. El resultado llega después vía
+    POST /webhooks/pagos, igual que llegaría de un proveedor real.
+    """
+    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+
+    if not pago_db:
+        raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
+
+    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db)
+
+    if pago_db.estado != "PENDIENTE":
+        raise HTTPException(status_code=400, detail="El pago no está en estado PENDIENTE")
+
+    sesion = gateway.crear_checkout(pago_db.monto, referencia=f"pago-{pago_db.id_pago}")
+
+    pago_db.id_transaccion_externa = sesion["id_transaccion_externa"]
+    db.commit()
+
+    return {
+        "id_pago": pago_db.id_pago,
+        "url_checkout": sesion["url_checkout"],
+        "id_transaccion_externa": sesion["id_transaccion_externa"],
+    }
 
 
 @router.get(

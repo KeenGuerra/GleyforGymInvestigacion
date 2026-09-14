@@ -16,7 +16,7 @@ EstadoRutina = Literal["ACTIVA", "INACTIVA"]
 EstadoClienteMembresia = Literal["ACTIVA", "PAUSADA", "TERMINADA", "CANCELADA"]
 
 MetodoPago = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA"]
-EstadoPago = Literal["PAGADO", "PENDIENTE", "ANULADO"]
+EstadoPago = Literal["PAGADO", "PENDIENTE", "ANULADO", "FALLIDO", "REEMBOLSADO"]
 
 
 # =========================
@@ -50,6 +50,15 @@ class UsuarioResponse(UsuarioBase):
 class LoginRequest(BaseModel):
     correo: EmailStr
     password: str
+
+
+class SolicitarResetRequest(BaseModel):
+    correo: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password_nueva: str = Field(min_length=6)
 
 
 # =========================
@@ -238,6 +247,7 @@ class PagoUpdate(BaseModel):
 
 class PagoResponse(PagoCreate):
     id_pago: int
+    id_transaccion_externa: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -513,7 +523,7 @@ class ComidaOut(ComidaCreate):
 
 EstadoProducto = Literal["ACTIVO", "INACTIVO"]
 EstadoCompra = Literal["PENDIENTE", "CONFIRMADA", "ANULADA"]
-EstadoVenta = Literal["PENDIENTE", "CONFIRMADA", "ANULADA"]
+EstadoVenta = Literal["PENDIENTE", "CONFIRMADA", "ANULADA", "FALLIDA"]
 EstadoLote = Literal["ACTIVO", "VENCIDO", "AGOTADO"]
 TipoMovimiento = Literal["ENTRADA_COMPRA", "SALIDA_VENTA", "ENTRADA_ANULACION_VENTA", "SALIDA_ANULACION_COMPRA", "AJUSTE"]
 MetodoPagoVenta = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA"]
@@ -796,6 +806,7 @@ class VentaResponse(BaseModel):
     metodo_pago: str
     estado: EstadoVenta
     observaciones: Optional[str] = None
+    id_transaccion_externa: Optional[str] = None
     detalles: List[DetalleVentaResponse] = []
     nombre_cliente: Optional[str] = None
     nombre_usuario: Optional[str] = None

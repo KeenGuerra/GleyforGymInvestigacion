@@ -18,6 +18,8 @@ class Usuario(Base):
     rol = Column(String, nullable=False)  # ADMIN, ENTRENADOR, CLIENTE
     estado = Column(String, default="ACTIVO")
     fecha_creacion = Column(DateTime, default=datetime.now)
+    reset_token = Column(String(100), nullable=True)  # token de un solo uso para "olvidé mi contraseña"
+    reset_token_expira = Column(DateTime, nullable=True)
 
     cliente = relationship("Cliente", back_populates="usuario", uselist=False)
     entrenador = relationship("Entrenador", back_populates="usuario", uselist=False)
@@ -119,8 +121,9 @@ class Pago(Base):
     monto = Column(Float, nullable=False)
     metodo_pago = Column(String(50), nullable=False)  # EFECTIVO, YAPE, PLIN, TRANSFERENCIA, TARJETA
     fecha_pago = Column(Date, nullable=False)
-    estado = Column(String(30), default="PAGADO")  # PAGADO, PENDIENTE, ANULADO
+    estado = Column(String(30), default="PAGADO")  # PAGADO, PENDIENTE, ANULADO, FALLIDO, REEMBOLSADO
     observacion = Column(String, nullable=True)
+    id_transaccion_externa = Column(String(100), nullable=True)  # referencia de la pasarela de pago (ver app/pagos_gateway)
 
     cliente = relationship("Cliente", back_populates="pagos")
     cliente_membresia = relationship("ClienteMembresia", back_populates="pagos")
@@ -424,8 +427,9 @@ class Venta(Base):
     descuento = Column(Float, nullable=False, default=0)
     total = Column(Float, nullable=False, default=0)
     metodo_pago = Column(String(50), nullable=False, default="EFECTIVO")
-    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ANULADA
+    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ANULADA, FALLIDA
     observaciones = Column(Text, nullable=True)
+    id_transaccion_externa = Column(String(100), nullable=True)  # referencia de la pasarela de pago (ver app/pagos_gateway)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

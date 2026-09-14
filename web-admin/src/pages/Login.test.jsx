@@ -90,4 +90,32 @@ describe("Login Page Component", () => {
       expect(screen.getByText("Correo o contraseña incorrectos")).toBeDefined();
     });
   });
+
+  it("switches to the forgot-password form and requests a reset", async () => {
+    api.post.mockResolvedValue({
+      data: { mensaje: "Si el correo está registrado, se enviaron instrucciones para restablecer la contraseña." }
+    });
+
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText("¿Olvidaste tu contraseña?"));
+
+    expect(screen.getByLabelText("Correo electrónico")).toBeDefined();
+    expect(screen.queryByLabelText("Contraseña")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Correo electrónico"), { target: { value: "yo@gym.com" } });
+    fireEvent.click(screen.getByText("Enviar instrucciones"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/usuarios/solicitar-reset", { correo: "yo@gym.com" });
+      expect(screen.getByText(/se enviaron instrucciones/i)).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Volver a iniciar sesión"));
+    expect(screen.getByText("Acceder al sistema", { selector: "button" })).toBeDefined();
+  });
 });

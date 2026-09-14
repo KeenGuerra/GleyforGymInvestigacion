@@ -3,6 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
+import logging
+import secrets
+from datetime import datetime, timedelta
 
 from app import models, schemas
 from app.database import get_db
@@ -262,3 +265,66 @@ def login(
             "estado": usuario.estado
         }
     }
+
+
+# =========================
+# RECUPERACIÓN DE CONTRASEÑA
+# =========================
+
+logger = logging.getLogger("gleyforgym")
+
+RESET_TOKEN_EXPIRA_MINUTOS = 30
+
+
+@router.post("/solicitar-reset")
+def solicitar_reset_password(
+    datos: schemas.SolicitarResetRequest,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Arquitectura lista para conectar un envío de correo real: hoy no hay
+    servicio SMTP configurado, así que en vez de enviar el correo se deja
+    logueado el enlace que se le mandaría al usuario. Siempre responde el
+    mismo mensaje exista o no el correo, para no filtrar qué correos están
+    registrados.
+    """
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.correo == datos.correo
+    ).first()
+
+    if usuario:
+        token = secrets.token_urlsafe(32)
+        usuario.reset_token = token
+        usuario.reset_token_expira = datetime.now() + timedelta(minutes=RESET_TOKEN_EXPIRA_MINUTOS)
+        db.commit()
+
+        # TODO: reemplazar por un envío real (SMTP/SendGrid/Mailgun) cuando
+        # el proyecto tenga un proveedor de correo configurado.
+        logger.info(
+            "Correo de recuperación simulado para %s: enlace con token=%s (expira en %s min)",
+            usuario.correo, token, RESET_TOKEN_EXPIRA_MINUTOS,
+        )
+
+    return {"mensaje": "Si el correo está registrado, se enviaron instrucciones para restablecer la contraseña."}
+
+
+@router.post("/reset-password")
+def reset_password(
+    datos: schemas.ResetPasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+):
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.reset_token == datos.token
+    ).first()
+
+    if not usuario or not usuario.reset_token_expira or usuario.reset_token_expira < datetime.now():
+        raise HTTPException(status_code=400, detail="El enlace de recuperación es inválido o expiró")
+
+    usuario.password_hash = encriptar_password(datos.password_nueva)
+    usuario.reset_token = None
+    usuario.reset_token_expira = None
+    db.commit()
+
+    registrar_auditoria(db, None, "RESET_PASSWORD", "Usuario", usuario.id_usuario, f"correo={usuario.correo}")
+
+    return {"mensaje": "Contraseña actualizada correctamente"}

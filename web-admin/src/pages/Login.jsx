@@ -11,6 +11,11 @@ function Login() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState("");
 
+  const [modoRecuperar, setModoRecuperar] = useState(false);
+  const [correoRecuperar, setCorreoRecuperar] = useState("");
+  const [mensajeRecuperar, setMensajeRecuperar] = useState("");
+  const [enviandoRecuperar, setEnviandoRecuperar] = useState(false);
+
   const iniciarSesion = async (e) => {
     e.preventDefault();
     setError("");
@@ -30,6 +35,22 @@ function Login() {
     } catch (error) {
       console.error(error);
       setError("Correo o contraseña incorrectos");
+    }
+  };
+
+  const solicitarRecuperacion = async (e) => {
+    e.preventDefault();
+    setMensajeRecuperar("");
+    setEnviandoRecuperar(true);
+
+    try {
+      const res = await api.post("/usuarios/solicitar-reset", { correo: correoRecuperar });
+      setMensajeRecuperar(res.data.mensaje);
+    } catch (error) {
+      console.error(error);
+      setMensajeRecuperar("No se pudo procesar la solicitud, intenta nuevamente.");
+    } finally {
+      setEnviandoRecuperar(false);
     }
   };
 
@@ -71,60 +92,100 @@ function Login() {
 
           {error && <p className="error-message">{error}</p>}
 
-          <form onSubmit={iniciarSesion}>
-            <div className="form-grid auth-form-grid">
-              <div className="form-field field-large">
-                <label htmlFor="correo">Correo electrónico</label>
-                <input
-                  id="correo"
-                  type="email"
-                  placeholder="admin@gleyforgym.com"
-                  value={correo}
-                  onChange={(e) => setCorreo(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-field field-large">
-                <div className="label-row">
-                  <label htmlFor="password">Contraseña</label>
-                  <span>Contacta al administrador</span>
-                </div>
-
-                <div className="password-field">
+          {!modoRecuperar ? (
+            <form onSubmit={iniciarSesion}>
+              <div className="form-grid auth-form-grid">
+                <div className="form-field field-large">
+                  <label htmlFor="correo">Correo electrónico</label>
                   <input
-                    id="password"
-                    type={mostrarPassword ? "text" : "password"}
-                    placeholder="Ingrese su contraseña"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    id="correo"
+                    type="email"
+                    placeholder="admin@gleyforgym.com"
+                    value={correo}
+                    onChange={(e) => setCorreo(e.target.value)}
                     required
                   />
+                </div>
 
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setMostrarPassword(!mostrarPassword)}
-                  >
-                    {mostrarPassword ? "Ocultar" : "Ver"}
-                  </button>
+                <div className="form-field field-large">
+                  <div className="label-row">
+                    <label htmlFor="password">Contraseña</label>
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => {
+                        setModoRecuperar(true);
+                        setMensajeRecuperar("");
+                        setCorreoRecuperar(correo);
+                      }}
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  </div>
+
+                  <div className="password-field">
+                    <input
+                      id="password"
+                      type={mostrarPassword ? "text" : "password"}
+                      placeholder="Ingrese su contraseña"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setMostrarPassword(!mostrarPassword)}
+                    >
+                      {mostrarPassword ? "Ocultar" : "Ver"}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="check-row">
-              <input type="checkbox" id="recordar" />
-              <label htmlFor="recordar">Recordar sesión en este dispositivo</label>
-            </div>
+              <button type="submit" className="btn-primary auth-submit">
+                Acceder al sistema
+              </button>
 
-            <button type="submit" className="btn-primary auth-submit">
-              Acceder al sistema
-            </button>
+              <p className="muted-text">
+                Acceso exclusivo para usuarios registrados por el gimnasio.
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={solicitarRecuperacion}>
+              <div className="form-grid auth-form-grid">
+                <div className="form-field field-large">
+                  <label htmlFor="correo-recuperar">Correo electrónico</label>
+                  <input
+                    id="correo-recuperar"
+                    type="email"
+                    placeholder="tu.correo@gleyforgym.com"
+                    value={correoRecuperar}
+                    onChange={(e) => setCorreoRecuperar(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
 
-            <p className="muted-text">
-              Acceso exclusivo para usuarios registrados por el gimnasio.
-            </p>
-          </form>
+              {mensajeRecuperar && <p className="muted-text">{mensajeRecuperar}</p>}
+
+              <button type="submit" className="btn-primary auth-submit" disabled={enviandoRecuperar}>
+                {enviandoRecuperar ? "Enviando..." : "Enviar instrucciones"}
+              </button>
+
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setModoRecuperar(false);
+                  setMensajeRecuperar("");
+                }}
+              >
+                Volver a iniciar sesión
+              </button>
+            </form>
+          )}
 
           <div className="tags-row">
             <span className="badge">FastAPI</span>

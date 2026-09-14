@@ -51,6 +51,10 @@ def initialize_tables():
         ("planes_nutricionales", "carbohidratos_reales", "INTEGER"),
         ("planes_nutricionales", "grasas_reales", "INTEGER"),
         ("asistencias", "estado", "VARCHAR DEFAULT 'ACTIVO'"),
+        ("pagos", "id_transaccion_externa", "VARCHAR(100)"),
+        ("ventas", "id_transaccion_externa", "VARCHAR(100)"),
+        ("usuarios", "reset_token", "VARCHAR(100)"),
+        ("usuarios", "reset_token_expira", "TIMESTAMP"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:
