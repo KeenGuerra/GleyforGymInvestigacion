@@ -10,9 +10,10 @@ import {
   CartesianGrid,
 } from "recharts";
 import api from "../api/api";
+import { useClienteActual } from "../hooks/useClienteActual";
 
 function MiProgreso() {
-  const [cliente, setCliente] = useState(null);
+  const { cliente, error: errorCliente } = useClienteActual();
   const [progresos, setProgresos] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -72,25 +73,11 @@ function MiProgreso() {
       : null;
   };
 
-  const cargarProgreso = async () => {
+  const cargarProgreso = async (idCliente) => {
     try {
       setError("");
 
-      const idUsuario = localStorage.getItem("id_usuario");
-
-      const clienteRes = await api.get(`/clientes/usuario/${idUsuario}`);
-      const clienteData = clienteRes.data;
-
-      setCliente(clienteData);
-
-      setForm((prev) => ({
-        ...prev,
-        peso: clienteData.peso || "",
-      }));
-
-      const progresoRes = await api.get(
-        `/progreso/cliente/${clienteData.id_cliente}`
-      );
+      const progresoRes = await api.get(`/progreso/cliente/${idCliente}`);
 
       setProgresos(progresoRes.data);
     } catch (error) {
@@ -100,8 +87,21 @@ function MiProgreso() {
   };
 
   useEffect(() => {
-    cargarProgreso();
-  }, []);
+    if (errorCliente) {
+      setError("No se pudo cargar tu progreso.");
+    }
+  }, [errorCliente]);
+
+  useEffect(() => {
+    if (!cliente) return;
+
+    setForm((prev) => ({
+      ...prev,
+      peso: cliente.peso || prev.peso,
+    }));
+
+    cargarProgreso(cliente.id_cliente);
+  }, [cliente]);
 
   const registrarProgreso = async (e) => {
     e.preventDefault();
@@ -159,7 +159,7 @@ function MiProgreso() {
         observacion: "",
       });
 
-      cargarProgreso();
+      cargarProgreso(cliente.id_cliente);
     } catch (error) {
       console.error("Error registrando progreso:", error);
       setError(

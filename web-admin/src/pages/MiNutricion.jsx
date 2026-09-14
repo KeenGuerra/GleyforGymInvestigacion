@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { useClienteActual } from "../hooks/useClienteActual";
 
 function MiNutricion() {
-  const [cliente, setCliente] = useState(null);
+  const { cliente, error: errorCliente } = useClienteActual();
   const [planes, setPlanes] = useState([]);
   const [error, setError] = useState("");
 
@@ -11,35 +12,30 @@ function MiNutricion() {
     return new Date(fecha).toLocaleDateString("es-PE");
   };
 
-  const cargarNutricion = async () => {
-    try {
-      setError("");
-
-      const idUsuario = localStorage.getItem("id_usuario");
-
-      const clienteRes = await api.get(`/clientes/usuario/${idUsuario}`);
-      const clienteData = clienteRes.data;
-
-      setCliente(clienteData);
-
-      const nutricionRes = await api.get(
-        `/nutricion/cliente/${clienteData.id_cliente}`
-      );
-
-      const planesActivos = nutricionRes.data.filter(
-        (plan) => plan.estado !== "INACTIVO"
-      );
-
-      setPlanes(planesActivos);
-    } catch (error) {
-      console.error(error);
-      setError("No se pudo cargar tu plan nutricional.");
-    }
-  };
-
   useEffect(() => {
+    if (!cliente) return;
+
+    const cargarNutricion = async () => {
+      try {
+        setError("");
+
+        const nutricionRes = await api.get(
+          `/nutricion/cliente/${cliente.id_cliente}`
+        );
+
+        const planesActivos = nutricionRes.data.filter(
+          (plan) => plan.estado !== "INACTIVO"
+        );
+
+        setPlanes(planesActivos);
+      } catch (error) {
+        console.error(error);
+        setError("No se pudo cargar tu plan nutricional.");
+      }
+    };
+
     cargarNutricion();
-  }, []);
+  }, [cliente]);
 
   return (
     <div className="page-container">
@@ -55,7 +51,7 @@ function MiNutricion() {
         </div>
       </section>
 
-      {error && <p className="error-message">{error}</p>}
+      {(errorCliente || error) && <p className="error-message">{errorCliente || error}</p>}
 
       {planes.length === 0 ? (
         <section className="card empty-state">

@@ -181,6 +181,12 @@ function DashboardAdmin() {
               </strong>
               <p>Promedio de % de grasa registrado en los últimos 30 días.</p>
             </div>
+
+            <div className="card info-card">
+              <h2>Asistencias del mes</h2>
+              <strong style={{ fontSize: "28px" }}>{kpis.asistencias_mes || 0}</strong>
+              <p>{kpis.asistencias_hoy || 0} registradas hoy.</p>
+            </div>
           </aside>
         </section>
       )}

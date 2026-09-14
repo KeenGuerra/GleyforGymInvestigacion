@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { useClienteActual } from "../hooks/useClienteActual";
 import {
   OBJETIVOS,
   NIVELES,
@@ -12,7 +13,7 @@ import {
 } from "../constants/opciones";
 
 function MiPerfil() {
-  const [cliente, setCliente] = useState(null);
+  const { cliente, recargarCliente } = useClienteActual();
   const [editando, setEditando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const correo = localStorage.getItem("correo");
@@ -35,33 +36,22 @@ function MiPerfil() {
     nivel_actividad: "",
   });
 
-  const cargarPerfil = async () => {
-    try {
-      const idUsuario = localStorage.getItem("id_usuario");
-      const res = await api.get(`/clientes/usuario/${idUsuario}`);
-
-      setCliente(res.data);
-
-      setForm({
-        telefono: res.data.telefono || "",
-        direccion: res.data.direccion || "",
-        edad: res.data.edad || "",
-        peso: res.data.peso || "",
-        estatura: res.data.estatura || "",
-        objetivo: res.data.objetivo || "",
-        nivel: res.data.nivel || "",
-        restricciones_medicas: res.data.restricciones_medicas || "",
-        restricciones_otras: res.data.restricciones_otras || "",
-        nivel_actividad: res.data.nivel_actividad || "",
-      });
-    } catch (error) {
-      console.error("Error cargando perfil:", error);
-    }
-  };
-
   useEffect(() => {
-    cargarPerfil();
-  }, []);
+    if (!cliente) return;
+
+    setForm({
+      telefono: cliente.telefono || "",
+      direccion: cliente.direccion || "",
+      edad: cliente.edad || "",
+      peso: cliente.peso || "",
+      estatura: cliente.estatura || "",
+      objetivo: cliente.objetivo || "",
+      nivel: cliente.nivel || "",
+      restricciones_medicas: cliente.restricciones_medicas || "",
+      restricciones_otras: cliente.restricciones_otras || "",
+      nivel_actividad: cliente.nivel_actividad || "",
+    });
+  }, [cliente]);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "No registrada";
@@ -88,7 +78,7 @@ function MiPerfil() {
 
       setMensaje("Perfil actualizado correctamente ✔");
       setEditando(false);
-      cargarPerfil();
+      recargarCliente();
     } catch (error) {
       console.error("Error actualizando perfil:", error);
       setMensaje("No se pudo actualizar el perfil ❌");

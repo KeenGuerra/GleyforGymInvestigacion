@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
+import { useClienteActual } from "../hooks/useClienteActual";
 
 function MiRutina() {
   const navigate = useNavigate();
 
-  const [cliente, setCliente] = useState(null);
+  const { cliente, error: errorCliente } = useClienteActual();
   const [rutinas, setRutinas] = useState([]);
   const [error, setError] = useState("");
 
@@ -14,35 +15,28 @@ function MiRutina() {
     return new Date(fecha).toLocaleDateString("es-PE");
   };
 
-  const cargarRutinas = async () => {
-    try {
-      setError("");
-
-      const idUsuario = localStorage.getItem("id_usuario");
-
-      const clienteRes = await api.get(`/clientes/usuario/${idUsuario}`);
-      const clienteData = clienteRes.data;
-
-      setCliente(clienteData);
-
-      const rutinasRes = await api.get(
-        `/rutinas/cliente/${clienteData.id_cliente}`
-      );
-
-      const rutinasActivas = rutinasRes.data.filter(
-        (rutina) => rutina.estado !== "INACTIVA"
-      );
-
-      setRutinas(rutinasActivas);
-    } catch (error) {
-      console.error(error);
-      setError("No se pudieron cargar tus rutinas.");
-    }
-  };
-
   useEffect(() => {
+    if (!cliente) return;
+
+    const cargarRutinas = async () => {
+      try {
+        setError("");
+
+        const rutinasRes = await api.get(`/rutinas/cliente/${cliente.id_cliente}`);
+
+        const rutinasActivas = rutinasRes.data.filter(
+          (rutina) => rutina.estado !== "INACTIVA"
+        );
+
+        setRutinas(rutinasActivas);
+      } catch (error) {
+        console.error(error);
+        setError("No se pudieron cargar tus rutinas.");
+      }
+    };
+
     cargarRutinas();
-  }, []);
+  }, [cliente]);
 
   return (
     <div className="page-container">
@@ -58,7 +52,7 @@ function MiRutina() {
         </div>
       </section>
 
-      {error && <p className="error-message">{error}</p>}
+      {(errorCliente || error) && <p className="error-message">{errorCliente || error}</p>}
 
       {rutinas.length === 0 ? (
         <section className="card empty-state">

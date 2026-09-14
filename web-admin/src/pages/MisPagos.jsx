@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { descargarBlob } from "../utils/descargarArchivo";
+import { useClienteActual } from "../hooks/useClienteActual";
 
 function MisPagos() {
+  const { cliente, error: errorCliente } = useClienteActual();
   const [pagos, setPagos] = useState([]);
   const [error, setError] = useState("");
   const [descargando, setDescargando] = useState(null);
@@ -25,31 +27,28 @@ function MisPagos() {
     return new Date(fecha).toLocaleDateString("es-PE");
   };
 
-  const cargarPagos = async () => {
-    try {
-      setError("");
-
-      const idUsuario = localStorage.getItem("id_usuario");
-
-      const clienteRes = await api.get(`/clientes/usuario/${idUsuario}`);
-      const idCliente = clienteRes.data.id_cliente;
-
-      const pagosRes = await api.get(`/pagos/cliente/${idCliente}`);
-
-      const pagosOrdenados = pagosRes.data.sort(
-        (a, b) => new Date(b.fecha_pago) - new Date(a.fecha_pago)
-      );
-
-      setPagos(pagosOrdenados);
-    } catch (error) {
-      console.error(error);
-      setError("No se pudieron cargar tus pagos.");
-    }
-  };
-
   useEffect(() => {
+    if (!cliente) return;
+
+    const cargarPagos = async () => {
+      try {
+        setError("");
+
+        const pagosRes = await api.get(`/pagos/cliente/${cliente.id_cliente}`);
+
+        const pagosOrdenados = pagosRes.data.sort(
+          (a, b) => new Date(b.fecha_pago) - new Date(a.fecha_pago)
+        );
+
+        setPagos(pagosOrdenados);
+      } catch (error) {
+        console.error(error);
+        setError("No se pudieron cargar tus pagos.");
+      }
+    };
+
     cargarPagos();
-  }, []);
+  }, [cliente]);
 
   return (
     <div className="page-container">
@@ -61,7 +60,7 @@ function MisPagos() {
         </div>
       </section>
 
-      {error && <p className="error-message">{error}</p>}
+      {(errorCliente || error) && <p className="error-message">{errorCliente || error}</p>}
 
       {pagos.length === 0 ? (
         <section className="card empty-state">

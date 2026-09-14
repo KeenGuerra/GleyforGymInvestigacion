@@ -872,6 +872,8 @@ def test_kpis_dashboard():
     assert "recaudacion_mes_actual" in data
     assert "rutinas_generadas_ia" in data
     assert "progreso_promedio_grasa_30_dias" in data
+    assert "asistencias_hoy" in data
+    assert "asistencias_mes" in data
 
     # Un CLIENTE no puede ver los KPIs administrativos
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)

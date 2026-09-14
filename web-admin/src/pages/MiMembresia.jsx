@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { useClienteActual } from "../hooks/useClienteActual";
 
 function MiMembresia() {
+  const { cliente, error: errorCliente } = useClienteActual();
   const [membresias, setMembresias] = useState([]);
   const [error, setError] = useState("");
 
@@ -35,41 +37,38 @@ function MiMembresia() {
     return "Días restantes";
   };
 
-  const cargarMembresia = async () => {
-    try {
-      setError("");
-
-      const idUsuario = localStorage.getItem("id_usuario");
-
-      const clienteRes = await api.get(`/clientes/usuario/${idUsuario}`);
-      const idCliente = clienteRes.data.id_cliente;
-
-      const [clienteMembresiasRes, planesRes] = await Promise.all([
-        api.get(`/cliente-membresias/cliente/${idCliente}`),
-        api.get("/membresias/"),
-      ]);
-
-      const planes = planesRes.data;
-
-      const datosCompletos = clienteMembresiasRes.data.map((item) => {
-        const plan = planes.find((p) => p.id_membresia === item.id_membresia);
-
-        return {
-          ...item,
-          plan: plan || null,
-        };
-      });
-
-      setMembresias(datosCompletos);
-    } catch (error) {
-      console.error(error);
-      setError("No se pudo cargar tu membresía.");
-    }
-  };
-
   useEffect(() => {
+    if (!cliente) return;
+
+    const cargarMembresia = async () => {
+      try {
+        setError("");
+
+        const [clienteMembresiasRes, planesRes] = await Promise.all([
+          api.get(`/cliente-membresias/cliente/${cliente.id_cliente}`),
+          api.get("/membresias/"),
+        ]);
+
+        const planes = planesRes.data;
+
+        const datosCompletos = clienteMembresiasRes.data.map((item) => {
+          const plan = planes.find((p) => p.id_membresia === item.id_membresia);
+
+          return {
+            ...item,
+            plan: plan || null,
+          };
+        });
+
+        setMembresias(datosCompletos);
+      } catch (error) {
+        console.error(error);
+        setError("No se pudo cargar tu membresía.");
+      }
+    };
+
     cargarMembresia();
-  }, []);
+  }, [cliente]);
 
   const membresiaActiva =
     membresias.find((m) => m.estado === "ACTIVA") ||
@@ -87,7 +86,7 @@ function MiMembresia() {
         </div>
       </section>
 
-      {error && <p className="error-message">{error}</p>}
+      {(errorCliente || error) && <p className="error-message">{errorCliente || error}</p>}
 
       {membresias.length === 0 ? (
         <section className="card empty-state">

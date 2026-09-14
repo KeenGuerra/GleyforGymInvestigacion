@@ -63,9 +63,29 @@ def obtener_kpis(db: Annotated[Session, Depends(get_db)]):
         .scalar()
     )
 
+    asistencias_hoy = (
+        db.query(func.count(models.Asistencia.id_asistencia))
+        .filter(
+            models.Asistencia.estado != "ANULADO",
+            models.Asistencia.fecha == hoy,
+        )
+        .scalar()
+    ) or 0
+
+    asistencias_mes = (
+        db.query(func.count(models.Asistencia.id_asistencia))
+        .filter(
+            models.Asistencia.estado != "ANULADO",
+            models.Asistencia.fecha >= inicio_mes,
+        )
+        .scalar()
+    ) or 0
+
     return {
         "clientes_activos": clientes_activos,
         "recaudacion_mes_actual": round(recaudacion_mes, 2),
         "rutinas_generadas_ia": rutinas_generadas_ia,
         "progreso_promedio_grasa_30_dias": round(progreso_promedio_grasa, 2) if progreso_promedio_grasa is not None else None,
+        "asistencias_hoy": asistencias_hoy,
+        "asistencias_mes": asistencias_mes,
     }
