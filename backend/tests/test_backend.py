@@ -1,4 +1,5 @@
 import sys
+from datetime import date
 from pathlib import Path
 
 # Add backend folder to path
@@ -460,7 +461,12 @@ def test_ia_nutricion_generacion():
     assert response.status_code == 200
     res_data = response.json()
     assert res_data["total_comidas"] == 5
-    assert res_data["calorias_diarias"] == 2100  # 500 + 200 + 700 + 300 + 400
+    # calorias_diarias es ahora la meta calculada con Mifflin-St Jeor
+    # (cliente sin peso/estatura/edad/sexo/nivel_actividad -> usa los defaults
+    # documentados en calculos_nutricion.py, objetivo "Ganar masa muscular").
+    assert res_data["calorias_diarias"] == 2728
+    # calorias_reales es la suma real de las comidas asignadas (comportamiento anterior)
+    assert res_data["calorias_reales"] == 2100  # 500 + 200 + 700 + 300 + 400
 
     # 3. No active meals
     db = TestingSessionLocal()
@@ -470,6 +476,31 @@ def test_ia_nutricion_generacion():
     response = client.post("/ia/nutricion/generar/1", headers=headers)
     assert response.status_code == 400
     assert "No hay comidas activas" in response.json()["detail"]
+
+def test_ia_rutina_excluye_grupo_por_restriccion_medica():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    db = TestingSessionLocal()
+    cliente = db.query(models.Cliente).first()
+    cliente.restricciones_medicas = "RODILLA"
+    db.commit()
+    db.close()
+
+    response = client.post("/ia/rutina/generar/1", headers=headers)
+    assert response.status_code == 200
+    res_data = response.json()
+
+    # El día de piernas debe quedar reportado como sin ejercicios elegibles,
+    # nunca relleno en silencio con ejercicios de otro grupo muscular.
+    grupos_con_aviso = [g for aviso in res_data["avisos"] for g in aviso["grupos"]]
+    assert "Piernas" in grupos_con_aviso
+
+    detalle = client.get(f"/rutinas/{res_data['id_rutina']}/detalle", headers=headers)
+    assert detalle.status_code == 200
+    grupos_asignados = {e["grupo_muscular"] for e in detalle.json()["ejercicios"]}
+    assert "Piernas" not in grupos_asignados
+
 
 def test_ia_rutina_generacion():
     populate_db_for_coverage()
@@ -1244,3 +1275,98 @@ def test_rutinas_extra_coverage():
     assert exercises[0]["id_ejercicio"] == 2
     assert exercises[1]["orden"] == 2
     assert exercises[1]["id_ejercicio"] == 1
+
+
+# =========================
+# RBAC (control de acceso por rol)
+# =========================
+
+def test_cliente_no_puede_crear_usuario_admin():
+    populate_db_for_coverage()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    res = client.post(
+        "/usuarios/",
+        json={"correo": "intruso@gleyforgym.com", "password": "12345678", "rol": "ADMIN"},
+        headers=headers_cliente,
+    )
+    assert res.status_code == 403
+
+
+def test_cliente_no_puede_listar_todos_los_clientes():
+    populate_db_for_coverage()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    res = client.get("/clientes/", headers=headers_cliente)
+    assert res.status_code == 403
+
+
+def test_cliente_puede_ver_su_propio_perfil_pero_no_el_de_otro():
+    populate_db_for_coverage()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    propio = client.get("/clientes/usuario/2", headers=headers_cliente)
+    assert propio.status_code == 200
+
+    ajeno = client.get("/clientes/usuario/999", headers=headers_cliente)
+    assert ajeno.status_code == 403
+
+
+def test_admin_si_puede_listar_clientes_y_crear_usuarios():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    assert client.get("/clientes/", headers=headers_admin).status_code == 200
+    res = client.post(
+        "/usuarios/",
+        json={"correo": "nuevo.admin@gleyforgym.com", "password": "12345678", "rol": "ADMIN"},
+        headers=headers_admin,
+    )
+    assert res.status_code == 200
+
+
+# =========================
+# Cálculo de calorías (Mifflin-St Jeor)
+# =========================
+
+def test_calcular_macros_mifflin_st_jeor_con_datos_completos():
+    from app.ia.nutricion.calculos_nutricion import calcular_macros
+
+    class ClienteFalso:
+        peso = 80
+        estatura = 180
+        sexo = "Masculino"
+        objetivo = "Ganar masa muscular"
+        nivel_actividad = "MODERADO"
+        fecha_nacimiento = date(1994, 1, 1)  # 30-31 años según la fecha de hoy
+
+    resultado = calcular_macros(ClienteFalso())
+
+    # BMR = 10*80 + 6.25*180 - 5*30 + 5 = 800 + 1125 - 150 + 5 = 1780
+    # TDEE = 1780 * 1.55 = 2759 ; objetivo "ganar" => +350
+    assert 3000 <= resultado["calorias"] <= 3200
+    assert resultado["proteinas"] == round(80 * 1.8)
+    assert resultado["calorias"] > 0
+    assert resultado["carbohidratos"] > 0
+    assert resultado["grasas"] > 0
+
+
+def test_calcular_macros_varia_segun_objetivo():
+    from app.ia.nutricion.calculos_nutricion import calcular_macros
+
+    class ClienteBase:
+        peso = 70
+        estatura = 170
+        sexo = "Femenino"
+        nivel_actividad = "MODERADO"
+        fecha_nacimiento = date(1994, 1, 1)
+        objetivo = "Bajar de peso"
+
+    class ClienteGanar(ClienteBase):
+        objetivo = "Ganar masa muscular"
+
+    bajar = calcular_macros(ClienteBase())
+    ganar = calcular_macros(ClienteGanar())
+
+    # El ajuste calórico por objetivo debe reflejarse: bajar < ganar.
+    assert bajar["calorias"] < ganar["calorias"]

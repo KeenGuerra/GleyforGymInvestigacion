@@ -44,6 +44,12 @@ def initialize_tables():
         ("productos", "cloudinary_public_id", "VARCHAR(255)"),
         ("membresias", "beneficios", "TEXT"),
         ("cliente_membresias", "precio_asignado", "FLOAT"),
+        ("clientes", "restricciones_otras", "VARCHAR"),
+        ("clientes", "nivel_actividad", "VARCHAR(30)"),
+        ("planes_nutricionales", "calorias_reales", "INTEGER"),
+        ("planes_nutricionales", "proteinas_reales", "INTEGER"),
+        ("planes_nutricionales", "carbohidratos_reales", "INTEGER"),
+        ("planes_nutricionales", "grasas_reales", "INTEGER"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:
@@ -55,6 +61,55 @@ def initialize_tables():
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
                     conn.commit()
     print("Schema migration completed.")
+
+def migrar_restricciones_medicas():
+    """
+    Migración de datos de una sola vez: convierte el texto libre histórico de
+    Cliente.restricciones_medicas a los códigos fijos de constants.RESTRICCIONES_MEDICAS,
+    preservando el texto original en restricciones_otras. Es idempotente: una fila
+    ya migrada tiene restricciones_medicas compuesto solo por códigos conocidos
+    separados por coma, así que se detecta y se salta en corridas futuras.
+    """
+    print("Revisando restricciones médicas de clientes existentes...")
+    from app.database import SessionLocal
+    from app.models import Cliente
+    from app.constants import RESTRICCIONES_MEDICAS, RESTRICCION_NINGUNA, RESTRICCION_PALABRAS_CLAVE
+
+    codigos_validos = set(RESTRICCIONES_MEDICAS)
+
+    def ya_migrado(valor):
+        if not valor:
+            return True
+        codigos = [c.strip() for c in valor.split(",") if c.strip()]
+        return bool(codigos) and all(c in codigos_validos for c in codigos)
+
+    db = SessionLocal()
+    try:
+        clientes = db.query(Cliente).filter(Cliente.restricciones_medicas.isnot(None)).all()
+        migrados = 0
+        for cliente in clientes:
+            valor = cliente.restricciones_medicas
+            if ya_migrado(valor):
+                continue
+
+            texto = valor.lower()
+            codigos_detectados = [
+                codigo for codigo, palabras in RESTRICCION_PALABRAS_CLAVE.items()
+                if any(palabra in texto for palabra in palabras)
+            ]
+
+            cliente.restricciones_otras = valor
+            cliente.restricciones_medicas = ",".join(codigos_detectados) if codigos_detectados else RESTRICCION_NINGUNA
+            migrados += 1
+
+        if migrados:
+            db.commit()
+            print(f"  {migrados} cliente(s) migrados de texto libre a catálogo de restricciones.")
+        else:
+            print("  No había restricciones en texto libre pendientes de migrar.")
+    finally:
+        db.close()
+
 
 def seed_admin_user():
     # Credenciales de ejemplo solo para desarrollo local. Cambiar la contraseña
@@ -90,6 +145,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Skipping database creation (likely running on Render or managed DB): {e}")
         initialize_tables()
+        migrar_restricciones_medicas()
         seed_admin_user()
         print("Database setup completed successfully.")
     except Exception as e:

@@ -83,5 +83,6 @@ def generar_rutina_ia(
         "objetivo": nueva_rutina.objetivo,
         "nivel": nueva_rutina.nivel,
         "dias_semana": nueva_rutina.dias_semana,
-        "total_ejercicios": len(resultado_ia["ejercicios"])
+        "total_ejercicios": len(resultado_ia["ejercicios"]),
+        "avisos": resultado_ia.get("avisos", []),
     }

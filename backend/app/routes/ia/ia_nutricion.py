@@ -60,6 +60,10 @@ def generar_nutricion_ia(
         proteinas=plan_generado["proteinas"],
         carbohidratos=plan_generado["carbohidratos"],
         grasas=plan_generado["grasas"],
+        calorias_reales=plan_generado["calorias_reales"],
+        proteinas_reales=plan_generado["proteinas_reales"],
+        carbohidratos_reales=plan_generado["carbohidratos_reales"],
+        grasas_reales=plan_generado["grasas_reales"],
         restricciones=cliente.restricciones_medicas,
         generada_por_ia=True,
         estado=ESTADO_ACTIVO
@@ -89,5 +93,10 @@ def generar_nutricion_ia(
         "proteinas": nuevo_plan.proteinas,
         "carbohidratos": nuevo_plan.carbohidratos,
         "grasas": nuevo_plan.grasas,
-        "total_comidas": len(plan_generado["comidas"])
+        "calorias_reales": nuevo_plan.calorias_reales,
+        "proteinas_reales": nuevo_plan.proteinas_reales,
+        "carbohidratos_reales": nuevo_plan.carbohidratos_reales,
+        "grasas_reales": nuevo_plan.grasas_reales,
+        "total_comidas": len(plan_generado["comidas"]),
+        "avisos": plan_generado.get("avisos", []),
     }

@@ -89,6 +89,8 @@ def obtener_clientes(db: Annotated[Session, Depends(get_db)]):
             "objetivo": cliente.objetivo,
             "nivel": cliente.nivel,
             "restricciones_medicas": cliente.restricciones_medicas,
+            "restricciones_otras": cliente.restricciones_otras,
+            "nivel_actividad": cliente.nivel_actividad,
             "fecha_registro": cliente.fecha_registro,
             "estado": cliente.estado,
             "membresia": membresia_actual.membresia.nombre if membresia_actual and membresia_actual.membresia else None,
@@ -157,6 +159,8 @@ def crear_cliente(
         objetivo=cliente.objetivo,
         nivel=cliente.nivel,
         restricciones_medicas=cliente.restricciones_medicas,
+        restricciones_otras=cliente.restricciones_otras,
+        nivel_actividad=cliente.nivel_actividad,
         estado=ESTADO_ACTIVO
     )
 
@@ -319,6 +323,8 @@ def obtener_cliente_por_usuario(
         "objetivo": cliente.objetivo,
         "nivel": cliente.nivel,
         "restricciones_medicas": cliente.restricciones_medicas,
+        "restricciones_otras": cliente.restricciones_otras,
+        "nivel_actividad": cliente.nivel_actividad,
         "fecha_registro": cliente.fecha_registro,
         "estado": cliente.estado,
     }
@@ -434,6 +440,8 @@ def obtener_detalle_cliente(
             "objetivo": cliente.objetivo,
             "nivel": cliente.nivel,
             "restricciones_medicas": cliente.restricciones_medicas,
+            "restricciones_otras": cliente.restricciones_otras,
+            "nivel_actividad": cliente.nivel_actividad,
             "fecha_registro": cliente.fecha_registro,
             "estado": cliente.estado,
         },

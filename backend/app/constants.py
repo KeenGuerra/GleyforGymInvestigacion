@@ -56,8 +56,70 @@ MSG_CLIENTE_NO_ENCONTRADO_USUARIO = "Cliente no encontrado para este usuario"
 MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA = "Membresía del cliente no encontrada"
 
 # Estado comercial
-ESTADO_PENDIENTE = "PENDIENTE"
 ESTADO_CONFIRMADA = "CONFIRMADA"
+
+# Vocabulario compartido cliente/ejercicio/comida para que el matching de la
+# IA no dependa de strings escritos a mano distintos en cada formulario.
+NIVELES = ["Principiante", "Intermedio", "Avanzado"]
+
+OBJETIVOS = [
+    "Bajar de peso",
+    "Ganar masa muscular",
+    "Mejorar resistencia",
+    "Ganar fuerza",
+    "Mantener condición física",
+]
+
+GRUPOS_MUSCULARES = [
+    GRUPO_PECHO, GRUPO_TRICEPS, GRUPO_ESPALDA, GRUPO_BICEPS,
+    GRUPO_PIERNAS, GRUPO_HOMBROS, GRUPO_ABDOMEN, GRUPO_FULL_BODY,
+]
+
+# Restricciones médicas: catálogo cerrado (antes texto libre). Cliente.restricciones_medicas
+# guarda una lista de estos códigos separados por coma; el texto libre que no
+# encaja en el catálogo se conserva en Cliente.restricciones_otras.
+RESTRICCION_NINGUNA = "NINGUNA"
+RESTRICCION_RODILLA = "RODILLA"
+RESTRICCION_HOMBRO = "HOMBRO"
+RESTRICCION_ESPALDA = "ESPALDA"
+RESTRICCION_MUNECA_CODO = "MUNECA_CODO"
+RESTRICCION_CADERA = "CADERA"
+
+RESTRICCIONES_MEDICAS = [
+    RESTRICCION_NINGUNA, RESTRICCION_RODILLA, RESTRICCION_HOMBRO,
+    RESTRICCION_ESPALDA, RESTRICCION_MUNECA_CODO, RESTRICCION_CADERA,
+]
+
+# Grupos musculares que el motor de rutinas debe excluir por cada restricción.
+RESTRICCION_GRUPOS_EXCLUIDOS = {
+    RESTRICCION_RODILLA: [GRUPO_PIERNAS],
+    RESTRICCION_CADERA: [GRUPO_PIERNAS],
+    RESTRICCION_HOMBRO: [GRUPO_HOMBROS],
+    RESTRICCION_ESPALDA: [GRUPO_ESPALDA],
+    RESTRICCION_MUNECA_CODO: [GRUPO_TRICEPS, GRUPO_BICEPS],
+}
+
+# Palabras clave para migrar texto libre histórico de restricciones_medicas
+# a los códigos de arriba (usado una sola vez por create_db.py).
+RESTRICCION_PALABRAS_CLAVE = {
+    RESTRICCION_RODILLA: ["rodilla"],
+    RESTRICCION_CADERA: ["cadera"],
+    RESTRICCION_HOMBRO: ["hombro"],
+    RESTRICCION_ESPALDA: ["espalda", "columna", "lumbar"],
+    RESTRICCION_MUNECA_CODO: ["muñeca", "muneca", "codo"],
+}
+
+# Nivel de actividad física diaria del cliente, usado para el cálculo de
+# calorías de mantenimiento (Mifflin-St Jeor). Valores = multiplicador TDEE.
+NIVEL_ACTIVIDAD_MULTIPLICADORES = {
+    "SEDENTARIO": 1.2,
+    "LIGERO": 1.375,
+    "MODERADO": 1.55,
+    "ACTIVO": 1.725,
+    "MUY_ACTIVO": 1.9,
+}
+NIVELES_ACTIVIDAD = list(NIVEL_ACTIVIDAD_MULTIPLICADORES.keys())
+NIVEL_ACTIVIDAD_DEFECTO = "MODERADO"
 
 # Gestión comercial - Mensajes de error
 MSG_CATEGORIA_NO_ENCONTRADA = "Categoría no encontrada"

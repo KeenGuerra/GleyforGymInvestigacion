@@ -42,7 +42,9 @@ class Cliente(Base):
     estatura = Column(Float, nullable=True)
     objetivo = Column(String, nullable=True)
     nivel = Column(String, nullable=True)
-    restricciones_medicas = Column(String, nullable=True)
+    restricciones_medicas = Column(String, nullable=True)  # códigos separados por coma, ver app.constants.RESTRICCIONES_MEDICAS
+    restricciones_otras = Column(String, nullable=True)  # notas libres no cubiertas por el catálogo
+    nivel_actividad = Column(String(30), nullable=True)  # ver app.constants.NIVELES_ACTIVIDAD
 
     fecha_registro = Column(DateTime, default=datetime.now)
     estado = Column(String, default="ACTIVO")
@@ -205,10 +207,14 @@ class PlanNutricional(Base):
     id_cliente = Column(Integer, ForeignKey(FK_CLIENTES_ID_CLIENTE), nullable=False)
 
     objetivo = Column(String, nullable=True)
-    calorias_diarias = Column(Integer, nullable=True)
-    proteinas = Column(Integer, nullable=True)
-    carbohidratos = Column(Integer, nullable=True)
-    grasas = Column(Integer, nullable=True)
+    calorias_diarias = Column(Integer, nullable=True)  # calorías OBJETIVO (Mifflin-St Jeor)
+    proteinas = Column(Integer, nullable=True)  # proteínas OBJETIVO (g)
+    carbohidratos = Column(Integer, nullable=True)  # carbohidratos OBJETIVO (g)
+    grasas = Column(Integer, nullable=True)  # grasas OBJETIVO (g)
+    calorias_reales = Column(Integer, nullable=True)  # suma real de las comidas asignadas
+    proteinas_reales = Column(Integer, nullable=True)
+    carbohidratos_reales = Column(Integer, nullable=True)
+    grasas_reales = Column(Integer, nullable=True)
     restricciones = Column(String, nullable=True)
     generada_por_ia = Column(Boolean, default=False)
     fecha_creacion = Column(DateTime, default=datetime.now)

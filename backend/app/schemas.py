@@ -69,7 +69,9 @@ class ClienteBase(BaseModel):
     estatura: Optional[float] = None
     objetivo: Optional[str] = None
     nivel: Optional[str] = None
-    restricciones_medicas: Optional[str] = None
+    restricciones_medicas: Optional[str] = None  # códigos separados por coma, ver constants.RESTRICCIONES_MEDICAS
+    restricciones_otras: Optional[str] = None
+    nivel_actividad: Optional[str] = None  # ver constants.NIVELES_ACTIVIDAD
 
 
 class ClienteCreate(ClienteBase):
@@ -91,6 +93,8 @@ class ClienteUpdate(BaseModel):
     objetivo: Optional[str] = None
     nivel: Optional[str] = None
     restricciones_medicas: Optional[str] = None
+    restricciones_otras: Optional[str] = None
+    nivel_actividad: Optional[str] = None
     estado: Optional[EstadoUsuario] = None
 
 
@@ -391,6 +395,10 @@ class PlanNutricionalCreate(BaseModel):
     proteinas: Optional[int] = None
     carbohidratos: Optional[int] = None
     grasas: Optional[int] = None
+    calorias_reales: Optional[int] = None
+    proteinas_reales: Optional[int] = None
+    carbohidratos_reales: Optional[int] = None
+    grasas_reales: Optional[int] = None
     restricciones: Optional[str] = None
     generada_por_ia: bool = False
     estado: EstadoGeneral = "ACTIVO"
@@ -402,6 +410,10 @@ class PlanNutricionalUpdate(BaseModel):
     proteinas: Optional[int] = None
     carbohidratos: Optional[int] = None
     grasas: Optional[int] = None
+    calorias_reales: Optional[int] = None
+    proteinas_reales: Optional[int] = None
+    carbohidratos_reales: Optional[int] = None
+    grasas_reales: Optional[int] = None
     restricciones: Optional[str] = None
     generada_por_ia: Optional[bool] = None
     estado: Optional[EstadoGeneral] = None
@@ -419,51 +431,6 @@ class PlanNutricionalResponse(PlanNutricionalCreate):
 # =========================
 # IA RUTINAS
 # =========================
-
-class RutinaIARequest(BaseModel):
-    edad: int
-    sexo: str
-    peso: float
-    altura: float
-    objetivo: str
-    experiencia: str
-    frecuencia_entrenamiento: int
-    tipo_entrenamiento: str
-    nivel_actividad: str
-
-
-class AjusteRutinaRequest(BaseModel):
-    peso_anterior: float
-    peso_actual: float
-    objetivo: str
-
-
-# =========================
-# IA NUTRICIÓN
-# =========================
-
-class NutricionIARequest(BaseModel):
-    edad: int
-    sexo: str
-    peso: float
-    altura: float
-    nivel_actividad: str
-    frecuencia_entrenamiento: int
-    tipo_entrenamiento: str
-    objetivo: str
-    tiempo_objetivo: str
-    porcentaje_grasa: Optional[float] = None
-    metabolismo: str
-    experiencia: str
-    restricciones: Optional[str] = None
-    presupuesto: str
-    preferencias: str
-    comidas_dia: int
-
-
-class NutricionAvanzadaRequest(NutricionIARequest):
-    pass
-
 
 # =========================
 # EJERCICIOS
