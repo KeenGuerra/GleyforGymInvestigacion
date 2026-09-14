@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app import models, schemas
 from app.database import get_db
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.constants import (
     MSG_CLIENTE_NO_ENCONTRADO,
     MSG_CLIENTE_INACTIVO,
@@ -21,6 +21,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.post(
     "/",
     response_model=schemas.PlanNutricionalResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El cliente no está activo"},
         401: {"description": "Token inválido o expirado"},
@@ -54,6 +55,7 @@ def crear_plan(
 @router.get(
     "/",
     response_model=list[schemas.PlanNutricionalResponse],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -74,8 +76,10 @@ def listar_planes(db: Annotated[Session, Depends(get_db)]):
 )
 def obtener_planes_cliente(
     id_cliente: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente
@@ -92,6 +96,7 @@ def obtener_planes_cliente(
 @router.get(
     "/{id_plan}",
     response_model=schemas.PlanNutricionalResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Plan no encontrado"}
@@ -115,6 +120,7 @@ def obtener_plan(
 @router.put(
     "/{id_plan}",
     response_model=schemas.PlanNutricionalResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Plan no encontrado"}
@@ -145,6 +151,7 @@ def actualizar_plan(
 
 @router.delete(
     "/{id_plan}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Plan no encontrado"}

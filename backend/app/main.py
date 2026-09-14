@@ -1,7 +1,10 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.config import CORS_ORIGINS
 from app.routes import (
     usuarios,
     clientes,
@@ -32,15 +35,11 @@ app = FastAPI(
 )
 
 
-ORIGINS = [
-    "https://gleyforgym-frontend.onrender.com",
-    "http://localhost:5173",
-    "http://localhost:3000",
-]
+logger = logging.getLogger("gleyforgym")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ORIGINS,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,14 +48,16 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def catch_all_handler(request: Request, exc: Exception):
+    logger.exception("Error no controlado en %s %s", request.method, request.url.path)
+
     origin = request.headers.get("origin", "")
     headers = {}
-    if origin in ORIGINS or origin.endswith(".onrender.com"):
+    if origin in CORS_ORIGINS or origin.endswith(".onrender.com"):
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc)},
+        content={"detail": "Ocurrió un error interno. Intenta nuevamente más tarde."},
         headers=headers,
     )
 

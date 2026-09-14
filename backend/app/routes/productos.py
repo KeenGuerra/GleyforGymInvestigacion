@@ -14,7 +14,7 @@ from typing import Annotated, Optional
 from app.database import get_db
 from app import models, schemas
 from app.config import CLOUDINARY_URL
-from app.security import obtener_usuario_actual
+from app.security import requerir_roles
 from app.constants import ESTADO_INACTIVO, MSG_PRODUCTO_NO_ENCONTRADO
 
 router = APIRouter()
@@ -87,7 +87,7 @@ if cloudinary_url:
 async def crear_producto(
     nombre: Annotated[str, Form()],
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual),
+    usuario: dict = Depends(requerir_roles("ADMIN")),
     id_categoria: Annotated[Optional[int], Form()] = None,
     descripcion: Annotated[Optional[str], Form()] = None,
     precio_compra: Annotated[float, Form()] = 0,
@@ -166,6 +166,7 @@ async def crear_producto(
 @router.get(
     "/",
     response_model=list[schemas.ProductoResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_productos(db: Annotated[Session, Depends(get_db)]):
@@ -200,6 +201,7 @@ def listar_productos_disponibles(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/{id_producto}",
     response_model=schemas.ProductoResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Producto no encontrado"}
@@ -230,7 +232,7 @@ def obtener_producto(
 async def actualizar_producto(
     id_producto: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual),
+    usuario: dict = Depends(requerir_roles("ADMIN")),
     nombre: Annotated[Optional[str], Form()] = None,
     id_categoria: Annotated[Optional[int], Form()] = None,
     descripcion: Annotated[Optional[str], Form()] = None,
@@ -311,7 +313,7 @@ async def actualizar_producto(
 def eliminar_producto(
     id_producto: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual)
+    usuario: dict = Depends(requerir_roles("ADMIN"))
 ):
     producto = db.query(models.Producto).filter(
         models.Producto.id_producto == id_producto

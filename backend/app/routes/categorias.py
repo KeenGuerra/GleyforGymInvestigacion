@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import ESTADO_INACTIVO, MSG_CATEGORIA_NO_ENCONTRADA, MSG_CATEGORIA_YA_EXISTE
 
 router = APIRouter()
@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=schemas.CategoriaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         409: {"description": "Categoría ya existente"}
@@ -23,7 +24,6 @@ router = APIRouter()
 def crear_categoria(
     categoria: schemas.CategoriaCreate,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual),
 ):
     existente = db.query(models.Categoria).filter(
         models.Categoria.nombre == categoria.nombre
@@ -42,6 +42,7 @@ def crear_categoria(
 @router.get(
     "/",
     response_model=list[schemas.CategoriaResponse],
+    dependencies=[Depends(obtener_usuario_actual)],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_categorias(db: Annotated[Session, Depends(get_db)]):
@@ -53,6 +54,7 @@ def listar_categorias(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/{id_categoria}",
     response_model=schemas.CategoriaResponse,
+    dependencies=[Depends(obtener_usuario_actual)],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Categoría no encontrada"}
@@ -75,6 +77,7 @@ def obtener_categoria(
 @router.put(
     "/{id_categoria}",
     response_model=schemas.CategoriaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Categoría no encontrada"}
@@ -84,7 +87,6 @@ def actualizar_categoria(
     id_categoria: int,
     datos: schemas.CategoriaUpdate,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual),
 ):
     categoria = db.query(models.Categoria).filter(
         models.Categoria.id_categoria == id_categoria
@@ -111,6 +113,7 @@ def actualizar_categoria(
 
 @router.delete(
     "/{id_categoria}",
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Categoría no encontrada"}
@@ -119,7 +122,6 @@ def actualizar_categoria(
 def eliminar_categoria(
     id_categoria: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual),
 ):
     categoria = db.query(models.Categoria).filter(
         models.Categoria.id_categoria == id_categoria

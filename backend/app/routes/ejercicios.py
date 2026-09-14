@@ -13,7 +13,7 @@ from typing import Annotated
 from app.database import get_db
 from app import models, schemas
 from app.config import CLOUDINARY_URL
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import ESTADO_INACTIVO, MSG_EJERCICIO_NO_ENCONTRADO
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
@@ -34,6 +34,7 @@ if cloudinary_url:
 @router.post(
     "/",
     response_model=schemas.EjercicioOut,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         500: {"description": "Cloudinary no configurado o error al subir el video"}
@@ -134,6 +135,7 @@ def obtener_ejercicio(
 @router.put(
     "/{id_ejercicio}",
     response_model=schemas.EjercicioOut,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Ejercicio no encontrado"}
@@ -162,6 +164,7 @@ def actualizar_ejercicio(
 
 @router.delete(
     "/{id_ejercicio}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Ejercicio no encontrado"}

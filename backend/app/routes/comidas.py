@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import ESTADO_INACTIVO, MSG_COMIDA_NO_ENCONTRADA
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
@@ -18,6 +18,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.post(
     "/",
     response_model=schemas.ComidaOut,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -84,6 +85,7 @@ def obtener_comida(
 @router.put(
     "/{id_comida}",
     response_model=schemas.ComidaOut,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Comida no encontrada"}
@@ -115,6 +117,7 @@ def actualizar_comida(
 # =========================
 @router.delete(
     "/{id_comida}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Comida no encontrada"}

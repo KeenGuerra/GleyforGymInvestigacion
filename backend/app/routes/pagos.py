@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.constants import (
     MSG_PAGO_NO_ENCONTRADO,
     MSG_CLIENTE_NO_ENCONTRADO,
@@ -22,6 +22,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.post(
     "/",
     response_model=schemas.PagoResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El cliente no está activo o la membresía no pertenece a este cliente"},
         401: {"description": "Token inválido o expirado"},
@@ -75,6 +76,7 @@ def crear_pago(
 @router.get(
     "/",
     response_model=list[schemas.PagoResponse],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -93,8 +95,10 @@ def listar_pagos(db: Annotated[Session, Depends(get_db)]):
 )
 def listar_pagos_cliente(
     id_cliente: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente
@@ -111,6 +115,7 @@ def listar_pagos_cliente(
 @router.put(
     "/{id_pago}",
     response_model=schemas.PagoResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "La membresía no pertenece a este cliente"},
         401: {"description": "Token inválido o expirado"},
@@ -161,6 +166,7 @@ def actualizar_pago(
 
 @router.delete(
     "/{id_pago}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Pago no encontrado"}

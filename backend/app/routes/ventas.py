@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual, requerir_admin
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import (
     MSG_VENTA_NO_ENCONTRADA, MSG_VENTA_YA_CONFIRMADA,
     MSG_VENTA_NO_PENDIENTE, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -32,7 +32,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 def crear_venta(
     venta: schemas.VentaCreate,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual)
+    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR"))
 ):
     if not venta.detalles:
         raise HTTPException(status_code=400, detail=MSG_DETALLE_VACIO)
@@ -125,6 +125,7 @@ def crear_venta(
 @router.get(
     "/",
     response_model=list[schemas.VentaResponse],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_ventas(db: Annotated[Session, Depends(get_db)]):
@@ -137,6 +138,7 @@ def listar_ventas(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/resumen",
     response_model=schemas.ResumenVentas,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
@@ -188,6 +190,7 @@ def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/reporte",
     response_model=schemas.ReporteVentas,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def reporte_ventas(
@@ -255,6 +258,7 @@ def mis_pedidos(
 @router.get(
     "/{id_venta}",
     response_model=schemas.VentaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Venta no encontrada"}
@@ -286,7 +290,7 @@ def obtener_venta(
 def anular_venta(
     id_venta: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual)
+    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR"))
 ):
     venta = db.query(models.Venta).filter(
         models.Venta.id_venta == id_venta
@@ -432,7 +436,7 @@ def solicitar_venta(
 def confirmar_venta(
     id_venta: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(requerir_admin)
+    usuario: dict = Depends(requerir_roles("ADMIN"))
 ):
     venta = db.query(models.Venta).filter(
         models.Venta.id_venta == id_venta

@@ -7,7 +7,7 @@ from typing import Annotated
 from app.database import get_db
 from app import models
 from app.ia.rutina.recomendador_rutinas import generar_rutina_inteligente
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, verificar_propiedad_cliente
 from app.constants import MSG_CLIENTE_NO_ENCONTRADO
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
@@ -23,8 +23,10 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 )
 def generar_rutina_ia(
     id_cliente: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente

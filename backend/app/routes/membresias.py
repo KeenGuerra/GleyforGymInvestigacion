@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app import models, schemas
 from app.database import get_db
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import (
     MSG_MEMBRESIA_NO_ENCONTRADA,
     ESTADO_INACTIVO
@@ -18,7 +18,7 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=schemas.MembresiaResponse,
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -77,7 +77,7 @@ def obtener_membresia(
 @router.put(
     "/{id_membresia}",
     response_model=schemas.MembresiaResponse,
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Membresía no encontrada"}
@@ -106,7 +106,7 @@ def actualizar_membresia(
 
 @router.delete(
     "/{id_membresia}",
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Membresía no encontrada"}

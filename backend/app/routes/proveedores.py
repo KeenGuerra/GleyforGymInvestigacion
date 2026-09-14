@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import ESTADO_INACTIVO, MSG_PROVEEDOR_NO_ENCONTRADO
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
@@ -15,6 +15,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.post(
     "/",
     response_model=schemas.ProveedorResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def crear_proveedor(
@@ -31,6 +32,7 @@ def crear_proveedor(
 @router.get(
     "/",
     response_model=list[schemas.ProveedorResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_proveedores(db: Annotated[Session, Depends(get_db)]):
@@ -42,6 +44,7 @@ def listar_proveedores(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/{id_proveedor}",
     response_model=schemas.ProveedorResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Proveedor no encontrado"}
@@ -64,6 +67,7 @@ def obtener_proveedor(
 @router.put(
     "/{id_proveedor}",
     response_model=schemas.ProveedorResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Proveedor no encontrado"}
@@ -91,6 +95,7 @@ def actualizar_proveedor(
 
 @router.delete(
     "/{id_proveedor}",
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Proveedor no encontrado"}

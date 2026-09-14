@@ -9,7 +9,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models, schemas
-from app.security import encriptar_password, obtener_usuario_actual
+from app.security import encriptar_password, obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -47,6 +47,7 @@ def calcular_edad(fecha_nacimiento: date | datetime | None) -> int | None:
 # =========================
 @router.get(
     "/",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -103,6 +104,7 @@ def obtener_clientes(db: Annotated[Session, Depends(get_db)]):
 # =========================
 @router.post(
     "/",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El correo o DNI ya está registrado"},
         401: {"description": "Token inválido o expirado"}
@@ -191,7 +193,10 @@ def actualizar_cliente(
     id_cliente: int,
     cliente: schemas.ClienteUpdate,
     db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
+
     cliente_db = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente
     ).first()
@@ -237,6 +242,7 @@ def actualizar_cliente(
 # =========================
 @router.delete(
     "/{id_cliente}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Cliente no encontrado"}
@@ -280,8 +286,11 @@ def eliminar_cliente(
 )
 def obtener_cliente_por_usuario(
     id_usuario: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    if usuario_actual.get("rol") not in ("ADMIN", "ENTRENADOR") and usuario_actual.get("id_usuario") != id_usuario:
+        raise HTTPException(status_code=403, detail="No puedes acceder a datos de otro usuario")
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_usuario == id_usuario
@@ -327,8 +336,10 @@ def obtener_cliente_por_usuario(
 )
 def obtener_detalle_cliente(
     id_cliente: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente

@@ -40,3 +40,40 @@ def requerir_admin(usuario_actual: Annotated[dict, Depends(obtener_usuario_actua
     if usuario_actual.get("rol") != "ADMIN":
         raise HTTPException(status_code=403, detail="Acceso solo para administradores")
     return usuario_actual
+
+
+def requerir_roles(*roles_permitidos: str):
+    """Fábrica de dependencias: permite el acceso solo a los roles indicados."""
+    def verificador(
+        usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)]
+    ) -> dict:
+        if usuario_actual.get("rol") not in roles_permitidos:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Acceso restringido a: {', '.join(roles_permitidos)}",
+            )
+        return usuario_actual
+    return verificador
+
+
+def verificar_propiedad_cliente(
+    usuario_actual: dict,
+    id_cliente: int,
+    db,
+) -> None:
+    """
+    Para endpoints que un CLIENTE puede consultar sobre sí mismo: ADMIN y
+    ENTRENADOR pasan siempre; un CLIENTE solo si id_cliente es el suyo.
+    """
+    from app import models  # import local para evitar ciclo con models.py
+
+    if usuario_actual.get("rol") in ("ADMIN", "ENTRENADOR"):
+        return
+
+    cliente = (
+        db.query(models.Cliente)
+        .filter(models.Cliente.id_cliente == id_cliente)
+        .first()
+    )
+    if not cliente or cliente.id_usuario != usuario_actual.get("id_usuario"):
+        raise HTTPException(status_code=403, detail="No puedes acceder a datos de otro cliente")

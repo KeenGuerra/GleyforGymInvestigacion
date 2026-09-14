@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.constants import (
     MSG_CLIENTE_NO_ENCONTRADO,
     MSG_CLIENTE_INACTIVO,
@@ -37,6 +37,7 @@ def validar_datos_progreso(peso=None, porcentaje_grasa=None):
 @router.post(
     "/",
     response_model=schemas.ProgresoResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El peso debe ser mayor a 0, el porcentaje de grasa debe estar entre 0 y 100 o el cliente no está activo"},
         401: {"description": "Token inválido o expirado"},
@@ -84,6 +85,7 @@ def registrar_progreso(
 @router.get(
     "/",
     response_model=list[schemas.ProgresoResponse],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -104,8 +106,10 @@ def listar_progresos(db: Annotated[Session, Depends(get_db)]):
 )
 def listar_progreso_cliente(
     id_cliente: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente
@@ -122,6 +126,7 @@ def listar_progreso_cliente(
 @router.put(
     "/{id_progreso}",
     response_model=schemas.ProgresoResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El peso debe ser mayor a 0 o el porcentaje de grasa debe estar entre 0 y 100"},
         401: {"description": "Token inválido o expirado"},
@@ -169,6 +174,7 @@ def actualizar_progreso(
 
 @router.delete(
     "/{id_progreso}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Progreso no encontrado"}

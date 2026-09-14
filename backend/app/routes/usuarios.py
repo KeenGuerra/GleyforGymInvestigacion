@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app import models, schemas
 from app.database import get_db
-from app.security import encriptar_password, verificar_password, crear_token, obtener_usuario_actual
+from app.security import encriptar_password, verificar_password, crear_token, obtener_usuario_actual, requerir_roles
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -26,7 +26,7 @@ router = APIRouter()
 @router.post(
     "/",
     response_model=schemas.UsuarioResponse,
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         400: {"description": "Correo ya registrado"},
         401: {"description": "Token inválido o expirado"}
@@ -64,7 +64,7 @@ def crear_usuario(
 @router.get(
     "/",
     response_model=list[schemas.UsuarioResponse],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -79,7 +79,7 @@ def listar_usuarios(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/{id_usuario}",
     response_model=schemas.UsuarioResponse,
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Usuario no encontrado"}
@@ -106,7 +106,7 @@ def obtener_usuario(
 @router.put(
     "/{id_usuario}",
     response_model=schemas.UsuarioResponse,
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         400: {"description": "Correo ya registrado por otro usuario"},
         401: {"description": "Token inválido o expirado"},
@@ -163,7 +163,7 @@ def actualizar_usuario(
 # =========================
 @router.delete(
     "/{id_usuario}",
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Usuario no encontrado"}

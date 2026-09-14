@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import (
     MSG_INVENTARIO_NO_ENCONTRADO, MSG_PRODUCTO_NO_ENCONTRADO,
     MSG_CANTIDAD_INVALIDA, MSG_LOTE_NO_ENCONTRADO
@@ -21,6 +21,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.get(
     "/",
     response_model=list[schemas.InventarioResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_inventario(db: Annotated[Session, Depends(get_db)]):
@@ -46,6 +47,7 @@ def listar_inventario(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/movimientos/",
     response_model=list[schemas.MovimientoStockResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_movimientos(
@@ -94,7 +96,7 @@ def listar_movimientos(
 def ajustar_inventario(
     ajuste: schemas.AjusteInventarioCreate,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual)
+    usuario: dict = Depends(requerir_roles("ADMIN"))
 ):
     producto = db.query(models.Producto).filter(
         models.Producto.id_producto == ajuste.id_producto
@@ -156,6 +158,7 @@ def ajustar_inventario(
 @router.get(
     "/alertas/stock",
     response_model=list[schemas.InventarioResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def alertas_stock_bajo(db: Annotated[Session, Depends(get_db)]):
@@ -185,6 +188,7 @@ def alertas_stock_bajo(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/alertas/vencimiento",
     response_model=list[schemas.LoteResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def alertas_vencimiento(
@@ -220,6 +224,7 @@ def alertas_vencimiento(
 @router.post(
     "/lotes",
     response_model=schemas.LoteResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Producto no encontrado"}
@@ -256,6 +261,7 @@ def crear_lote(
 @router.get(
     "/lotes/",
     response_model=list[schemas.LoteResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_lotes(
@@ -290,6 +296,7 @@ def listar_lotes(
 @router.get(
     "/{id_producto}",
     response_model=schemas.InventarioResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Inventario no encontrado"}

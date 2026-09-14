@@ -9,7 +9,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app import models, schemas
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import (
     MSG_COMPRA_NO_ENCONTRADA, MSG_COMPRA_YA_CONFIRMADA,
     MSG_COMPRA_NO_PENDIENTE, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -30,7 +30,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 def crear_compra(
     compra: schemas.CompraCreate,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual)
+    usuario: dict = Depends(requerir_roles("ADMIN"))
 ):
     proveedor = db.query(models.Proveedor).filter(
         models.Proveedor.id_proveedor == compra.id_proveedor,
@@ -95,6 +95,7 @@ def crear_compra(
 @router.get(
     "/",
     response_model=list[schemas.CompraResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_compras(db: Annotated[Session, Depends(get_db)]):
@@ -107,6 +108,7 @@ def listar_compras(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/{id_compra}",
     response_model=schemas.CompraResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Compra no encontrada"}
@@ -138,7 +140,7 @@ def obtener_compra(
 def confirmar_compra(
     id_compra: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual)
+    usuario: dict = Depends(requerir_roles("ADMIN"))
 ):
     compra = db.query(models.Compra).filter(
         models.Compra.id_compra == id_compra
@@ -218,7 +220,7 @@ def confirmar_compra(
 def anular_compra(
     id_compra: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual)
+    usuario: dict = Depends(requerir_roles("ADMIN"))
 ):
     compra = db.query(models.Compra).filter(
         models.Compra.id_compra == id_compra

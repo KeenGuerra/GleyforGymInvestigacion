@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app import models, schemas
 from app.database import get_db
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.constants import (
     MSG_RUTINA_NO_ENCONTRADA,
     MSG_CLIENTE_NO_ENCONTRADO,
@@ -24,6 +24,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.post(
     "/",
     response_model=schemas.RutinaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El cliente no está activo"},
         401: {"description": "Token inválido o expirado"},
@@ -60,6 +61,7 @@ def crear_rutina(
 @router.get(
     "/",
     response_model=list[schemas.RutinaResponse],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -83,8 +85,10 @@ def listar_rutinas(db: Annotated[Session, Depends(get_db)]):
 )
 def obtener_rutinas_cliente(
     id_cliente: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente
@@ -104,6 +108,7 @@ def obtener_rutinas_cliente(
 @router.get(
     "/{id_rutina}",
     response_model=schemas.RutinaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Rutina no encontrada"}
@@ -130,6 +135,7 @@ def obtener_rutina(
 @router.put(
     "/{id_rutina}",
     response_model=schemas.RutinaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Rutina no encontrada"}
@@ -163,6 +169,7 @@ def actualizar_rutina(
 # =========================
 @router.delete(
     "/{id_rutina}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Rutina no encontrada"}
@@ -198,7 +205,8 @@ def eliminar_rutina(
 )
 def obtener_rutina_detalle(
     id_rutina: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
 
     rutina = db.query(models.Rutina).filter(
@@ -207,6 +215,8 @@ def obtener_rutina_detalle(
 
     if not rutina:
         raise HTTPException(status_code=404, detail=MSG_RUTINA_NO_ENCONTRADA)
+
+    verificar_propiedad_cliente(usuario_actual, rutina.id_cliente, db)
 
     resultado = {
         "id_rutina": rutina.id_rutina,

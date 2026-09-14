@@ -7,7 +7,7 @@ from typing import Annotated
 
 from app import models, schemas
 from app.database import get_db
-from app.security import obtener_usuario_actual
+from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.constants import (
     MSG_CLIENTE_NO_ENCONTRADO,
     MSG_CLIENTE_INACTIVO,
@@ -40,6 +40,7 @@ def actualizar_membresias_vencidas(db: Session):
 @router.post(
     "/",
     response_model=schemas.ClienteMembresiaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "El cliente no está activo o la membresía no está activa"},
         401: {"description": "Token inválido o expirado"},
@@ -91,6 +92,7 @@ def asignar_membresia(
 @router.get(
     "/",
     response_model=list[schemas.ClienteMembresiaResponse],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -113,8 +115,11 @@ def listar_cliente_membresias(db: Annotated[Session, Depends(get_db)]):
 )
 def listar_membresias_cliente(
     id_cliente: int,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
+
     actualizar_membresias_vencidas(db)
 
     cliente = db.query(models.Cliente).filter(
@@ -132,6 +137,7 @@ def listar_membresias_cliente(
 @router.put(
     "/{id_cliente_membresia}",
     response_model=schemas.ClienteMembresiaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         400: {"description": "La membresía no está activa"},
         401: {"description": "Token inválido o expirado"},
@@ -184,6 +190,7 @@ def actualizar_cliente_membresia(
 
 @router.delete(
     "/{id_cliente_membresia}",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Membresía del cliente no encontrada"}
