@@ -17,6 +17,11 @@ function MiPerfil() {
   const [mensaje, setMensaje] = useState("");
   const correo = localStorage.getItem("correo");
 
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [passwordActual, setPasswordActual] = useState("");
+  const [passwordNueva, setPasswordNueva] = useState("");
+  const [mensajePassword, setMensajePassword] = useState("");
+
   const [form, setForm] = useState({
     telefono: "",
     direccion: "",
@@ -90,6 +95,29 @@ function MiPerfil() {
     }
   };
 
+  const cambiarPassword = async (e) => {
+    e.preventDefault();
+    setMensajePassword("");
+
+    if (passwordNueva.length < 6) {
+      setMensajePassword("La nueva contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    try {
+      await api.put("/usuarios/me/password", {
+        password_actual: passwordActual,
+        password_nueva: passwordNueva,
+      });
+      setMensajePassword("Contraseña actualizada correctamente ✔");
+      setPasswordActual("");
+      setPasswordNueva("");
+      setMostrarPassword(false);
+    } catch (error) {
+      setMensajePassword(error.response?.data?.detail || "No se pudo cambiar la contraseña");
+    }
+  };
+
   if (!cliente) {
     return <p className="empty-message">Cargando perfil...</p>;
   }
@@ -121,6 +149,61 @@ function MiPerfil() {
       </section>
 
       {mensaje && <p className="error-message">{mensaje}</p>}
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Seguridad</h2>
+            <p>Cambia tu contraseña de acceso.</p>
+          </div>
+
+          <button
+            className={mostrarPassword ? "btn-secondary" : "btn-primary"}
+            onClick={() => {
+              setMostrarPassword(!mostrarPassword);
+              setMensajePassword("");
+            }}
+          >
+            {mostrarPassword ? "Cancelar" : "Cambiar contraseña"}
+          </button>
+        </div>
+
+        {mostrarPassword && (
+          <form onSubmit={cambiarPassword}>
+            {mensajePassword && <p className="error-message">{mensajePassword}</p>}
+
+            <div className="form-grid">
+              <div className="form-field">
+                <label htmlFor="password-actual">Contraseña actual</label>
+                <input
+                  id="password-actual"
+                  type="password"
+                  value={passwordActual}
+                  onChange={(e) => setPasswordActual(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="password-nueva-perfil">Nueva contraseña</label>
+                <input
+                  id="password-nueva-perfil"
+                  type="password"
+                  value={passwordNueva}
+                  onChange={(e) => setPasswordNueva(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button type="submit" className="btn-primary">
+                Guardar nueva contraseña
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
 
       {editando ? (
         <section className="form-card">

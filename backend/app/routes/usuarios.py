@@ -328,3 +328,66 @@ def reset_password(
     registrar_auditoria(db, None, "RESET_PASSWORD", "Usuario", usuario.id_usuario, f"correo={usuario.correo}")
 
     return {"mensaje": "Contraseña actualizada correctamente"}
+
+
+@router.put(
+    "/me/password",
+    responses={
+        400: {"description": "La contraseña actual es incorrecta"},
+        401: {"description": "Token inválido o expirado"},
+    }
+)
+def cambiar_mi_password(
+    datos: schemas.CambiarPasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    """Autogestión: un usuario logueado cambia su propia contraseña. Antes el
+    único camino era el flujo completo de 'olvidé mi contraseña'."""
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.id_usuario == usuario_actual.get("id_usuario")
+    ).first()
+
+    if not usuario or not verificar_password(datos.password_actual, usuario.password_hash):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+
+    usuario.password_hash = encriptar_password(datos.password_nueva)
+    db.commit()
+
+    registrar_auditoria(db, usuario_actual, "CAMBIO_PASSWORD", "Usuario", usuario.id_usuario)
+
+    return {"mensaje": "Contraseña actualizada correctamente"}
+
+
+@router.post(
+    "/{id_usuario}/reset-password-admin",
+    dependencies=[Depends(requerir_roles("ADMIN"))],
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Usuario no encontrado"},
+    }
+)
+def resetear_password_admin(
+    id_usuario: int,
+    datos: schemas.ResetPasswordAdminRequest,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN"))],
+):
+    """Un ADMIN fija directamente la contraseña de otro usuario (útil
+    mientras no haya envío real de correo para el flujo de auto-recuperación)."""
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.id_usuario == id_usuario
+    ).first()
+
+    if not usuario:
+        raise HTTPException(status_code=404, detail=MSG_USUARIO_NO_ENCONTRADO)
+
+    usuario.password_hash = encriptar_password(datos.password_nueva)
+    db.commit()
+
+    registrar_auditoria(
+        db, usuario_actual, "RESET_PASSWORD_ADMIN", "Usuario", usuario.id_usuario,
+        f"correo={usuario.correo}",
+    )
+
+    return {"mensaje": "Contraseña restablecida correctamente"}

@@ -61,6 +61,15 @@ class ResetPasswordRequest(BaseModel):
     password_nueva: str = Field(min_length=6)
 
 
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str
+    password_nueva: str = Field(min_length=6)
+
+
+class ResetPasswordAdminRequest(BaseModel):
+    password_nueva: str = Field(min_length=6)
+
+
 # =========================
 # CLIENTES
 # =========================

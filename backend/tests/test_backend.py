@@ -1470,6 +1470,65 @@ def test_descargar_recibo_pago_pdf():
     assert client.get(f"/pagos/{id_pago}/recibo", headers=headers_otro).status_code == 403
 
 
+def test_cambiar_mi_password():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    # Contraseña actual incorrecta -> 400
+    res_mal = client.put(
+        "/usuarios/me/password",
+        json={"password_actual": "clave_incorrecta", "password_nueva": "nuevaClave123"},
+        headers=headers_admin,
+    )
+    assert res_mal.status_code == 400
+
+    # Contraseña actual correcta -> cambia
+    res_ok = client.put(
+        "/usuarios/me/password",
+        json={"password_actual": "admin123", "password_nueva": "nuevaClave123"},
+        headers=headers_admin,
+    )
+    assert res_ok.status_code == 200
+
+    # El nuevo login funciona con la contraseña nueva
+    res_login = client.post(
+        "/usuarios/login", json={"correo": "admin@gleyforgym.com", "password": "nuevaClave123"}
+    )
+    assert res_login.status_code == 200
+
+
+def test_admin_resetea_password_de_otro_usuario():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res = client.post(
+        "/usuarios/2/reset-password-admin",
+        json={"password_nueva": "claveImpuesta123"},
+        headers=headers_admin,
+    )
+    assert res.status_code == 200
+
+    res_login = client.post(
+        "/usuarios/login", json={"correo": "testclient@gleyforgym.com", "password": "claveImpuesta123"}
+    )
+    assert res_login.status_code == 200
+
+    # Un CLIENTE no puede resetear contraseñas ajenas
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.post(
+        "/usuarios/1/reset-password-admin",
+        json={"password_nueva": "otraClave123"},
+        headers=headers_cliente,
+    ).status_code == 403
+
+    # Contraseña muy corta -> 422
+    assert client.post(
+        "/usuarios/2/reset-password-admin",
+        json={"password_nueva": "123"},
+        headers=headers_admin,
+    ).status_code == 422
+
+
 def test_flujo_reset_password():
     populate_db_for_coverage()
 

@@ -152,6 +152,27 @@ describe("Usuarios Page Component", () => {
     });
   });
 
+  it("resets a user's password via the admin flow", async () => {
+    api.post.mockResolvedValue({ data: { mensaje: "Contraseña restablecida correctamente" } });
+
+    render(<Usuarios />);
+    await waitFor(() => expect(screen.getByText("entrenador@gym.com")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Restablecer contraseña", { selector: "button" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Nueva contraseña")).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText("Nueva contraseña"), { target: { value: "claveNueva123" } });
+    fireEvent.click(screen.getByText("Guardar nueva contraseña"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/usuarios/1/reset-password-admin", {
+        password_nueva: "claveNueva123",
+      });
+      expect(screen.getByText("Contraseña restablecida correctamente ✔")).toBeDefined();
+    });
+  });
+
   it("displays empty message when search yields no users", async () => {
     render(<Usuarios />);
     await waitFor(() => {

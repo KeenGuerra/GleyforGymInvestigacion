@@ -8,6 +8,10 @@ function Usuarios() {
   const [busqueda, setBusqueda] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
+  const [idResetPassword, setIdResetPassword] = useState(null);
+  const [passwordNuevaAdmin, setPasswordNuevaAdmin] = useState("");
+  const [mensajeReset, setMensajeReset] = useState("");
+
   const formInicial = {
     correo: "",
     password: "",
@@ -120,6 +124,30 @@ function Usuarios() {
     }
   };
 
+  const resetearPassword = async (e) => {
+    e.preventDefault();
+    setMensajeReset("");
+
+    if (passwordNuevaAdmin.length < 6) {
+      setMensajeReset("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    try {
+      await api.post(`/usuarios/${idResetPassword}/reset-password-admin`, {
+        password_nueva: passwordNuevaAdmin,
+      });
+      setMensajeReset("Contraseña restablecida correctamente ✔");
+      setPasswordNuevaAdmin("");
+      setTimeout(() => {
+        setIdResetPassword(null);
+        setMensajeReset("");
+      }, 1500);
+    } catch (error) {
+      setMensajeReset(error.response?.data?.detail || "No se pudo restablecer la contraseña");
+    }
+  };
+
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
     return new Date(fecha).toLocaleDateString("es-PE");
@@ -180,6 +208,45 @@ function Usuarios() {
           </strong>
         </div>
       </section>
+
+      {idResetPassword && (
+        <form onSubmit={resetearPassword} className="form-card">
+          <div className="card-header">
+            <div>
+              <h2>Restablecer contraseña</h2>
+              <p>Define una nueva contraseña para el usuario #{idResetPassword}.</p>
+            </div>
+          </div>
+
+          {mensajeReset && <p className="error-message">{mensajeReset}</p>}
+
+          <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="password-nueva-admin">Nueva contraseña</label>
+              <input
+                id="password-nueva-admin"
+                type="password"
+                value={passwordNuevaAdmin}
+                onChange={(e) => setPasswordNuevaAdmin(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">
+              Guardar nueva contraseña
+            </button>
+
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setIdResetPassword(null)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
 
       {mostrarFormulario && (
         <form onSubmit={guardar} className="form-card">
@@ -322,6 +389,17 @@ function Usuarios() {
                           onClick={() => editar(u)}
                         >
                           Editar
+                        </button>
+
+                        <button
+                          className="btn-secondary"
+                          onClick={() => {
+                            setIdResetPassword(u.id_usuario);
+                            setPasswordNuevaAdmin("");
+                            setMensajeReset("");
+                          }}
+                        >
+                          Restablecer contraseña
                         </button>
 
                         <button
