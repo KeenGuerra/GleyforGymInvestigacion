@@ -161,21 +161,27 @@ PostgreSQL
 
 # 6. Módulos a Validar
 
-| Módulo | Prioridad |
-|----------|----------|
-| Login | Alta |
-| Usuarios | Alta |
-| Clientes | Alta |
-| Membresías | Alta |
-| Pagos | Alta |
-| Asistencias | Alta |
-| Progreso | Alta |
-| Ejercicios | Alta |
-| Comidas | Alta |
-| Rutinas IA | Alta |
-| Nutrición IA | Alta |
-| Cloudinary | Media |
-| Flutter | Media |
+> Ampliado 2026-09: la tabla anterior no incluía Comercio, Avisos, Auditoría ni Entrenadores, que ya están en producción sin pruebas automatizadas (ver `Pendientes.md` P-04).
+
+| Módulo | Prioridad | Cobertura automatizada actual |
+|----------|----------|----------|
+| Login | Alta | Sí |
+| Usuarios | Alta | Sí |
+| Clientes | Alta | Sí |
+| Membresías | Alta | Sí |
+| Pagos | Alta | Sí |
+| Asistencias | Alta | Sí |
+| Progreso | Alta | Sí |
+| Ejercicios | Alta | Sí |
+| Comidas | Alta | Sí |
+| Rutinas IA | Alta | Sí |
+| Nutrición IA | Alta | Sí |
+| Cloudinary | Media | Parcial |
+| Flutter | Media | — (fuera de alcance de esta revisión) |
+| Entrenadores | Media | No |
+| Avisos | Media | No |
+| Auditoría | Alta | No |
+| Comercio (Categorías/Productos/Proveedores/Compras/Inventario/Ventas) | Alta (maneja dinero y stock) | **No — 0%** |
 
 ---
 

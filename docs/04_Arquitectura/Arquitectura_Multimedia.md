@@ -276,11 +276,13 @@ Videos privados
 
 ## 13. Limitaciones Actuales
 
+> Corregido 2026-09: además de videos de ejercicios, Cloudinary también almacena imágenes de producto (módulo Comercio, `productos.imagen_url`/`cloudinary_public_id` — ver `Arquitectura_Cloudinary.md`).
+
 Actualmente:
 
-- Solo videos de ejercicios.
-- No se almacenan imágenes de progreso.
-- No se almacenan fotografías de clientes.
+- Videos de ejercicios e imágenes de productos de la Tienda.
+- No se almacenan imágenes de progreso físico.
+- No se almacenan fotografías de clientes/entrenadores.
 
 ---
 

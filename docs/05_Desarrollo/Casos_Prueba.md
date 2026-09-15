@@ -700,12 +700,251 @@ Visualización de textos claros tipo "Plan Gold", "Plan Estudiante" en el listad
 
 ---
 
+# NUEVOS CASOS DE PRUEBA: MÓDULOS SIN DOCUMENTAR (2026-09)
+
+> Agregado tras verificar contra código real que estos módulos están en producción (`backend/app/routes/`) pero no tenían casos de prueba formales. Referencia cruzada: `Pendientes.md` P-04 (0% de cobertura automatizada en Comercio, tanto backend como frontend).
+
+# MÓDULO: ENTRENADORES
+
+## CP-056 Registrar Entrenador
+
+### Objetivo
+Validar que el administrador pueda registrar un entrenador con usuario y ficha asociados.
+
+### Resultado Esperado
+```text
+HTTP 201. Usuario creado con rol ENTRENADOR y ficha en tabla entrenadores.
+```
+
+---
+
+## CP-057 Desactivar Entrenador sin Perder Historial
+
+### Objetivo
+Validar que al desactivar un entrenador no se eliminen las rutinas/planes que generó.
+
+### Resultado Esperado
+```text
+Entrenador en estado INACTIVO. Rutinas/planes previamente generados se conservan.
+```
+
+---
+
+# MÓDULO: AVISOS
+
+## CP-058 Listar Avisos Públicos sin Autenticación
+
+### Objetivo
+Validar que `GET /avisos/` responda sin requerir JWT.
+
+### Resultado Esperado
+```text
+HTTP 200. Solo avisos en estado ACTIVO.
+```
+
+---
+
+## CP-059 Crear/Editar/Eliminar Aviso Solo ADMIN
+
+### Objetivo
+Validar que ENTRENADOR y CLIENTE reciban 403 al intentar crear, editar o eliminar un aviso.
+
+### Resultado Esperado
+```text
+HTTP 403 para ENTRENADOR/CLIENTE. HTTP 200/201 para ADMIN.
+```
+
+---
+
+# MÓDULO: AUDITORÍA
+
+## CP-060 Registro Automático de Operación Crítica
+
+### Objetivo
+Validar que una operación crítica (ej. anular un pago) genere un registro en `registros_auditoria` con usuario, entidad y fecha.
+
+### Resultado Esperado
+```text
+Nuevo registro visible en GET /auditoria/ inmediatamente después de la operación.
+```
+
+---
+
+## CP-061 Consulta de Auditoría Solo ADMIN
+
+### Objetivo
+Validar que ENTRENADOR y CLIENTE no puedan consultar `GET /auditoria/`.
+
+### Resultado Esperado
+```text
+HTTP 403 para ENTRENADOR/CLIENTE.
+```
+
+---
+
+# MÓDULO: COMERCIO — CATEGORÍAS Y PRODUCTOS
+
+## CP-062 Crear Categoría Duplicada
+
+### Objetivo
+Validar que no se puedan crear dos categorías con el mismo nombre (`nombre` es `unique`).
+
+### Resultado Esperado
+```text
+HTTP 400/409 en el segundo intento con nombre repetido.
+```
+
+---
+
+## CP-063 Listar Productos Disponibles en Tienda Pública
+
+### Objetivo
+Validar que `GET /productos/disponibles` solo devuelva productos ACTIVOS con stock > 0, sin requerir JWT.
+
+### Resultado Esperado
+```text
+HTTP 200. Ningún producto inactivo o sin stock aparece en la respuesta.
+```
+
+---
+
+## CP-064 Desactivar Producto Conserva Historial
+
+### Objetivo
+Validar que desactivar un producto no elimine sus compras/ventas ya registradas.
+
+### Resultado Esperado
+```text
+Producto en estado INACTIVO. Historial de compras/ventas intacto.
+```
+
+---
+
+# MÓDULO: COMERCIO — PROVEEDORES Y COMPRAS
+
+## CP-065 Registrar y Confirmar Compra Actualiza Inventario
+
+### Objetivo
+Validar que al confirmar una compra PENDIENTE se genere un movimiento ENTRADA_COMPRA y aumente el stock del producto.
+
+### Resultado Esperado
+```text
+Compra en estado CONFIRMADA. Stock del producto incrementado según cantidad comprada. Movimiento visible en GET /inventario/movimientos/.
+```
+
+---
+
+## CP-066 Anular Compra Confirmada Revierte Stock
+
+### Objetivo
+Validar que anular una compra ya confirmada descuente el stock que había ingresado.
+
+### Resultado Esperado
+```text
+Compra en estado ANULADA. Stock del producto reducido en la misma cantidad que había ingresado.
+```
+
+---
+
+# MÓDULO: COMERCIO — INVENTARIO
+
+## CP-067 Alerta de Stock Bajo
+
+### Objetivo
+Validar que `GET /inventario/alertas/stock` liste solo productos con stock_actual menor a stock_minimo.
+
+### Resultado Esperado
+```text
+HTTP 200. Solo aparecen productos por debajo de su umbral configurado.
+```
+
+---
+
+## CP-068 Alerta de Vencimiento de Lotes
+
+### Objetivo
+Validar que `GET /inventario/alertas/vencimiento` liste lotes vencidos o próximos a vencer.
+
+### Resultado Esperado
+```text
+HTTP 200. Lotes con fecha_vencimiento pasada o próxima aparecen marcados.
+```
+
+---
+
+## CP-069 Ajuste Manual de Stock Requiere Descripción
+
+### Objetivo
+Validar que `POST /inventario/ajustes` exija una descripción/motivo del ajuste.
+
+### Resultado Esperado
+```text
+HTTP 422 si falta la descripción. HTTP 200/201 con movimiento tipo AJUSTE si se envía completa.
+```
+
+---
+
+# MÓDULO: COMERCIO — VENTAS Y CHECKOUT
+
+## CP-070 Venta Directa Descuenta Stock
+
+### Objetivo
+Validar que registrar una venta confirmada genere un movimiento SALIDA_VENTA y descuente el stock correspondiente.
+
+### Resultado Esperado
+```text
+Stock del producto reducido según cantidad vendida. Movimiento visible en historial.
+```
+
+---
+
+## CP-071 Cliente Solicita Compra desde Tienda
+
+### Objetivo
+Validar que un CLIENTE autenticado pueda crear una venta en estado PENDIENTE desde `POST /ventas/solicitar` y luego verla en `GET /ventas/mis-pedidos`.
+
+### Resultado Esperado
+```text
+Venta creada con id_cliente del solicitante. Visible únicamente en sus propios "mis pedidos", no en los de otro cliente.
+```
+
+---
+
+## CP-072 Anular Venta Revierte Stock
+
+### Objetivo
+Validar que anular una venta confirmada devuelva el stock descontado.
+
+### Resultado Esperado
+```text
+Venta en estado ANULADA. Stock del producto restaurado.
+```
+
+---
+
+# MÓDULO: WEBHOOKS Y PASARELA DE PAGOS
+
+## CP-073 Webhook Actualiza Estado de Venta/Pago
+
+### Objetivo
+Validar que `POST /webhooks/pagos` con un payload simulado (MockGateway) actualice el estado de la venta/pago asociado.
+
+### Resultado Esperado
+```text
+Venta/pago pasa de PENDIENTE a CONFIRMADA (o FALLIDA según el payload).
+```
+
+### Nota
+No existe aún validación de firma/origen del webhook contra un proveedor real (Culqi u otro) — ver `Pendientes.md` P-02. Este caso valida el flujo con `MockGateway`, no la seguridad del webhook en producción.
+
+---
+
 # Resumen
 
 ## Total de Casos de Prueba
 
 ```text
-55
+73
 ```
 
 ## Cobertura
@@ -725,12 +964,29 @@ IA Nutrición
 Seguridad
 Dashboards
 Nuevos Parches v2.6
+Entrenadores
+Avisos
+Auditoría
+Comercio (Categorías, Productos, Proveedores, Compras, Inventario, Ventas)
+Webhooks y Pasarela de Pagos
 ```
 
 ## Estado Actual
 
 ```text
-Pruebas ejecutadas y aprobadas en entorno local v2.6.
+CP-001 a CP-055: pruebas ejecutadas y aprobadas en entorno local v2.6.
+CP-056 a CP-073: casos de prueba redactados 2026-09 a partir del código real; sin automatización todavía.
+
+Cobertura real medida 2026-09 (pytest --cov, no repetir cifras de memoria):
+- Cobertura total del backend: 81% (55 tests, 3113 statements).
+- Módulos "clásicos" (usuarios, clientes, membresías, pagos, asistencias, progreso,
+  ejercicios, comidas, rutinas/nutrición IA, avisos, auditoría): 87%-100%.
+- Módulo Comercio, sin tests dedicados: categorias.py 37%, proveedores.py 43%,
+  inventario.py 26%, productos.py 23%, compras.py 20%, ventas.py 17%.
+  No es exactamente "0%" como decía Pendientes.md P-04 (algunas líneas se ejecutan
+  al registrar las rutas en main.py al arrancar la app), pero no hay ninguna
+  función test_ que ejercite su lógica de negocio — la brecha real es la ausencia
+  de pruebas dedicadas, no la cobertura de línea en sí.
 ```
 
 ---
