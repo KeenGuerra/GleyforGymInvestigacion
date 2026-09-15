@@ -130,10 +130,10 @@ def crear_venta(
     dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
-def listar_ventas(db: Annotated[Session, Depends(get_db)]):
+def listar_ventas(db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100):
     ventas = db.query(models.Venta).order_by(
         models.Venta.id_venta.desc()
-    ).all()
+    ).offset(skip).limit(limit).all()
     return [_venta_con_detalles(db, v) for v in ventas]
 
 

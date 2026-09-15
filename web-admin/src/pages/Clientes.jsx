@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
@@ -11,12 +11,16 @@ import {
   textoACodigos,
 } from "../constants/opciones";
 
+const CLIENTES_POR_PAGINA = 20;
+
 function Clientes() {
   const navigate = useNavigate();
 
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [pagina, setPagina] = useState(0);
+  const [haySiguiente, setHaySiguiente] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -58,29 +62,40 @@ function Clientes() {
     return String(edad);
   };
 
-  const cargarClientes = async (filtros = {}) => {
+  const cargarClientes = useCallback(async (filtros = {}, paginaActual = pagina) => {
     try {
-      const params = {};
+      const params = { skip: paginaActual * CLIENTES_POR_PAGINA, limit: CLIENTES_POR_PAGINA };
       if (filtros.q) params.q = filtros.q;
       if (filtros.estado) params.estado = filtros.estado;
 
       const res = await api.get("/clientes/", { params });
       setClientes(res.data);
+      setHaySiguiente(res.data.length === CLIENTES_POR_PAGINA);
     } catch (error) {
       console.error(error);
       setError(error.response?.data?.detail || "Error al cargar clientes");
     }
-  };
+  }, [pagina]);
 
   // Filtro/búsqueda en el backend (antes era 100% en memoria y no permitía
   // ver solo los inactivos): con un pequeño debounce para no disparar una
   // petición por cada tecla.
   useEffect(() => {
     const temporizador = setTimeout(() => {
-      cargarClientes({ q: busqueda, estado: estadoFiltro });
+      cargarClientes({ q: busqueda, estado: estadoFiltro }, pagina);
     }, 300);
     return () => clearTimeout(temporizador);
-  }, [busqueda, estadoFiltro]);
+  }, [busqueda, estadoFiltro, pagina, cargarClientes]);
+
+  const cambiarBusqueda = (valor) => {
+    setBusqueda(valor);
+    setPagina(0);
+  };
+
+  const cambiarEstadoFiltro = (valor) => {
+    setEstadoFiltro(valor);
+    setPagina(0);
+  };
 
   const cambiar = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -504,13 +519,13 @@ function Clientes() {
               className="search-input"
               placeholder="Buscar por nombre, DNI o correo..."
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
             />
 
             <select
               aria-label="Filtrar por estado"
               value={estadoFiltro}
-              onChange={(e) => setEstadoFiltro(e.target.value)}
+              onChange={(e) => cambiarEstadoFiltro(e.target.value)}
             >
               <option value="">Todos los estados</option>
               <option value="ACTIVO">Solo activos</option>
@@ -597,6 +612,24 @@ function Clientes() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="card-actions">
+          <button
+            className="btn-secondary"
+            disabled={pagina === 0}
+            onClick={() => setPagina((p) => Math.max(0, p - 1))}
+          >
+            Anterior
+          </button>
+          <span>Página {pagina + 1}</span>
+          <button
+            className="btn-secondary"
+            disabled={!haySiguiente}
+            onClick={() => setPagina((p) => p + 1)}
+          >
+            Siguiente
+          </button>
         </div>
       </section>
     </div>

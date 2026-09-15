@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
 import { descargarBlob } from "../utils/descargarArchivo";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
+
+const PAGOS_POR_PAGINA = 20;
 
 function Pagos() {
   const [pagos, setPagos] = useState([]);
@@ -11,6 +13,8 @@ function Pagos() {
   const [busqueda, setBusqueda] = useState("");
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState("");
+  const [pagina, setPagina] = useState(0);
+  const [haySiguiente, setHaySiguiente] = useState(false);
 
   const hoy = new Date().toISOString().split("T")[0];
 
@@ -26,28 +30,31 @@ function Pagos() {
 
   const [form, setForm] = useState(formInicial);
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async (paginaActual = pagina) => {
     try {
       setError("");
 
       const [resPagos, resClientes, resAsignaciones] = await Promise.all([
-        api.get("/pagos/"),
+        api.get("/pagos/", {
+          params: { skip: paginaActual * PAGOS_POR_PAGINA, limit: PAGOS_POR_PAGINA },
+        }),
         api.get("/clientes/"),
         api.get("/cliente-membresias/"),
       ]);
 
       setPagos(resPagos.data);
+      setHaySiguiente(resPagos.data.length === PAGOS_POR_PAGINA);
       setClientes(resClientes.data.filter((c) => c.estado === "ACTIVO"));
       setAsignaciones(resAsignaciones.data);
     } catch (error) {
       console.error(error);
       setError("Error al cargar los datos de pagos");
     }
-  };
+  }, [pagina]);
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    cargarDatos(pagina);
+  }, [pagina, cargarDatos]);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -368,6 +375,24 @@ function Pagos() {
             ))}
           </tbody>
         </table>
+
+        <div className="card-actions">
+          <button
+            className="btn-secondary"
+            disabled={pagina === 0}
+            onClick={() => setPagina((p) => Math.max(0, p - 1))}
+          >
+            Anterior
+          </button>
+          <span>Página {pagina + 1}</span>
+          <button
+            className="btn-secondary"
+            disabled={!haySiguiente}
+            onClick={() => setPagina((p) => p + 1)}
+          >
+            Siguiente
+          </button>
+        </div>
       </section>
     </div>
   );

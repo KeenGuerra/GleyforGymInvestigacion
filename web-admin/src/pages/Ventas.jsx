@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
+
+const VENTAS_POR_PAGINA = 20;
 
 function Ventas() {
   const [ventas, setVentas] = useState([]);
@@ -12,21 +14,25 @@ function Ventas() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [detalle, setDetalle] = useState([]);
   const [resumen, setResumen] = useState({});
+  const [pagina, setPagina] = useState(0);
+  const [haySiguiente, setHaySiguiente] = useState(false);
 
   const formInicial = { id_cliente: "", metodo_pago: "EFECTIVO", descuento: 0, observaciones: "" };
   const [form, setForm] = useState(formInicial);
 
-  const cargar = async () => {
+  const cargar = useCallback(async (paginaActual = pagina) => {
     try {
       const [r1, r2, r3, r4] = await Promise.all([
-        api.get("/ventas/"), api.get("/productos/disponibles"),
+        api.get("/ventas/", { params: { skip: paginaActual * VENTAS_POR_PAGINA, limit: VENTAS_POR_PAGINA } }),
+        api.get("/productos/disponibles"),
         api.get("/clientes/"), api.get("/ventas/resumen"),
       ]);
-      setVentas(r1.data); setProductos(r2.data); setClientes(r3.data); setResumen(r4.data);
+      setVentas(r1.data); setHaySiguiente(r1.data.length === VENTAS_POR_PAGINA);
+      setProductos(r2.data); setClientes(r3.data); setResumen(r4.data);
     } catch { setError("Error al cargar datos"); }
-  };
+  }, [pagina]);
 
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => { cargar(pagina); }, [pagina, cargar]);
 
   const cambiar = (e) => { setForm({ ...form, [e.target.name]: e.target.value }); };
 
@@ -260,6 +266,24 @@ function Ventas() {
             ))}
           </div>
         )}
+
+        <div className="card-actions">
+          <button
+            className="btn-secondary"
+            disabled={pagina === 0}
+            onClick={() => setPagina((p) => Math.max(0, p - 1))}
+          >
+            Anterior
+          </button>
+          <span>Página {pagina + 1}</span>
+          <button
+            className="btn-secondary"
+            disabled={!haySiguiente}
+            onClick={() => setPagina((p) => p + 1)}
+          >
+            Siguiente
+          </button>
+        </div>
       </section>
     </div>
   );

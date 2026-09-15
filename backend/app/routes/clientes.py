@@ -56,6 +56,8 @@ def obtener_clientes(
     db: Annotated[Session, Depends(get_db)],
     q: str | None = None,
     estado: str | None = None,
+    skip: int = 0,
+    limit: int = 100,
 ):
     query = db.query(models.Cliente)
 
@@ -71,7 +73,7 @@ def obtener_clientes(
             | (models.Usuario.correo.ilike(patron))
         )
 
-    clientes = query.order_by(models.Cliente.id_cliente).all()
+    clientes = query.order_by(models.Cliente.id_cliente).offset(skip).limit(limit).all()
 
     resultado = []
 

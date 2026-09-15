@@ -968,6 +968,39 @@ def test_clientes_filtro_busqueda_y_estado():
     assert all(c["estado"] == "ACTIVO" for c in res_activos.json())
 
 
+def test_clientes_paginacion():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    res_c2 = client.post(
+        "/clientes/",
+        json={
+            "dni": "87654321",
+            "nombres": "Maria",
+            "apellidos": "Gomez",
+            "correo": "maria.paginacion@gleyforgym.com",
+            "password": "password"
+        },
+        headers=headers
+    )
+    assert res_c2.status_code == 200
+
+    res_todos = client.get("/clientes/", headers=headers)
+    total = len(res_todos.json())
+    assert total > 1
+
+    res_pagina_1 = client.get("/clientes/?skip=0&limit=1", headers=headers)
+    assert res_pagina_1.status_code == 200
+    assert len(res_pagina_1.json()) == 1
+
+    res_pagina_2 = client.get("/clientes/?skip=1&limit=1", headers=headers)
+    assert len(res_pagina_2.json()) == 1
+    assert res_pagina_1.json()[0]["id_cliente"] != res_pagina_2.json()[0]["id_cliente"]
+
+    res_fuera_de_rango = client.get(f"/clientes/?skip={total + 100}&limit=1", headers=headers)
+    assert res_fuera_de_rango.json() == []
+
+
 def test_clientes_extra_coverage():
     populate_db_for_coverage()
     headers = get_auth_headers()
@@ -1234,6 +1267,40 @@ def test_nutricion_extra_coverage():
     res_get = client.get(f"/nutricion/{id_plan}", headers=headers)
     assert res_get.status_code == 200
     assert res_get.json()["calorias_diarias"] == 2000
+
+
+def test_pagos_paginacion():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    res_cm = client.post(
+        "/cliente-membresias/",
+        json={"id_cliente": 1, "id_membresia": 1, "fecha_inicio": "2026-06-02"},
+        headers=headers
+    )
+    id_cm = res_cm.json()["id_cliente_membresia"]
+
+    for i, fecha in enumerate(["2026-06-03", "2026-06-04"]):
+        res_pago = client.post(
+            "/pagos/",
+            json={
+                "id_cliente": 1,
+                "id_cliente_membresia": id_cm,
+                "monto": 50.0 + i,
+                "metodo_pago": "YAPE",
+                "fecha_pago": fecha,
+            },
+            headers=headers
+        )
+        assert res_pago.status_code == 200
+
+    res_pagina_1 = client.get("/pagos/?skip=0&limit=1", headers=headers)
+    assert res_pagina_1.status_code == 200
+    assert len(res_pagina_1.json()) == 1
+
+    res_pagina_2 = client.get("/pagos/?skip=1&limit=1", headers=headers)
+    assert len(res_pagina_2.json()) == 1
+    assert res_pagina_1.json()[0]["id_pago"] != res_pagina_2.json()[0]["id_pago"]
 
 
 def test_pagos_extra_coverage():

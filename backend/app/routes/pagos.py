@@ -129,8 +129,8 @@ def iniciar_checkout_pago(
         401: {"description": "Token inválido o expirado"}
     }
 )
-def listar_pagos(db: Annotated[Session, Depends(get_db)]):
-    return db.query(models.Pago).order_by(models.Pago.fecha_pago.desc()).all()
+def listar_pagos(db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100):
+    return db.query(models.Pago).order_by(models.Pago.fecha_pago.desc()).offset(skip).limit(limit).all()
 
 
 @router.get(

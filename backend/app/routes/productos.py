@@ -125,11 +125,11 @@ async def crear_producto(
     dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
-def listar_productos(db: Annotated[Session, Depends(get_db)]):
+def listar_productos(db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100):
     try:
         productos = db.query(models.Producto).order_by(
             models.Producto.id_producto.desc()
-        ).all()
+        ).offset(skip).limit(limit).all()
         return [_producto_con_stock(db, p) for p in productos]
     except Exception:
         db.rollback()
