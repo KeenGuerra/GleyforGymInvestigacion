@@ -329,6 +329,60 @@ La arquitectura del sistema deberá permitir futuras adaptaciones para operar ba
 
 ---
 
+# RN-041 Entrenador como entidad propia
+
+Un entrenador posee usuario con rol ENTRENADOR y una ficha propia en la tabla entrenadores (DNI, nombres, apellidos, especialidad).
+
+Relación: 1 usuario ↔ 1 entrenador (igual patrón que usuario↔cliente, RN-001/RN-003).
+
+---
+
+# RN-042 Avisos públicos editables
+
+El contenido de la sección "Avisos" del sitio público deberá gestionarse desde la base de datos (tabla avisos), no como texto fijo en el código del frontend.
+
+Solo el rol ADMIN podrá crear, editar o eliminar avisos. Cualquier visitante podrá consultarlos sin autenticación.
+
+---
+
+# RN-043 Auditoría de operaciones críticas (ampliación de RN-039)
+
+Toda operación que modifique dinero (pagos, compras, ventas) o accesos (login fallido, cambio de estado de usuario) deberá generar un registro de auditoría con: usuario que ejecutó la acción, entidad afectada, identificador de la entidad, y fecha.
+
+El correo del usuario se copia al momento del evento para que el registro sobreviva aunque el usuario cambie de correo posteriormente.
+
+---
+
+# RN-044 Catálogo comercial independiente del catálogo deportivo
+
+Los productos de la tienda del gimnasio (suplementos, merchandising, etc.) son una entidad distinta de los ejercicios y comidas usados por la IA. Un producto no participa en la generación de rutinas ni planes nutricionales.
+
+---
+
+# RN-045 Control de stock por movimientos, no por edición directa
+
+El stock de un producto (tabla inventario) nunca se edita directamente: solo se modifica mediante movimientos de stock (tabla movimientos_stock) generados por compras confirmadas, ventas confirmadas, ajustes manuales o sus reversos por anulación.
+
+---
+
+# RN-046 Confirmación de compras y ventas
+
+Una compra o venta se registra primero en estado PENDIENTE y solo afecta el stock cuando se confirma explícitamente. Anular una compra o venta ya confirmada debe revertir el movimiento de stock que generó.
+
+---
+
+# RN-047 Control opcional de lotes y vencimiento
+
+Un producto puede marcarse para controlar lote (controla_lote) y/o vencimiento (controla_vencimiento). Solo en ese caso el sistema exige registrar lotes (tabla lotes) y genera alertas de vencimiento.
+
+---
+
+# RN-048 Solicitud de compra desde la Tienda pública
+
+Un cliente autenticado puede generar una venta en estado PENDIENTE desde la Tienda pública (`/ventas/solicitar`). Esa venta solo se confirma tras verificar el pago (webhook o confirmación manual del administrador).
+
+---
+
 # Resumen de Reglas Críticas
 
 Las reglas más importantes del sistema son:

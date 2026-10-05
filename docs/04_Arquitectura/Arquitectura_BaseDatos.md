@@ -68,28 +68,43 @@ COMIDAS
 
 # 4. Tablas del Sistema
 
+> **Actualizado 2026-09** tras verificar contra `backend/app/models.py`. La versión anterior de este documento listaba solo 13 tablas; el sistema real ya tiene 26.
+
 Actualmente el sistema posee:
 
 ```text
 1. usuarios
 2. clientes
-3. membresias
-4. cliente_membresias
-5. pagos
-6. asistencias
-7. progreso
-8. ejercicios
-9. rutinas
-10. rutina_ejercicios
-11. comidas
-12. planes_nutricionales
-13. plan_comidas
+3. entrenadores
+4. membresias
+5. cliente_membresias
+6. pagos
+7. asistencias
+8. progreso
+9. ejercicios
+10. rutinas
+11. rutina_ejercicios
+12. comidas
+13. planes_nutricionales
+14. plan_comidas
+15. categorias
+16. productos
+17. proveedores
+18. compras
+19. detalle_compras
+20. inventario
+21. lotes
+22. movimientos_stock
+23. ventas
+24. detalle_ventas
+25. registros_auditoria
+26. avisos
 ```
 
 Total:
 
 ```text
-13 tablas principales
+26 tablas principales
 ```
 
 ---
@@ -417,6 +432,204 @@ Detalle de comidas del plan nutricional.
 
 ---
 
+# 17.1. Tabla Entrenadores
+
+## Propósito
+
+Ficha propia del entrenador (mismo patrón que usuarios↔clientes).
+
+## Campos
+
+| Campo | Tipo |
+|---------|---------|
+| id_entrenador | SERIAL PK |
+| id_usuario | INTEGER FK (unique) |
+| dni | VARCHAR(8) UNIQUE |
+| nombres | VARCHAR |
+| apellidos | VARCHAR |
+| telefono | VARCHAR |
+| especialidad | VARCHAR |
+| estado | VARCHAR |
+
+---
+
+# 17.2. Tablas de Gestión Comercial (Comercio)
+
+> Módulo completo en producción, no documentado en la versión anterior de este archivo.
+
+## Categorias
+
+| Campo | Tipo |
+|---------|---------|
+| id_categoria | SERIAL PK |
+| nombre | VARCHAR(100) UNIQUE |
+| descripcion | TEXT |
+| estado | VARCHAR(20) |
+| fecha_creacion | TIMESTAMP |
+
+## Productos
+
+| Campo | Tipo |
+|---------|---------|
+| id_producto | SERIAL PK |
+| id_categoria | INTEGER FK |
+| nombre | VARCHAR(150) |
+| descripcion | TEXT |
+| imagen_url | TEXT |
+| cloudinary_public_id | VARCHAR(255) |
+| precio_compra | DOUBLE PRECISION |
+| precio_venta | DOUBLE PRECISION |
+| unidad_medida | VARCHAR(30) |
+| stock_minimo | DOUBLE PRECISION |
+| controla_lote | BOOLEAN |
+| controla_vencimiento | BOOLEAN |
+| estado | VARCHAR(20) |
+| fecha_creacion | TIMESTAMP |
+
+## Proveedores
+
+| Campo | Tipo |
+|---------|---------|
+| id_proveedor | SERIAL PK |
+| razon_social | VARCHAR(150) |
+| ruc | VARCHAR(20) |
+| telefono | VARCHAR(20) |
+| correo | VARCHAR(100) |
+| direccion | VARCHAR(200) |
+| contacto | VARCHAR(100) |
+| estado | VARCHAR(20) |
+| fecha_creacion | TIMESTAMP |
+
+## Compras
+
+| Campo | Tipo |
+|---------|---------|
+| id_compra | SERIAL PK |
+| id_proveedor | INTEGER FK |
+| id_usuario | INTEGER FK |
+| fecha_compra | TIMESTAMP |
+| subtotal / igv / total | DOUBLE PRECISION |
+| estado | VARCHAR(20) — PENDIENTE, CONFIRMADA, ANULADA |
+| observaciones | TEXT |
+| created_at / updated_at | TIMESTAMP |
+
+## Detalle_Compras
+
+| Campo | Tipo |
+|---------|---------|
+| id_detalle_compra | SERIAL PK |
+| id_compra | INTEGER FK |
+| id_producto | INTEGER FK |
+| cantidad | DOUBLE PRECISION |
+| precio_unitario | DOUBLE PRECISION |
+| subtotal | DOUBLE PRECISION |
+
+## Inventario
+
+| Campo | Tipo |
+|---------|---------|
+| id_inventario | SERIAL PK |
+| id_producto | INTEGER FK UNIQUE |
+| stock_actual | DOUBLE PRECISION |
+| stock_minimo | DOUBLE PRECISION |
+| ultimo_costo | DOUBLE PRECISION |
+| fecha_actualizacion | TIMESTAMP |
+
+## Lotes
+
+| Campo | Tipo |
+|---------|---------|
+| id_lote | SERIAL PK |
+| id_producto | INTEGER FK |
+| numero_lote | VARCHAR(50) |
+| cantidad | DOUBLE PRECISION |
+| fecha_vencimiento | DATE |
+| fecha_ingreso | TIMESTAMP |
+| estado | VARCHAR(20) — ACTIVO, VENCIDO, AGOTADO |
+
+## Movimientos_Stock
+
+| Campo | Tipo |
+|---------|---------|
+| id_movimiento | SERIAL PK |
+| id_producto | INTEGER FK |
+| id_lote | INTEGER FK (nullable) |
+| tipo_movimiento | VARCHAR(30) — ENTRADA, ENTRADA_COMPRA, SALIDA_VENTA, ENTRADA_ANULACION_VENTA, SALIDA_ANULACION_COMPRA, AJUSTE |
+| referencia_tipo / referencia_id | VARCHAR(30) / INTEGER |
+| cantidad | DOUBLE PRECISION |
+| costo_unitario | DOUBLE PRECISION |
+| descripcion | TEXT |
+| id_usuario | INTEGER FK |
+| fecha_movimiento | TIMESTAMP |
+
+## Ventas
+
+| Campo | Tipo |
+|---------|---------|
+| id_venta | SERIAL PK |
+| id_cliente | INTEGER FK (nullable) |
+| id_usuario | INTEGER FK |
+| fecha_venta | TIMESTAMP |
+| subtotal / descuento / total | DOUBLE PRECISION |
+| metodo_pago | VARCHAR(50) |
+| estado | VARCHAR(20) — PENDIENTE, CONFIRMADA, ANULADA, FALLIDA |
+| id_transaccion_externa | VARCHAR(100) |
+| created_at / updated_at | TIMESTAMP |
+
+## Detalle_Ventas
+
+| Campo | Tipo |
+|---------|---------|
+| id_detalle_venta | SERIAL PK |
+| id_venta | INTEGER FK |
+| id_producto | INTEGER FK |
+| id_lote | INTEGER FK (nullable) |
+| cantidad | DOUBLE PRECISION |
+| precio_unitario / descuento / subtotal | DOUBLE PRECISION |
+
+---
+
+# 17.3. Tabla Registros_Auditoria
+
+## Propósito
+
+Trazabilidad de operaciones críticas (RN-039/RN-043).
+
+## Campos
+
+| Campo | Tipo |
+|---------|---------|
+| id_registro | SERIAL PK |
+| id_usuario | INTEGER FK (nullable) |
+| correo_usuario | VARCHAR — copia al momento del evento |
+| accion | VARCHAR(30) — CREAR, EDITAR, ANULAR, CONFIRMAR, LOGIN_FALLIDO... |
+| entidad | VARCHAR(50) |
+| id_entidad | INTEGER |
+| detalle | VARCHAR |
+| fecha | TIMESTAMP |
+
+---
+
+# 17.4. Tabla Avisos
+
+## Propósito
+
+Comunicados públicos editables desde el panel (RN-042). Antes era contenido estático en el frontend.
+
+## Campos
+
+| Campo | Tipo |
+|---------|---------|
+| id_aviso | SERIAL PK |
+| titulo | VARCHAR(150) |
+| contenido | TEXT |
+| tipo | VARCHAR(30) — HORARIO, COACHES, BAILE, COMUNICADO, EVENTO |
+| fecha_evento | DATE (solo si tipo=EVENTO) |
+| estado | VARCHAR |
+| fecha_creacion | TIMESTAMP |
+
+---
+
 # 18. Relaciones Críticas
 
 ## Relación Usuario → Cliente
@@ -505,26 +718,40 @@ para:
 
 ---
 
+## Relación Comercial (Compras/Ventas → Inventario)
+
+```text
+compras ──confirmar──> movimientos_stock ──> inventario (aumenta stock)
+ventas  ──confirmar──> movimientos_stock ──> inventario (disminuye stock)
+```
+
+El stock nunca se edita directamente (RN-045): solo cambia por movimientos generados por compras/ventas confirmadas o ajustes manuales.
+
+---
+
 # 20. Estado Actual
 
 ## Implementado
 
-✅ PostgreSQL  
-✅ SQLAlchemy  
-✅ 13 tablas  
-✅ Relaciones definidas  
-✅ Precio congelado  
-✅ Estados de membresía  
-✅ Históricos  
-✅ IA Rutinas  
+✅ PostgreSQL
+✅ SQLAlchemy
+✅ 26 tablas (verificado 2026-09 contra `backend/app/models.py`)
+✅ Relaciones definidas
+✅ Precio congelado
+✅ Estados de membresía
+✅ Históricos
+✅ IA Rutinas
 ✅ IA Nutrición
+✅ Auditoría (tabla `registros_auditoria`, ya implementada — corrige la versión anterior de este documento que la listaba como "futuro")
+✅ Módulo Comercio completo (categorías, productos, proveedores, compras, inventario con lotes/movimientos, ventas)
+✅ Avisos editables desde el panel
+✅ Ficha propia de Entrenadores (tabla `entrenadores`)
 
 ## Futuro
 
 - Multi gimnasio (SaaS)
-- Auditoría
-- Logs
 - Particionado
 - Replicación
+- Página propia en `web-admin` para Entrenadores y para Auditoría (hoy solo existen como API, ver `Roles_Permisos.md`)
 
 ---

@@ -28,6 +28,8 @@ La aplicación web permite la gestión administrativa, deportiva y nutricional d
 
 ## 3. Estructura General
 
+> **Actualizado 2026-09**: la versión anterior de este documento no incluía las páginas de Comercio, Avisos, ni los archivos de tests/hooks/constants reales.
+
 ```text
 web-admin
 │
@@ -41,13 +43,23 @@ web-admin
 │   │   ├── gym-hero.jpeg
 │   │   └── icono.png
 │   │
+│   ├── hooks
+│   │   └── useClienteActual.js   # resuelve id_cliente del CLIENTE logueado, usado en 6 páginas "Mi*"
+│   │
+│   ├── constants
+│   │
+│   ├── utils
+│   │   └── exportarCsv.js
+│   │
 │   ├── components
 │   │   ├── Layout.jsx
+│   │   ├── Navbar.jsx            # nav público (Inicio/Avisos/Tienda)
 │   │   └── ProtectedRoute.jsx
 │   │
 │   ├── pages
 │   │   ├── Inicio.jsx
 │   │   ├── Login.jsx
+│   │   ├── ResetPassword.jsx
 │   │   ├── Dashboard.jsx
 │   │   ├── DashboardAdmin.jsx
 │   │   ├── DashboardEntrenador.jsx
@@ -65,12 +77,22 @@ web-admin
 │   │   ├── Rutinas.jsx
 │   │   ├── DetalleRutina.jsx
 │   │   ├── Nutricion.jsx
+│   │   ├── Avisos.jsx            # vista pública
+│   │   ├── GestionAvisos.jsx     # gestión ADMIN
+│   │   ├── Tienda.jsx            # vista pública del catálogo de productos
+│   │   ├── Categorias.jsx
+│   │   ├── Productos.jsx
+│   │   ├── Proveedores.jsx
+│   │   ├── Compras.jsx
+│   │   ├── Inventario.jsx
+│   │   ├── Ventas.jsx
 │   │   ├── MiPerfil.jsx
 │   │   ├── MiRutina.jsx
 │   │   ├── MiNutricion.jsx
 │   │   ├── MiProgreso.jsx
 │   │   ├── MiMembresia.jsx
-│   │   └── MisPagos.jsx
+│   │   ├── MisPagos.jsx
+│   │   └── NotFound.jsx
 │   │
 │   ├── App.jsx
 │   ├── main.jsx
@@ -78,6 +100,8 @@ web-admin
 │
 └── package.json
 ```
+
+> No existen páginas `Entrenadores.jsx` ni `Auditoria.jsx` (ver sección 13, "Futuro").
 
 ---
 
@@ -227,6 +251,37 @@ Accesibles únicamente mediante JWT válido.
 
 ---
 
+### Rutas Públicas (ampliación 2026-09)
+
+```text
+/reset-password
+/tienda
+/avisos
+```
+
+---
+
+### Rutas Comercio (solo ADMIN)
+
+```text
+/categorias
+/productos
+/proveedores
+/compras
+/inventario
+/ventas
+```
+
+---
+
+### Rutas Avisos (solo ADMIN)
+
+```text
+/gestion-avisos
+```
+
+---
+
 ## 5. Componentes Globales
 
 ### Layout.jsx
@@ -258,9 +313,11 @@ Responsable de:
 - URL base
 - Interceptor JWT
 
+> Corregido 2026-09: la URL base **no está hardcodeada**, se lee de la variable de entorno `VITE_API_URL` (ver `render.yaml` y `.env.example`).
+
 ```javascript
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: import.meta.env.VITE_API_URL,
 });
 ```
 
@@ -268,7 +325,7 @@ const api = axios.create({
 
 ## 6. Gestión de Sesión
 
-Después del login se almacena:
+Después del login se almacena en `localStorage` (no `sessionStorage`):
 
 ```javascript
 localStorage.setItem("token", token);
@@ -276,6 +333,8 @@ localStorage.setItem("rol", rol);
 localStorage.setItem("id_usuario", id_usuario);
 localStorage.setItem("correo", correo);
 ```
+
+El interceptor de respuesta de `api.js` reacciona solo ante **401** (token ausente/inválido/expirado o usuario desactivado): limpia `localStorage` y redirige a `/login`. Un **403** (rol sin permiso, con sesión válida) no cierra la sesión.
 
 ---
 
@@ -297,6 +356,8 @@ Acceso a:
 - Comidas
 - Rutinas
 - Nutricion
+- GestionAvisos
+- Categorias, Productos, Proveedores, Compras, Inventario, Ventas
 
 ---
 
@@ -431,23 +492,28 @@ api.delete("/membresias/1");
 
 ### Implementado
 
-✅ Login por roles  
-✅ Landing pública  
-✅ Dashboard Admin  
-✅ Dashboard Entrenador  
-✅ Dashboard Cliente  
-✅ ProtectedRoute  
-✅ Layout global  
-✅ CRUDs completos  
-✅ Integración IA  
+✅ Login por roles
+✅ Landing pública
+✅ Dashboard Admin / Entrenador / Cliente
+✅ ProtectedRoute + Navbar público
+✅ Layout global
+✅ CRUDs completos
+✅ Integración IA
 ✅ Cloudinary
+✅ Módulo Comercio (Categorías, Productos, Proveedores, Compras, Inventario, Ventas, Tienda pública)
+✅ Avisos (público + gestión ADMIN)
+✅ Autogestión de contraseña (ResetPassword.jsx)
+✅ Hook compartido `useClienteActual`
+✅ 31 archivos `*.test.jsx` (Vitest + @testing-library/react)
 
 ### Futuro
 
-- Gráficos avanzados
-- Exportación PDF
-- Notificaciones
+- Exportación PDF de rutinas/planes nutricionales (hoy solo comprobantes de pago)
+- Notificaciones de vencimiento de membresía
+- Página propia para gestión de Entrenadores (hoy vía `Usuarios.jsx`)
+- Página propia para consultar Auditoría (hoy solo API)
+- Tests para `Navbar.jsx`, `NotFound.jsx` y todo el módulo Comercio (0% de cobertura frontend, ver `Pendientes.md` P-04/P-08)
 - Tema claro/oscuro dinámico
-- Dashboard analítico
+- CI/CD (no existe `.github/workflows`)
 
 ---

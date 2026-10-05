@@ -1592,3 +1592,441 @@ Prioridad: Media.
 El sistema deberá permitir generar reportes para apoyar la toma de decisiones.
 
 Prioridad: Media.
+
+---
+
+# MÓDULO 14: ENTRENADORES
+
+> Agregado 2026-09 tras auditoría contra código real (`backend/app/routes/entrenadores.py`, `models.Entrenador`). No estaba documentado como módulo formal pese a estar en producción.
+
+## RF-176 Registrar entrenador
+
+El sistema deberá permitir al administrador registrar un entrenador, creando su usuario con rol ENTRENADOR y su ficha (DNI, nombres, apellidos, teléfono, especialidad).
+
+Prioridad: Alta.
+
+---
+
+## RF-177 Listar entrenadores
+
+El sistema deberá permitir consultar el listado de entrenadores registrados.
+
+Prioridad: Media.
+
+---
+
+## RF-178 Consultar detalle de entrenador
+
+El sistema deberá permitir consultar la ficha completa de un entrenador por su identificador.
+
+Prioridad: Media.
+
+---
+
+## RF-179 Editar entrenador
+
+El sistema deberá permitir modificar los datos de contacto y especialidad de un entrenador existente.
+
+Prioridad: Media.
+
+---
+
+## RF-180 Desactivar entrenador
+
+El sistema deberá permitir desactivar a un entrenador sin eliminar su historial de rutinas/nutrición asignadas.
+
+Prioridad: Media.
+
+---
+
+# MÓDULO 15: AVISOS
+
+> Agregado 2026-09. Antes `Avisos.jsx` era contenido 100% estático hardcodeado en el frontend; ahora se gestiona desde `models.Aviso` y `routes/avisos.py`.
+
+## RF-181 Publicar aviso
+
+El sistema deberá permitir al administrador crear un aviso público (comunicado, horario, evento) con título, contenido y tipo.
+
+Prioridad: Media.
+
+---
+
+## RF-182 Listar avisos públicos
+
+El sistema deberá permitir a cualquier visitante (sin autenticación) consultar los avisos activos, incluyendo la fecha de evento cuando el tipo lo requiera.
+
+Prioridad: Media.
+
+---
+
+## RF-183 Editar aviso
+
+El sistema deberá permitir al administrador modificar un aviso ya publicado.
+
+Prioridad: Baja.
+
+---
+
+## RF-184 Eliminar aviso
+
+El sistema deberá permitir al administrador eliminar un aviso publicado.
+
+Prioridad: Baja.
+
+---
+
+# MÓDULO 16: AUDITORÍA
+
+> Agregado 2026-09. Corresponde a RN-039 y a `models.RegistroAuditoria` / `routes/auditoria.py`, ya implementado pero nunca formalizado como RF.
+
+## RF-185 Consultar registros de auditoría
+
+El sistema deberá permitir al administrador consultar el historial de operaciones críticas (creación, edición, anulación, confirmación, inicios de sesión fallidos) con usuario, entidad afectada, fecha y detalle.
+
+Prioridad: Alta.
+
+---
+
+# MÓDULO 17: COMERCIO — CATEGORÍAS
+
+> Agregado 2026-09. Módulo de Comercio completo verificado en `backend/app/routes/{categorias,productos,proveedores,compras,inventario,ventas}.py` y `models.py` (Categoria, Producto, Proveedor, Compra, DetalleCompra, Inventario, Lote, MovimientoStock, Venta, DetalleVenta) — en producción sin RF formales (ver `Pendientes.md` P-17).
+
+## RF-186 Crear categoría de producto
+
+El sistema deberá permitir al administrador crear categorías para clasificar los productos de la tienda del gimnasio.
+
+Prioridad: Media.
+
+---
+
+## RF-187 Listar categorías
+
+El sistema deberá permitir consultar el listado de categorías registradas.
+
+Prioridad: Media.
+
+---
+
+## RF-188 Consultar categoría
+
+El sistema deberá permitir consultar el detalle de una categoría por su identificador.
+
+Prioridad: Baja.
+
+---
+
+## RF-189 Editar categoría
+
+El sistema deberá permitir modificar el nombre o descripción de una categoría existente.
+
+Prioridad: Baja.
+
+---
+
+## RF-190 Eliminar/desactivar categoría
+
+El sistema deberá permitir desactivar una categoría sin eliminar los productos ya asociados a ella.
+
+Prioridad: Baja.
+
+---
+
+# MÓDULO 18: COMERCIO — PRODUCTOS
+
+## RF-191 Registrar producto
+
+El sistema deberá permitir registrar un producto de tienda con nombre, categoría, precio de compra, precio de venta, unidad de medida, stock mínimo, e indicadores de control por lote y por vencimiento.
+
+Prioridad: Alta.
+
+---
+
+## RF-192 Listar productos (administración)
+
+El sistema deberá permitir al administrador consultar el listado completo de productos, incluyendo inactivos.
+
+Prioridad: Media.
+
+---
+
+## RF-193 Listar productos disponibles (tienda pública)
+
+El sistema deberá permitir a cualquier visitante consultar únicamente los productos activos y con stock disponible, para la vista pública de Tienda.
+
+Prioridad: Alta.
+
+---
+
+## RF-194 Consultar producto
+
+El sistema deberá permitir consultar el detalle de un producto por su identificador.
+
+Prioridad: Baja.
+
+---
+
+## RF-195 Editar producto
+
+El sistema deberá permitir modificar los datos comerciales de un producto existente.
+
+Prioridad: Media.
+
+---
+
+## RF-196 Eliminar/desactivar producto
+
+El sistema deberá permitir desactivar un producto sin eliminar su historial de compras/ventas asociado.
+
+Prioridad: Media.
+
+---
+
+# MÓDULO 19: COMERCIO — PROVEEDORES
+
+## RF-197 Registrar proveedor
+
+El sistema deberá permitir registrar un proveedor con razón social, RUC, contacto, teléfono, correo y dirección.
+
+Prioridad: Media.
+
+---
+
+## RF-198 Listar proveedores
+
+El sistema deberá permitir consultar el listado de proveedores registrados.
+
+Prioridad: Media.
+
+---
+
+## RF-199 Consultar proveedor
+
+El sistema deberá permitir consultar el detalle de un proveedor.
+
+Prioridad: Baja.
+
+---
+
+## RF-200 Editar proveedor
+
+El sistema deberá permitir modificar los datos de contacto de un proveedor existente.
+
+Prioridad: Baja.
+
+---
+
+## RF-201 Eliminar/desactivar proveedor
+
+El sistema deberá permitir desactivar un proveedor sin eliminar el historial de compras ya registradas con él.
+
+Prioridad: Baja.
+
+---
+
+# MÓDULO 20: COMERCIO — COMPRAS
+
+## RF-202 Registrar compra a proveedor
+
+El sistema deberá permitir registrar una compra con su proveedor, detalle de productos (cantidad, precio unitario), subtotal, IGV y total, quedando en estado PENDIENTE.
+
+Prioridad: Alta.
+
+---
+
+## RF-203 Listar compras
+
+El sistema deberá permitir consultar el listado de compras registradas.
+
+Prioridad: Media.
+
+---
+
+## RF-204 Consultar detalle de compra
+
+El sistema deberá permitir consultar una compra con el detalle de productos comprados.
+
+Prioridad: Media.
+
+---
+
+## RF-205 Confirmar compra
+
+El sistema deberá permitir confirmar una compra PENDIENTE, lo que debe generar automáticamente el ingreso de stock correspondiente en Inventario (movimiento ENTRADA_COMPRA).
+
+Prioridad: Alta.
+
+---
+
+## RF-206 Anular compra
+
+El sistema deberá permitir anular una compra, revirtiendo el stock que había ingresado si esta ya estaba confirmada.
+
+Prioridad: Media.
+
+---
+
+# MÓDULO 21: COMERCIO — INVENTARIO
+
+## RF-207 Consultar inventario general
+
+El sistema deberá permitir consultar el stock actual y stock mínimo de todos los productos.
+
+Prioridad: Alta.
+
+---
+
+## RF-208 Consultar inventario por producto
+
+El sistema deberá permitir consultar el detalle de inventario de un producto específico.
+
+Prioridad: Media.
+
+---
+
+## RF-209 Registrar movimientos de stock
+
+El sistema deberá registrar automáticamente cada movimiento de stock (entrada por compra, salida por venta, ajuste manual, reversión por anulación) con su tipo, cantidad, costo unitario y referencia de origen.
+
+Prioridad: Alta.
+
+---
+
+## RF-210 Consultar historial de movimientos de stock
+
+El sistema deberá permitir consultar el historial de movimientos de un producto.
+
+Prioridad: Media.
+
+---
+
+## RF-211 Registrar ajuste manual de stock
+
+El sistema deberá permitir al administrador registrar un ajuste manual de stock (mermas, conteos físicos) con una descripción obligatoria.
+
+Prioridad: Media.
+
+---
+
+## RF-212 Alertar stock bajo
+
+El sistema deberá permitir consultar los productos cuyo stock actual esté por debajo de su stock mínimo configurado.
+
+Prioridad: Media.
+
+---
+
+## RF-213 Alertar vencimiento de lotes
+
+El sistema deberá permitir consultar los lotes próximos a vencer o vencidos, para productos que controlan vencimiento.
+
+Prioridad: Media.
+
+---
+
+## RF-214 Registrar y listar lotes
+
+El sistema deberá permitir registrar lotes de un producto (número de lote, cantidad, fecha de vencimiento) y consultarlos, para productos que controlan lote.
+
+Prioridad: Media.
+
+---
+
+# MÓDULO 22: COMERCIO — VENTAS
+
+## RF-215 Registrar venta (mostrador)
+
+El sistema deberá permitir al administrador registrar una venta directa con su detalle de productos, descuentos, subtotal y total, descontando stock automáticamente al confirmarse.
+
+Prioridad: Alta.
+
+---
+
+## RF-216 Listar ventas
+
+El sistema deberá permitir consultar el listado de ventas registradas.
+
+Prioridad: Media.
+
+---
+
+## RF-217 Consultar resumen de ventas
+
+El sistema deberá permitir consultar un resumen agregado de ventas (totales por periodo).
+
+Prioridad: Media.
+
+---
+
+## RF-218 Generar reporte de ventas
+
+El sistema deberá permitir generar un reporte de ventas por rango de fechas.
+
+Prioridad: Media.
+
+---
+
+## RF-219 Consultar detalle de venta
+
+El sistema deberá permitir consultar una venta con el detalle de productos vendidos.
+
+Prioridad: Media.
+
+---
+
+## RF-220 Anular venta
+
+El sistema deberá permitir anular una venta, revirtiendo el stock descontado.
+
+Prioridad: Media.
+
+---
+
+## RF-221 Solicitar compra desde tienda pública
+
+El sistema deberá permitir a un cliente autenticado solicitar la compra de uno o varios productos desde la Tienda pública, generando una venta en estado PENDIENTE.
+
+Prioridad: Alta.
+
+---
+
+## RF-222 Consultar mis pedidos (cliente)
+
+El sistema deberá permitir a un cliente consultar el historial de sus propias solicitudes de compra en la Tienda.
+
+Prioridad: Media.
+
+---
+
+## RF-223 Iniciar checkout de pago de una venta
+
+El sistema deberá permitir iniciar el proceso de pago de una venta pendiente a través de la pasarela de pagos configurada (`app/pagos_gateway`).
+
+Prioridad: Alta.
+
+---
+
+## RF-224 Confirmar venta tras pago
+
+El sistema deberá permitir confirmar una venta una vez verificado el pago, actualizando su estado y descontando stock.
+
+Prioridad: Alta.
+
+---
+
+# MÓDULO 23: PASARELA DE PAGOS Y WEBHOOKS
+
+## RF-225 Recibir notificación de pago (webhook)
+
+El sistema deberá exponer un endpoint que reciba notificaciones asíncronas de la pasarela de pagos para actualizar el estado de pagos y ventas asociadas.
+
+Prioridad: Alta.
+
+Nota: la validación de firma/origen del webhook sigue pendiente para un proveedor real (ver `Pendientes.md` P-02); hoy solo la dispara el flujo de simulación (`MockGateway`).
+
+---
+
+## RF-226 Consultar KPIs consolidados
+
+El sistema deberá exponer un endpoint único (`/reportes/kpis`) que consolide los indicadores del dashboard (clientes activos, recaudación, rutinas generadas por IA, progreso promedio) en una sola respuesta.
+
+Prioridad: Media.

@@ -106,6 +106,17 @@ Su acceso está limitado exclusivamente a la consulta de su propia información.
 | Rutinas               | Sí    | Sí         | Solo lectura propia |
 | Nutrición             | Sí    | Sí         | Solo lectura propia |
 | Configuración Sistema | Sí    | No         | No                  |
+| Entrenadores (ficha)  | Sí (solo API, sin página propia) | No | No |
+| Avisos (gestión)      | Sí    | No         | No (solo lectura pública, sin login) |
+| Auditoría             | Sí (solo API, sin página propia) | No | No |
+| Categorías            | Sí    | No         | No                  |
+| Productos             | Sí    | No         | Solo lectura pública (`/tienda`, solo activos) |
+| Proveedores           | Sí    | No         | No                  |
+| Compras               | Sí    | No         | No                  |
+| Inventario            | Sí    | No         | No                  |
+| Ventas                | Sí    | No         | Solo sus propios pedidos (`/ventas/solicitar`, `/ventas/mis-pedidos`) |
+
+> **Nota (verificado en código, 2026-09):** `backend/app/routes/entrenadores.py` y `backend/app/routes/auditoria.py` están completos y protegidos con `requerir_admin`, pero `web-admin/src/App.jsx` no tiene rutas `/entrenadores` ni `/auditoria` — no existe página propia en el frontend para gestionar entrenadores ni para ver el historial de auditoría. Es una brecha backend↔frontend real, no un permiso pendiente de definir.
 
 ---
 
@@ -215,6 +226,39 @@ Su acceso está limitado exclusivamente a la consulta de su propia información.
 
 ---
 
+## Gestión Comercial (Categorías, Productos, Proveedores, Compras, Inventario, Ventas)
+
+| Acción              | ADMIN | ENTRENADOR | CLIENTE |
+| -------------------- | ----- | ---------- | ------- |
+| Crear/Editar/Eliminar categoría, producto o proveedor | Sí | No | No |
+| Ver productos disponibles (tienda pública) | Sí | Sí | Sí (sin login) |
+| Registrar/confirmar/anular compra | Sí | No | No |
+| Consultar/ajustar inventario, lotes, alertas | Sí | No | No |
+| Registrar venta directa (mostrador) | Sí | No | No |
+| Solicitar compra desde la Tienda | No | No | Sí (rol CLIENTE autenticado) |
+| Consultar "mis pedidos" | No | No | Solo propios |
+| Anular venta | Sí | No | No |
+
+---
+
+## Gestión de Avisos
+
+| Acción    | ADMIN | ENTRENADOR | CLIENTE / Público |
+| --------- | ----- | ---------- | ------------------ |
+| Crear/Editar/Eliminar | Sí | No | No |
+| Consultar (activos)   | Sí | Sí | Sí, sin autenticación |
+
+---
+
+## Gestión de Entrenadores y Auditoría
+
+| Acción    | ADMIN | ENTRENADOR | CLIENTE |
+| --------- | ----- | ---------- | ------- |
+| CRUD ficha de entrenador | Sí (API; sin página en `web-admin`) | No | No |
+| Consultar registros de auditoría | Sí (API; sin página en `web-admin`) | No | No |
+
+---
+
 # Restricciones de Seguridad
 
 ## RS-001
@@ -279,6 +323,15 @@ Acceso permitido:
 * Rutinas
 * DetalleRutina
 * Nutricion
+* GestionAvisos
+* Categorias
+* Productos
+* Proveedores
+* Compras
+* Inventario
+* Ventas
+
+> No existen páginas `Entrenadores.jsx` ni `Auditoria.jsx` — la gestión de entrenadores se hace vía `Usuarios.jsx` (creación de usuario con rol ENTRENADOR) y la auditoría solo es consultable por API, sin vista en el panel (verificado 2026-09).
 
 ---
 
