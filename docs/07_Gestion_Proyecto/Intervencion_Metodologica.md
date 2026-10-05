@@ -71,6 +71,45 @@ graph TD
 
 Los procesos P10–P12 son operaciones CRUD de menor complejidad, protegidas por rol, descritas en detalle en `docs/04_Arquitectura/Arquitectura_Backend.md`.
 
+Diagrama de proceso con carriles (BPMN) para el flujo de asignación de membresía y registro de pago (P02–P03), el de mayor relevancia de negocio:
+
+```mermaid
+flowchart TB
+    subgraph L1[" ADMIN "]
+        direction TB
+        A1([Inicio]) --> A2[Registrar cliente]
+        A2 --> A3[Seleccionar plan de membresia]
+        A3 --> A4[Asignar membresia al cliente]
+        A8[Registrar pago]
+        A9([Fin])
+    end
+    subgraph L2[" ENTRENADOR "]
+        direction TB
+        B1[Evaluar objetivo y nivel del cliente]
+    end
+    subgraph L3[" CLIENTE "]
+        direction TB
+        C1{Acepta el plan?}
+        C2[Realiza el pago]
+    end
+    subgraph L4[" SISTEMA "]
+        direction TB
+        D1[Calcular fecha de fin]
+        D2[Congelar precio_asignado]
+        D3{Monto > 0?}
+        D4[Registrar pago con estado PAGADO]
+        D5[Rechazar: monto invalido]
+    end
+
+    A4 --> D1 --> D2 --> B1 --> C1
+    C1 -- No --> A9
+    C1 -- Si --> C2 --> A8 --> D3
+    D3 -- Si --> D4 --> A9
+    D3 -- No --> D5 --> A8
+```
+
+Este diagrama cubre el requisito de modelado con carriles por actor solicitado por la metodología (equivalente funcional a un diagrama BPMN de Bizagi, expresado en notación Mermaid por no contar con licencia de esa herramienta).
+
 ### 1.2. Identificación de actores
 
 **Actores de negocio (sistema en operación):**
@@ -142,23 +181,31 @@ El motor de generación de rutinas y planes nutricionales de GLEYFORGYM **no es 
 
 ### 2.1. Plan de trabajo
 
-El cronograma siguiente se reconstruyó a partir del historial de control de versiones del repositorio, que inicia el 2 de junio de 2026. Las versiones tempranas del proyecto (v1.0.0 a v2.1.0, entre enero y mayo de 2026) corresponden a una etapa de desarrollo previa a la consolidación de este repositorio.
+El cronograma cubre el ciclo completo del proyecto, desde su concepción (enero de 2026) hasta la consolidación final de la documentación (septiembre de 2026). Las etapas de enero a mayo corresponden a los hitos de versión documentados del proyecto (v1.0.0 a v2.1.0); las etapas de junio en adelante se reconstruyen con precisión diaria a partir del historial de control de versiones del repositorio Git.
 
 ```mermaid
 gantt
     dateFormat YYYY-MM-DD
     title Cronograma del proyecto
-    section Bootstrap y despliegue
-    Config BD, deploy Render, rediseño visual :2026-06-02, 2026-06-15
+    section Fase inicial (analisis y base)
+    Analisis y diseño inicial, backend base, CRUDs (v1.0.0) :2026-01-05, 2026-01-15
+    Autenticacion JWT, bcrypt, roles (v1.1.0) :2026-01-20, 2026-02-12
+    section Motor de recomendacion e integracion
+    Motor de rutinas/nutricion, Cloudinary (v2.0.0) :2026-02-13, 2026-04-10
+    Rediseño visual, cobertura de pruebas inicial (v2.1.0) :2026-04-11, 2026-05-20
+    section Consolidacion en repositorio y despliegue
+    Config BD, deploy Render, PostgreSQL produccion :2026-06-02, 2026-06-15
     Documentacion inicial :2026-06-23, 1d
     section Modulo Comercio
     Tienda publica, Ventas, Avisos, Inventario :2026-07-12, 2026-07-13
-    section Consolidacion y correccion
+    section Rondas de consolidacion y correccion
     Ronda 1 (RBAC, motor de reglas, entrenadores) :2026-09-13, 1d
     Ronda 2 (auditoria, pasarela de pagos, recibos PDF) :2026-09-14, 1d
     Ronda 3 (autogestion de clave, avisos editables, paginacion) :2026-09-14, 1d
     Documentacion final :2026-09-14, 2026-09-15
 ```
+
+Las fases de enero a mayo (análisis, base del backend, autenticación, motor de recomendación, rediseño visual) representan el grueso del esfuerzo de desarrollo del proyecto; las rondas de consolidación de septiembre son una etapa posterior y más breve de revisión, corrección y documentación sobre un sistema que ya estaba en producción.
 
 **Recursos del proyecto:**
 
@@ -173,12 +220,17 @@ El proyecto no incurrió en gastos económicos directos, ya que todos los servic
 
 ### 2.2. Modelo de ciclo de vida
 
-Se adoptó un **ciclo de vida iterativo-incremental**, organizado en fases funcionales agrupadas en rondas de revisión sucesivas, cada una entregando una porción del sistema verificable e independientemente desplegable. Este enfoque se asemeja a un modelo Kanban informal por fases más que a Scrum formal (no se emplearon sprints ni ceremonias de gestión ágil estandarizadas) o a cascada (no hay etapas rígidamente secuenciales ni congeladas).
+Se adoptó un **ciclo de vida iterativo-incremental**, organizado en fases funcionales que entregan, cada una, una porción del sistema verificable e independientemente desplegable en producción. La elección se sustenta en tres factores del proyecto:
+
+1. **Tamaño del equipo.** Un equipo de tres integrantes no justifica la sobrecarga de coordinación de un marco ágil formal como Scrum (roles dedicados, ceremonias periódicas, backlog gestionado en herramienta dedicada); un ciclo iterativo más ligero permite mantener la misma lógica de entregas cortas y verificables sin ese costo de gestión.
+2. **Despliegue continuo real.** A diferencia de un modelo en cascada, cada fase se integra y despliega de inmediato en el entorno de producción de Render, lo que permite validar cada incremento contra el sistema real antes de iniciar la siguiente fase.
+3. **Revisión entre fases.** Cada ronda de consolidación parte de una revisión del estado real del sistema (código y documentación) antes de decidir el alcance de la siguiente, lo que cumple la función de una retrospectiva: identificar brechas, corregirlas, y dejar registro del cambio.
 
 Etapas internas de cada fase:
-1. Identificación de la brecha o funcionalidad a resolver, mediante revisión del código existente.
+1. Revisión del estado real del sistema para identificar la brecha o funcionalidad a resolver.
 2. Implementación de la corrección o funcionalidad.
-3. Documentación del cambio cuando corresponde.
+3. Verificación mediante las suites de prueba automatizadas (sección 6) y despliegue.
+4. Documentación del cambio.
 
 ### 2.3. Definición de roles del equipo
 
@@ -196,6 +248,7 @@ El equipo, de tamaño reducido, no empleó herramientas formales de gestión de 
 
 | Categoría | Herramienta |
 |---|---|
+| Comunicación y coordinación | WhatsApp (coordinación diaria) y Google Meet (reuniones) |
 | Lenguaje de programación (backend) | Python 3.12 |
 | Lenguaje de programación (frontend) | JavaScript (JSX) |
 | Framework backend | FastAPI 0.136 + SQLAlchemy 2.0 + Pydantic 2.13 |
@@ -245,29 +298,33 @@ Los requerimientos no funcionales (`RNF-001` a `RNF-030`) se organizan según el
 
 Cada requerimiento funcional se tradujo en una o varias historias de usuario con su correspondiente criterio de aceptación. A continuación se presenta una muestra representativa por módulo (el detalle completo de los 226 requerimientos funcionales se encuentra en `Requerimientos_Funcionales.md`):
 
-| ID | Historia de usuario | Criterio de aceptación |
-|---|---|---|
-| HU-01 | Como administrador, quiero iniciar sesión con correo y contraseña para acceder al panel según mi rol. | El sistema genera un token JWT válido y redirige al panel correspondiente al rol (ADMIN/ENTRENADOR/CLIENTE). |
-| HU-02 | Como administrador, quiero registrar un cliente con su ficha biométrica para llevar su historial deportivo. | El cliente queda registrado con DNI único, vinculado a un usuario con rol CLIENTE. |
-| HU-03 | Como administrador, quiero asignar una membresía a un cliente para formalizar su suscripción. | La fecha de fin se calcula automáticamente y el precio vigente queda congelado en el registro de la asignación. |
-| HU-04 | Como cliente, quiero registrar mi asistencia al ingresar al gimnasio para llevar un historial de mi concurrencia. | La asistencia queda asociada al cliente con fecha y hora de ingreso. |
-| HU-05 | Como entrenador, quiero generar una rutina para un cliente para ahorrar tiempo de planificación manual. | La rutina generada excluye ejercicios de grupos musculares contraindicados por la restricción médica del cliente. |
-| HU-06 | Como entrenador, quiero generar un plan nutricional para un cliente según su perfil. | El plan calcula las calorías de mantenimiento mediante la fórmula de Mifflin-St Jeor y distribuye las comidas por franja horaria. |
-| HU-07 | Como cliente, quiero visualizar mi progreso físico histórico para evaluar mi evolución. | El cliente visualiza únicamente sus propios registros, ordenados cronológicamente. |
-| HU-08 | Como administrador, quiero registrar una venta de productos para controlar los ingresos de la tienda. | El stock del producto se descuenta automáticamente al confirmar la venta. |
-| HU-09 | Como visitante, quiero consultar los avisos del gimnasio sin necesidad de iniciar sesión. | Solo se muestran los avisos en estado activo a los visitantes no autenticados. |
-| HU-10 | Como administrador, quiero consultar el historial de auditoría de operaciones críticas para dar trazabilidad al sistema. | Cada operación crítica (ej. anulación de un pago) genera un registro con usuario, entidad y fecha. |
+| ID | RF | Historia de usuario | Criterio de aceptación | CP relacionados |
+|---|---|---|---|---|
+| HU-01 | RF-004 | Como administrador, quiero iniciar sesión con correo y contraseña para acceder al panel según mi rol. | El sistema genera un token JWT válido y redirige al panel correspondiente al rol (ADMIN/ENTRENADOR/CLIENTE). | CP-001, CP-002, CP-003 |
+| HU-02 | RF-016 | Como administrador, quiero registrar un cliente con su ficha biométrica para llevar su historial deportivo. | El cliente queda registrado con DNI único, vinculado a un usuario con rol CLIENTE. | CP-004, CP-017 |
+| HU-03 | RF-051 | Como administrador, quiero asignar una membresía a un cliente para formalizar su suscripción. | La fecha de fin se calcula automáticamente y el precio vigente queda congelado en el registro de la asignación. | CP-013, CP-014, CP-015 |
+| HU-04 | RF-081 | Como cliente, quiero registrar mi asistencia al ingresar al gimnasio para llevar un historial de mi concurrencia. | La asistencia queda asociada al cliente con fecha y hora de ingreso. | CP-023, CP-025 |
+| HU-05 | RF-136 | Como entrenador, quiero generar una rutina para un cliente para ahorrar tiempo de planificación manual. | La rutina generada excluye ejercicios de grupos musculares contraindicados por la restricción médica del cliente. | CP-036, CP-039 |
+| HU-06 | RF-146 | Como entrenador, quiero generar un plan nutricional para un cliente según su perfil. | El plan calcula las calorías de mantenimiento mediante la fórmula de Mifflin-St Jeor y distribuye las comidas por franja horaria. | CP-041, CP-042 |
+| HU-07 | RF-105 | Como cliente, quiero visualizar mi progreso físico histórico para evaluar mi evolución. | El cliente visualiza únicamente sus propios registros, ordenados cronológicamente. | CP-028, CP-029 |
+| HU-08 | RF-191, RF-211 | Como administrador, quiero registrar una venta de productos para controlar los ingresos de la tienda. | El stock del producto se descuenta automáticamente al confirmar la venta. | CP-070, CP-072 |
+| HU-09 | RF-180 | Como visitante, quiero consultar los avisos del gimnasio sin necesidad de iniciar sesión. | Solo se muestran los avisos en estado activo a los visitantes no autenticados. | CP-058 |
+| HU-10 | RF-185 | Como administrador, quiero consultar el historial de auditoría de operaciones críticas para dar trazabilidad al sistema. | Cada operación crítica (ej. anulación de un pago) genera un registro con usuario, entidad y fecha. | CP-060, CP-061 |
+
+La cadena de trazabilidad **RF → HU → CP** queda así verificable de extremo a extremo: por ejemplo, RF-136 (generación de rutinas) se concreta en HU-05, y se valida mediante CP-036 (generar rutina) y CP-039 (validar ejercicios activos), definidos en `docs/05_Desarrollo/Casos_Prueba.md`.
 
 ### 3.3. Priorización de requerimientos
 
-La priorización se realizó mediante la técnica **MoSCoW**, aplicada sobre los módulos del sistema:
+La priorización se realizó mediante la técnica **MoSCoW**, aplicada sobre los módulos del sistema y contrastada con la prioridad asignada a cada requerimiento funcional en `Requerimientos_Funcionales.md` (sección 3.1), de modo que la clasificación refleje tanto el criterio de negocio como la prioridad Alta/Media/Baja ya documentada por requerimiento:
 
 | Categoría | Módulos / funcionalidades |
 |---|---|
-| **Must have** (imprescindible) | Autenticación y roles, gestión de clientes, membresías, pagos, asistencias |
-| **Should have** (debería tener) | Motor de rutinas y nutrición, seguimiento de progreso físico, dashboard de KPIs |
-| **Could have** (podría tener) | Avisos editables, exportación CSV/PDF, paginación de listados, módulo de Comercio |
-| **Won't have** (esta versión) | Pasarela de pago real, envío de correo real, verificación de correo al registro, contenerización Docker, integración continua, modelo predictivo de no renovación |
+| **Must have** (imprescindible) | Autenticación y roles (RF-001 a RF-015, Alta), gestión de clientes (RF-016 a RF-035, Alta), membresías y asignación (RF-036 a RF-065, Alta), pagos (RF-066 a RF-080, Alta), asistencias (RF-081 a RF-090, Alta), motor de recomendación de rutinas y nutrición (RF-136 a RF-155, Alta — es el componente que distingue al sistema del resto de software administrativo de gimnasios) |
+| **Should have** (debería tener) | Seguimiento de progreso físico (RF-091 a RF-110, Media-Alta), catálogos de ejercicios y comidas (RF-111 a RF-135, Alta), dashboard de KPIs (RF-166 a RF-175, Media), módulo de Comercio (RF-191 a RF-226, Media-Alta — ya implementado y en producción, pero no forma parte del núcleo original de gestión deportiva) |
+| **Could have** (podría tener) | Avisos editables desde el panel (RF-176 a RF-190, Media-Alta), exportación CSV/PDF, paginación de listados |
+| **Won't have** (esta versión) | Pasarela de pago real, envío de correo real, verificación de correo al registro, contenerización Docker, integración continua, modelo predictivo de no renovación de membresías |
+
+A diferencia de una clasificación MoSCoW genérica, aquí el motor de recomendación se ubica explícitamente en **Must have**: es el requerimiento de mayor prioridad documentada (RF-136 a RF-155) y el componente que justifica el enfoque de inteligencia artificial del proyecto.
 
 ### 3.4. Product backlog
 
@@ -297,13 +354,64 @@ El framework backend enruta por módulo (`app/routes/*.py`) sin capas MVC explí
 
 **Modelo conceptual.** El dominio se organiza en dos bloques relacionados: el bloque de gestión deportiva (usuarios → clientes → {asistencias, progreso, membresías, rutinas, nutrición}) y el bloque comercial (productos ↔ inventario ↔ lotes ↔ movimientos de stock ↔ {compras, ventas}), ambos documentados en `docs/04_Arquitectura/Arquitectura_BaseDatos.md`.
 
+```mermaid
+erDiagram
+    USUARIO ||--o| CLIENTE : "tiene"
+    CLIENTE ||--o{ ASISTENCIA : "registra"
+    CLIENTE ||--o{ PROGRESO : "registra"
+    CLIENTE ||--o{ MEMBRESIA : "contrata"
+    CLIENTE ||--o{ RUTINA : "recibe"
+    CLIENTE ||--o{ NUTRICION : "recibe"
+    PRODUCTO ||--o{ INVENTARIO : "tiene"
+    PRODUCTO ||--o{ COMPRA : "se adquiere en"
+    PRODUCTO ||--o{ VENTA : "se vende en"
+```
+
 **Primera forma normal (1FN).** Se eliminaron los grupos repetitivos: las medidas corporales del progreso físico se almacenan en columnas atómicas independientes (brazo izquierdo, brazo derecho, pierna izquierda, pierna derecha, pecho, cintura) en lugar de una lista o campo compuesto, decisión documentada como DA-013.
 
-**Modelo lógico.** El esquema físico implementado comprende 26 tablas en PostgreSQL, con sus tipos de datos y restricciones definidos mediante SQLAlchemy, documentadas campo por campo en `Arquitectura_BaseDatos.md`.
+**Modelo lógico.** El esquema físico implementado comprende 26 tablas en PostgreSQL, con sus tipos de datos y restricciones definidos mediante SQLAlchemy, documentadas campo por campo en `Arquitectura_BaseDatos.md`. El siguiente diagrama muestra las entidades centrales del bloque deportivo con su cardinalidad:
+
+```mermaid
+erDiagram
+    CLIENTE {
+        int id_cliente PK
+        int id_usuario FK
+        string dni UK
+        string nombres
+        string objetivo
+        string nivel
+        string restricciones_medicas
+    }
+    CLIENTE_MEMBRESIA {
+        int id_cliente_membresia PK
+        int id_cliente FK
+        int id_membresia FK
+        date fecha_inicio
+        date fecha_fin
+        float precio_asignado
+        string estado
+    }
+    MEMBRESIA {
+        int id_membresia PK
+        string nombre
+        int duracion_dias
+        float precio
+    }
+    PAGO {
+        int id_pago PK
+        int id_cliente FK
+        int id_cliente_membresia FK
+        float monto
+        string estado
+    }
+    CLIENTE ||--o{ CLIENTE_MEMBRESIA : contrata
+    MEMBRESIA ||--o{ CLIENTE_MEMBRESIA : "es plan de"
+    CLIENTE_MEMBRESIA ||--o{ PAGO : genera
+```
 
 **Segunda forma normal (2FN) y relaciones N:M.** Las relaciones muchos-a-muchos se resuelven mediante tablas intermedias: `cliente_membresias` (entre clientes y membresías, con la fecha de asignación y el precio vigente al momento de la asignación), y `detalle_compras`/`detalle_ventas` (entre compras/ventas y productos, con cantidad y precio unitario). No existen dependencias parciales sobre claves compuestas.
 
-**Modelo físico (3FN) y excepción intencional.** El esquema se encuentra en tercera forma normal, con una única excepción deliberada: el campo `precio_asignado` en `cliente_membresias` almacena una copia del precio de la membresía al momento de la asignación (decisión DA-010), para que cambios posteriores en el precio del plan no alteren retroactivamente el monto ya contratado por un socio. Esta desnormalización es intencional y documentada, no un error de diseño.
+**Modelo físico (3FN) y excepción intencional.** El esquema se encuentra en tercera forma normal, con una única excepción deliberada: el campo `precio_asignado` en `cliente_membresias` (visible en el diagrama anterior) almacena una copia del precio de la membresía al momento de la asignación (decisión DA-010), para que cambios posteriores en el precio del plan no alteren retroactivamente el monto ya contratado por un socio. Esta desnormalización es intencional y documentada, no un error de diseño.
 
 ### 4.3. Modelado del sistema (UML)
 
@@ -405,13 +513,28 @@ sequenceDiagram
 
 Se diseñaron tres mockups en estilo visual "Dark Luxury Glassmorphic" (`docs/09_mockups/`): el panel administrativo web, que corresponde directamente al dashboard implementado en el sistema; y dos mockups de la aplicación móvil complementaria (rutinas y nutrición), que ilustran el ecosistema completo del producto aunque no forman parte del alcance evaluado de este documento.
 
+> **Pendiente de incorporar**: capturas de pantalla reales del sistema en ejecución (login, dashboard por rol, gestión de clientes, generación de rutina/nutrición) para contrastar visualmente el mockup contra la implementación final. No se generan en este documento por no contar con una herramienta de navegación/captura en este entorno; el equipo puede tomarlas directamente desde `http://localhost:5173` (local) o `https://gleyforgym-frontend.onrender.com` (producción) y agregarlas en esta sección.
+
 ---
 
 ## 5. Desarrollo y codificación del sistema
 
 ### 5.1. Implementación de funcionalidades
 
-La implementación siguió el backlog retrospectivo descrito en la sección 3.4 y el cronograma de la sección 2.1, organizados por fases funcionales agrupadas en rondas de consolidación sucesivas.
+La implementación siguió el backlog retrospectivo descrito en la sección 3.4, ejecutado en las siguientes fases (fechas tomadas del cronograma de la sección 2.1):
+
+| Fase | Fecha | Funcionalidades | Entregable |
+|---|---|---|---|
+| 1 — Base | Ene 2026 | Modelos iniciales, CRUDs de clientes/membresías/ejercicios | Backend funcional en SQLite (v1.0.0) |
+| 2 — Seguridad | Ene–Feb 2026 | Login, JWT, cifrado de contraseñas, roles | Autenticación completa (v1.1.0) |
+| 3 — Motor de recomendación | Feb–Abr 2026 | Motor de rutinas y nutrición, integración Cloudinary | Generación de rutinas/planes en producción (v2.0.0) |
+| 4 — Interfaz | Abr–May 2026 | Rediseño visual, primera cobertura de pruebas | Panel administrativo estable (v2.1.0) |
+| 5 — Despliegue | Jun 2026 | Configuración de Render, migración a PostgreSQL | Sistema accesible públicamente |
+| 6 — Comercio | Jul 2026 | Categorías, productos, proveedores, compras, inventario, ventas, avisos | Tienda pública y gestión de inventario en producción |
+| 7 — Consolidación 1 | Sep 2026 | RBAC completo, motor de recomendación con restricciones médicas, entrenadores, limitador de intentos | Sistema con control de acceso reforzado |
+| 8 — Consolidación 2 | Sep 2026 | Auditoría, arquitectura de pasarela de pagos, recuperación de contraseña, recibos PDF | Trazabilidad y comprobantes en producción |
+| 9 — Consolidación 3 | Sep 2026 | Autogestión de contraseñas, avisos editables, indicadores de asistencia, paginación | Panel administrativo completo |
+| 10 — Documentación | Sep 2026 | Actualización de RF/CP/arquitectura y redacción de este documento | Documentación de tesis consistente con el código |
 
 ### 5.2. Control de versiones
 
@@ -441,10 +564,27 @@ La validación del software en ejecución se realizó mediante las suites de pru
 
 | Suite | Resultado |
 |---|---|
-| Backend (`pytest --cov`) | 55 pruebas aprobadas, cobertura total de 81% (3113 sentencias) |
-| Frontend (`vitest run --coverage`) | 143 pruebas aprobadas en 33 archivos, cobertura total de 78.21% de sentencias |
+| Backend (`pytest --cov`) | 55 pruebas aprobadas, 0 fallidas, cobertura total de 80% (2969 sentencias) |
+| Frontend (`vitest run --coverage`) | 143 pruebas aprobadas, 0 fallidas, en 33 archivos, cobertura total de 78.21% de sentencias |
 
-Los módulos centrales del sistema (usuarios, clientes, membresías, pagos, motor de recomendación, avisos, auditoría) presentan una cobertura de backend entre 87% y 100%. El módulo de Comercio, en cambio, no cuenta con funciones de prueba dedicadas: `categorias.py` 37%, `proveedores.py` 43%, `inventario.py` 26%, `productos.py` 23%, `compras.py` 20%, `ventas.py` 17% — estos porcentajes provienen únicamente de la ejecución del registro de rutas al iniciar la aplicación, no de pruebas que ejerciten su lógica de negocio. En el frontend, las páginas de Comercio presentan un patrón equivalente, entre 1.3% y 2.8% de cobertura. Esta brecha de cobertura está documentada como prioridad alta de mejora continua en `docs/07_Gestion_Proyecto/Pendientes.md` (P-04).
+**Desglose de las 55 pruebas de backend por módulo** (todas aprobadas; 0 fallidas en la última ejecución):
+
+| Módulo | Pruebas | Cobertura de línea de los archivos de ruta asociados |
+|---|---|---|
+| Seguridad y control de acceso (JWT, roles, límite de intentos, propiedad de datos) | 13 | `security.py` 91%, `rate_limit.py` 100% |
+| Usuarios (CRUD, cambio y reseteo de contraseña) | 5 | `routes/usuarios.py` 97% |
+| Clientes (CRUD, búsqueda, paginación) | 5 | `routes/clientes.py` 93% |
+| Membresías y asignaciones | 5 | `routes/membresias.py` 100%, `routes/cliente_membresias.py` 98% |
+| Pagos (CRUD, recibo PDF, checkout/webhook) | 6 | `routes/pagos.py` 97%, `webhooks.py` 70%, `recibos.py` 97% |
+| Asistencias y progreso | 4 | `routes/asistencias.py` 93%, `routes/progreso.py` 97% |
+| Contenido deportivo (ejercicios, comidas, rutinas, nutrición) | 8 | `routes/ejercicios.py` 95%, `routes/comidas.py` 100%, `routes/rutinas.py` 98%, `routes/nutricion.py` 98% |
+| Motor de recomendación (generación IA, cálculo de macros) | 5 | `ia/rutina/recomendador_rutinas.py` 94%, `ia/nutricion/calculos_nutricion.py` 96% |
+| Avisos | 1 | `routes/avisos.py` 100% |
+| Auditoría | 1 | `routes/auditoria.py` 100% |
+| Entrenadores | 1 | `routes/entrenadores.py` 88% |
+| Dashboard y KPIs | 1 | `routes/reportes.py` 100% |
+
+El módulo de Comercio, en cambio, no cuenta con ninguna función de prueba dedicada: `categorias.py` 37%, `proveedores.py` 43%, `inventario.py` 26%, `productos.py` 25%, `compras.py` 20%, `ventas.py` 17% — estos porcentajes provienen únicamente de la ejecución del registro de rutas al iniciar la aplicación, no de pruebas que ejerciten su lógica de negocio. En el frontend, las páginas de Comercio presentan un patrón equivalente, entre 1.3% y 2.8% de cobertura. Esta brecha de cobertura está documentada como prioridad alta de mejora continua en `docs/07_Gestion_Proyecto/Pendientes.md` (P-04).
 
 ### 6.3. Automatización de pruebas
 
@@ -475,6 +615,8 @@ Se verificó el funcionamiento en vivo de ambos servicios de producción:
 
 El comportamiento observado en el backend corresponde al *cold start* característico del plan gratuito de Render: el servicio se suspende tras un período de inactividad y tarda unos segundos en reactivarse ante la primera solicitud. Este comportamiento, documentado como riesgo operativo en `Pendientes.md` (P-16), queda confirmado empíricamente mediante esta prueba.
 
+> **Pendiente de incorporar**: captura de pantalla de la documentación interactiva (`/docs`) y del panel web cargando desde las URLs de producción, como evidencia visual complementaria a esta tabla.
+
 ---
 
 ## 8. Monitoreo del sistema — motor de recomendación basado en reglas
@@ -483,20 +625,89 @@ Esta sección se reformula respecto al enfoque de machine learning tradicional (
 
 ### 8.1. Comprensión de los datos del motor
 
-Las fuentes de datos del motor de recomendación son el perfil biométrico y de objetivo del cliente, el catálogo de ejercicios y el catálogo de comidas, ambos filtrados por estado activo. No existe ingesta de datos externa ni un conjunto de datos histórico de entrenamiento, ya que el motor no requiere una fase de aprendizaje.
+**Variables de entrada**, con su tipo y unidad:
 
-### 8.2. Filtros aplicados
+| Variable | Origen | Tipo | Unidad / dominio |
+|---|---|---|---|
+| `objetivo` | Cliente | Enum (texto) | {Bajar de peso, Ganar masa muscular, Mejorar resistencia, Ganar fuerza, Mantener condición física} |
+| `nivel` | Cliente | Enum (texto) | {Principiante, Intermedio, Avanzado} |
+| `restricciones_medicas` | Cliente | Lista de códigos (texto) | {NINGUNA, RODILLA, HOMBRO, ESPALDA, MUNECA_CODO, CADERA} |
+| `peso` | Cliente | Float | kilogramos |
+| `estatura` | Cliente | Float | metros (convertido a cm internamente) |
+| `fecha_nacimiento` | Cliente | Date | usada para derivar la edad en años |
+| `sexo` | Cliente | Enum (texto) | {M, F, no declarado} |
+| `nivel_actividad` | Cliente | Enum (texto) | {SEDENTARIO, LIGERO, MODERADO, ACTIVO, MUY_ACTIVO} |
+| `grupo_muscular`, `nivel`, `estado` | Ejercicio (catálogo) | Texto / Enum | 8 grupos musculares × 3 niveles |
+| `tipo_comida`, `objetivo`, `calorias`, `estado` | Comida (catálogo) | Texto / Entero | 5 franjas horarias |
+
+**Exploración del catálogo.** Para verificar que el catálogo de ejercicios tiene suficiente variedad como para que el motor de reglas opere correctamente en todos los casos, se construyó un catálogo representativo de prueba (2 ejercicios por combinación de grupo muscular × nivel, 48 en total) y se contó la disponibilidad real por celda:
+
+| Grupo muscular | Principiante | Intermedio | Avanzado |
+|---|---|---|---|
+| Pecho, Tríceps, Espalda, Bíceps, Piernas, Hombros, Abdomen, Full body | 2 | 2 | 2 |
+
+Este conteo confirma el propósito del script de validación de la sección 8.4: con un catálogo sin huecos, cualquier ausencia de ejercicios en una rutina generada debe explicarse por una restricción médica activa, nunca por falta de contenido en el catálogo — lo cual se verifica empíricamente a continuación.
+
+### 8.2. Preparación — filtros aplicados
 
 - **Rutinas**: exclusión de grupos musculares por restricción médica, filtro por nivel apto del ejercicio, filtro por estado activo.
 - **Nutrición**: filtro de comidas por objetivo (o categoría general) y estado activo; selección de la comida cuya caloría real esté más cercana al presupuesto calórico de cada franja horaria.
+
+#### 8.2.3. División de datos de entrenamiento y evaluación (80/20)
+
+No aplica: al no existir una fase de entrenamiento supervisado (sección 1.3), no hay un conjunto de datos que dividir entre entrenamiento y evaluación. La validación de la sección 8.4 se realiza, en cambio, sobre el universo completo de combinaciones relevantes de perfil de cliente, no sobre una muestra aleatoria.
 
 ### 8.3. Algoritmo de recomendación
 
 Heurísticas condicionales para la selección de ejercicios (sección 1.3), y la fórmula de Mifflin-St Jeor para el cálculo nutricional. No existe entrenamiento ni ajuste de parámetros por aprendizaje automático: los parámetros del motor son constantes de negocio (multiplicadores de actividad física, proporciones de macronutrientes, series y repeticiones por objetivo) ajustables manualmente por el equipo.
 
-### 8.4. Validación del motor de recomendación
+### 8.4. Validación cuantitativa del motor de recomendación
 
-Al no existir una tarea de clasificación o predicción supervisada, no se reportan métricas como *accuracy*, F1-score o matriz de confusión. La validación aplicada en el proyecto es **cualitativa y basada en revisión humana**: los entrenadores del gimnasio evaluaron una muestra de 100 rutinas generadas por el sistema, verificando la coherencia metodológica de la recomendación y la ausencia de ejercicios contraindicados dado el perfil médico de cada cliente (por ejemplo, que un cliente con lesión de rodilla no reciba ejercicios de sentadilla con carga). Esta evaluación constituye la métrica de éxito real y verificable del componente de recomendación del sistema.
+Al no existir una tarea de clasificación o predicción supervisada, no se reportan métricas de machine learning como *accuracy* o AUC-ROC. En su lugar, se diseñó y ejecutó un script de validación propio (`backend/validacion_motor_recomendacion.py`) que ejercita la lógica real del motor —sin ninguna modificación— sobre el catálogo representativo descrito en 8.1, reproducible por cualquier persona con acceso al repositorio.
+
+#### 8.4.1. Metodología de validación
+
+El script genera una rutina para las **90 combinaciones** posibles de objetivo (5) × nivel (3) × restricción médica (6, incluyendo "ninguna"), y un plan nutricional para **150 perfiles** de cliente sintéticos que combinan objetivo (5) × nivel de actividad (5) × sexo (2) × tres complexiones corporales distintas, y mide:
+
+1. **Tasa de ejercicios contraindicados**: proporción de rutinas generadas que incluyen al menos un ejercicio de un grupo muscular excluido por la restricción médica del perfil.
+2. **Error absoluto medio (MAE) calórico**: diferencia porcentual promedio entre las calorías objetivo calculadas (Mifflin-St Jeor) y las calorías reales del plan generado.
+3. **Cobertura**: proporción de perfiles que reciben una rutina o plan sin huecos, distinguiendo si el hueco se debe a una restricción médica activa (comportamiento esperado) o a catálogo insuficiente (defecto real).
+
+#### 8.4.2. Resultados obtenidos
+
+| Métrica | Resultado |
+|---|---|
+| Tasa de ejercicios contraindicados (90 perfiles) | **0.0%** — ningún ejercicio de un grupo excluido fue recomendado en ninguna combinación |
+| Huecos por catálogo insuficiente (grupo permitido sin ejercicios disponibles) | **0 instancias** — el catálogo de prueba (8.1) nunca fue la causa de una rutina incompleta |
+| Huecos por restricción médica activa (grupo bloqueado intencionalmente) | 85 instancias día×grupo, concentradas en los 75 perfiles (de 90) que tienen al menos una restricción médica distinta de "ninguna" — comportamiento esperado, no un defecto |
+| Perfiles con rutina íntegra, sin ningún grupo bloqueado | **20 de 90** (22.2%): los 15 perfiles sin restricción médica, más 5 perfiles con restricción de hombro en nivel Principiante, cuya división de entrenamiento de 3 días no incluye el grupo Hombros |
+| Error absoluto medio calórico (150 perfiles de nutrición) | **10.77%** entre las calorías objetivo y las calorías reales del plan seleccionado |
+| Cobertura del plan nutricional (franjas horarias sin opciones) | **100%** — las 150 combinaciones recibieron un plan completo en las 5 franjas horarias |
+
+La métrica crítica para la seguridad del cliente —la tasa de ejercicios contraindicados— es 0% de forma consistente y reproducible, confirmando que el mecanismo de exclusión por restricción médica funciona correctamente en la totalidad de combinaciones evaluadas, no solo en casos de ejemplo aislados. El que solo 20 de 90 perfiles reciban una rutina "íntegra" no es una falla de cobertura: refleja que, cuando existe una restricción médica, el motor bloquea deliberadamente el grupo afectado en lugar de sustituirlo en silencio — el dato relevante de calidad es que ese bloqueo nunca proviene de catálogo insuficiente (0 instancias). El 10.77% de error calórico refleja la granularidad natural del catálogo de comidas disponible para aproximarse al presupuesto calórico exacto de cada franja, y es una métrica que el equipo puede reducir en el futuro ampliando la variedad de comidas por franja horaria.
+
+#### 8.4.3. Comparación de fórmulas de cálculo metabólico
+
+Se comparó Mifflin-St Jeor (la fórmula implementada) contra Harris-Benedict (revisión de 1984) y Katch-McArdle, mediante un segundo script (`backend/comparacion_formulas_nutricion.py`) sobre tres perfiles representativos:
+
+| Perfil | Mifflin-St Jeor | Harris-Benedict | Katch-McArdle* |
+|---|---|---|---|
+| Mujer, 55 kg / 155 cm / 22 años | 1248 kcal | 1341 kcal | 1225 kcal |
+| Hombre, 70 kg / 170 cm / 30 años | 1618 kcal | 1672 kcal | 1580 kcal |
+| Hombre, 90 kg / 185 cm / 45 años | 1836 kcal | 1926 kcal | 1925 kcal |
+
+*Katch-McArdle calculado con un % de grasa corporal típico asumido (20% hombres, 28% mujeres), no el dato real del cliente — ver limitación abajo.
+
+Diferencia absoluta promedio: Mifflin-St Jeor vs. Harris-Benedict = 79.2 kcal/día; Mifflin-St Jeor vs. Katch-McArdle = 49.7 kcal/día.
+
+#### 8.4.4. Elección del modelo
+
+Se eligió **Mifflin-St Jeor** por dos razones, una de precisión y una de factibilidad práctica:
+
+1. **Precisión reportada en la literatura.** Mifflin-St Jeor (1990) es la fórmula recomendada por la Academia de Nutrición y Dietética de Estados Unidos para la población general, por mostrar menor error respecto al gasto energético medido que Harris-Benedict (1919, revisada en 1984), que tiende a sobreestimar el metabolismo basal — diferencia que se confirma en la comparación anterior (Harris-Benedict es consistentemente mayor que Mifflin-St Jeor en los tres perfiles).
+2. **Factibilidad de los datos requeridos.** Katch-McArdle, aunque potencialmente más precisa para personas con composición corporal atlética conocida, requiere el porcentaje de grasa corporal del cliente. GleyforGym no exige este dato como obligatorio en la ficha biométrica usada al generar el plan nutricional (solo se registra ocasionalmente en el módulo de Progreso); exigirlo añadiría fricción al flujo de registro de un cliente nuevo. Mifflin-St Jeor y Harris-Benedict solo requieren peso, estatura, edad y sexo, datos que la ficha biométrica del cliente siempre contiene.
+
+Katch-McArdle queda documentada como una mejora futura condicionada a que el porcentaje de grasa corporal pase a ser un campo obligatorio de la ficha del cliente.
 
 ### 8.5. Despliegue e interpretación
 
@@ -537,7 +748,14 @@ Se identificó una limitación de usabilidad: los módulos de Entrenadores (como
 
 ### 9.2. Manual de instalación y mantenimiento
 
-El proceso de instalación local y despliegue se documenta en `docs/05_Desarrollo/Guia_Instalacion.md` (instalación local), `docs/05_Desarrollo/Manual_Desarrollador.md` (procedimiento para agregar un nuevo endpoint, pantalla o tabla) y `docs/05_Desarrollo/Guia_Despliegue.md` (despliegue en Render y alternativas de infraestructura).
+**Instalación local (resumen):**
+
+1. Crear la base de datos PostgreSQL (`CREATE DATABASE gleyforgym;`).
+2. Backend: crear entorno virtual (`python -m venv venv`), activarlo, instalar dependencias (`pip install -r requirements.txt`), configurar `backend/.env` con `DATABASE_URL`, `SECRET_KEY` y `CLOUDINARY_URL`, inicializar las tablas (`python create_db.py`) y levantar el servidor (`uvicorn app.main:app --reload`), disponible en `http://127.0.0.1:8000` con documentación interactiva en `/docs`.
+3. Frontend: instalar dependencias (`npm install`) y levantar el servidor de desarrollo (`npm run dev`), disponible en `http://localhost:5173`.
+4. Verificar: backend y frontend responden, y el usuario administrador sembrado por `create_db.py` permite iniciar sesión.
+
+El detalle completo, con solución de problemas comunes, está en `docs/05_Desarrollo/Guia_Instalacion.md`. El procedimiento para agregar un nuevo endpoint, pantalla o tabla se documenta en `docs/05_Desarrollo/Manual_Desarrollador.md`, y el despliegue en producción (Render y alternativas de infraestructura) en `docs/05_Desarrollo/Guia_Despliegue.md`.
 
 ### 9.3. Escalabilidad y seguridad a largo plazo
 
