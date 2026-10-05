@@ -791,10 +791,16 @@ El módulo de Comercio cuenta con 10 pruebas propias (`backend/tests/test_comerc
 - *Cumplimiento funcional de los módulos implementados* (`Cumplimiento = Funciones correctamente implementadas / Total de funciones evaluadas × 100`): sobre las 65 pruebas de backend y 143 de frontend ejecutadas, el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (208 de 208 pruebas aprobadas, 0 fallidas, 0 observadas). Este porcentaje describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema: las páginas de Comercio en el frontend y una parte de la lógica de `ventas.py`/`productos.py`/`inventario.py` en el backend (ver cobertura de línea arriba) aún no tienen una prueba automatizada que las evalúe, por lo que no están incluidas en este cálculo.
 - *Tiempo de respuesta del sistema en la generación de rutinas y planes nutricionales*: medido con un script propio (`backend/medir_tiempo_respuesta.py`) que invoca los endpoints reales `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}` de extremo a extremo (20 repeticiones, catálogo representativo en SQLite local):
 
+  **Tabla 14**
+
+  *Tiempo de respuesta de los endpoints del motor de recomendación (entorno local)*
+
   | Endpoint | Promedio | Mediana | Mínimo | Máximo |
   |---|---|---|---|---|
   | `POST /ia/rutina/generar/{id_cliente}` | 29.7 ms | 27.8 ms | 21.1 ms | 62.1 ms |
   | `POST /ia/nutricion/generar/{id_cliente}` | 23.2 ms | 22.0 ms | 19.6 ms | 32.5 ms |
+
+  *Nota.* Elaboración propia, a partir de `backend/medir_tiempo_respuesta.py`.
 
   **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye la latencia de red real y el *cold start* descrito en 7.2) ni la comparación con el proceso manual *antes* del sistema. La medición contra el despliegue de Render queda pendiente de repetirse una vez el gimnasio esté operando con el sistema y con su catálogo real cargado, momento en el que la medición será representativa del uso real y no solo de la disponibilidad técnica del servicio.
 
@@ -822,7 +828,7 @@ El proyecto no incluye contenerización (no existen archivos `Dockerfile` ni `do
 
 Se verificó el funcionamiento en vivo de ambos servicios de producción:
 
-**Tabla 14**
+**Tabla 15**
 
 *Validación de funcionamiento del despliegue en Render*
 
@@ -867,7 +873,7 @@ Las fuentes de datos del motor son las propias tablas operativas del sistema, pe
 
 **Variables de entrada**, con su tipo y unidad:
 
-**Tabla 15**
+**Tabla 16**
 
 *Variables de entrada del motor de recomendación*
 
@@ -890,7 +896,7 @@ Las fuentes de datos del motor son las propias tablas operativas del sistema, pe
 
 **Exploración del catálogo.** Para verificar que el catálogo de ejercicios tiene suficiente variedad como para que el motor de reglas opere correctamente en todos los casos, se construyó un catálogo representativo de prueba (2 ejercicios por combinación de grupo muscular × nivel, 48 en total) y se contó la disponibilidad real por celda:
 
-**Tabla 16**
+**Tabla 17**
 
 *Disponibilidad de ejercicios en el catálogo representativo de prueba*
 
@@ -945,7 +951,7 @@ El script genera una rutina para las **90 combinaciones** posibles de objetivo (
 
 #### 8.4.2. Resultados obtenidos
 
-**Tabla 17**
+**Tabla 18**
 
 *Resultados de la validación cuantitativa del motor de recomendación*
 
@@ -966,7 +972,7 @@ La métrica crítica para la seguridad del cliente —la tasa de ejercicios cont
 
 Se comparó Mifflin-St Jeor (la fórmula implementada) contra Harris-Benedict (revisión de 1984) y Katch-McArdle, mediante un segundo script (`backend/comparacion_formulas_nutricion.py`) sobre tres perfiles representativos. La tabla reporta la **tasa metabólica basal (TMB)** estimada por cada fórmula, no el gasto energético total (GET) — el GET se obtiene después, dentro del motor, multiplicando la TMB por el factor de actividad física; esa multiplicación afecta a las tres fórmulas por igual y no cambia cuál de ellas es más precisa como estimador basal:
 
-**Tabla 18**
+**Tabla 19**
 
 *Comparación de la tasa metabólica basal (TMB) estimada por tres fórmulas*
 
@@ -988,11 +994,6 @@ Se eligió **Mifflin-St Jeor** por dos razones, una de precisión y una de facti
 2. **Factibilidad de los datos requeridos.** Katch-McArdle, aunque potencialmente más precisa para personas con composición corporal atlética conocida, requiere el porcentaje de grasa corporal del cliente. GleyforGym no exige este dato como obligatorio en la ficha biométrica usada al generar el plan nutricional (solo se registra ocasionalmente en el módulo de Progreso); exigirlo añadiría fricción al flujo de registro de un cliente nuevo. Mifflin-St Jeor y Harris-Benedict solo requieren peso, estatura, edad y sexo, datos que la ficha biométrica del cliente siempre contiene.
 
 Katch-McArdle queda documentada como una mejora futura condicionada a que el porcentaje de grasa corporal pase a ser un campo obligatorio de la ficha del cliente.
-
-**Referencias:**
-- Mifflin, M. D., St Jeor, S. T., Hill, L. A., Scott, B. J., Daugherty, S. A., & Koh, Y. O. (1990). A new predictive equation for resting energy expenditure in healthy individuals. *American Journal of Clinical Nutrition, 51*(2), 241–247.
-- Roza, A. M., & Shizgal, H. M. (1984). The Harris Benedict equation reevaluated: resting energy requirements and the body cell mass. *American Journal of Clinical Nutrition, 40*(1), 168–182.
-- Frankenfield, D., Roth-Yousey, L., & Compher, C. (2005). Comparison of predictive equations for resting metabolic rate in healthy nonobese and obese adults: a systematic review. *Journal of the American Dietetic Association, 105*(5), 775–789.
 
 ### 8.5. Despliegue e interpretación
 
@@ -1063,3 +1064,13 @@ El detalle completo de mejoras pendientes, priorizadas y verificadas contra el c
 - **Prioridad alta**: verificación de correo electrónico al registro (P-01); activación de una pasarela de pago real — la arquitectura ya está preparada mediante una interfaz intercambiable, y actualmente opera en modo de simulación (P-02); envío real de correo electrónico (P-03); ampliación de la cobertura de pruebas del módulo de Comercio (P-04).
 - **Prioridad media**: alertas de vencimiento de membresía (P-05); exportación en PDF de rutinas y planes nutricionales, hoy disponible solo para recibos de pago (P-06); integración continua (P-09); distribución del limitador de intentos de inicio de sesión en despliegues con múltiples procesos (P-10); incorporación de páginas de administración para Entrenadores y Auditoría (P-18).
 - **Prioridad baja**: migración de la configuración de esquemas Pydantic a su sintaxis más reciente (P-12); contenerización del proyecto (P-13); monitoreo y registro centralizado de errores (P-14); respaldo de base de datos independiente del proveedor de hosting (P-15); mitigación de los riesgos del plan gratuito de Render — tiempo de reactivación del servicio y expiración de la base de datos a los 90 días sin actualización de plan (P-16), confirmado empíricamente en la sección 7.2 de este documento.
+
+---
+
+## Referencias
+
+Frankenfield, D., Roth-Yousey, L., & Compher, C. (2005). Comparison of predictive equations for resting metabolic rate in healthy nonobese and obese adults: a systematic review. *Journal of the American Dietetic Association, 105*(5), 775–789.
+
+Mifflin, M. D., St Jeor, S. T., Hill, L. A., Scott, B. J., Daugherty, S. A., & Koh, Y. O. (1990). A new predictive equation for resting energy expenditure in healthy individuals. *American Journal of Clinical Nutrition, 51*(2), 241–247.
+
+Roza, A. M., & Shizgal, H. M. (1984). The Harris Benedict equation reevaluated: resting energy requirements and the body cell mass. *American Journal of Clinical Nutrition, 40*(1), 168–182.
