@@ -558,7 +558,27 @@ El backend cuenta con 48 funciones de prueba en `backend/tests/test_backend.py` 
 
 #### 6.1.1. Casos de prueba de verificación (análisis estático)
 
-La verificación del software, previa a su ejecución, se realizó mediante **SonarQube** (instancia local) configurado sobre los tres componentes del proyecto (`sonar-project.properties`), analizando duplicación de código, complejidad ciclomática, code smells y vulnerabilidades potenciales según el conjunto de reglas estándar de la herramienta. El servidor de análisis no se mantiene activo de forma permanente, por lo que este documento no reporta cifras puntuales de ese análisis para evitar citar datos que no sean reproducibles al momento de la lectura; se recomienda ejecutar `sonar-scanner` antes de la entrega final del proyecto si se requiere incluir el reporte completo de calidad estática.
+La verificación del software, previa a su ejecución, se realizó mediante **SonarQube** (instancia local, `sonar-project.properties`), analizando duplicación de código, code smells, bugs potenciales y vulnerabilidades según el conjunto de reglas estándar de la herramienta. Resultado del análisis ejecutado sobre el estado actual del repositorio (16,989 líneas de código):
+
+| Métrica | Total | `backend/` | `web-admin/src/` |
+|---|---|---|---|
+| Cobertura (Sonar) | 77.5% | 80.2% | 76.7% |
+| Bugs | 6 | 0 | 6 |
+| Vulnerabilidades | 1 | 1 | 0 |
+| Code smells | 111 | 36 | 75 |
+| Líneas duplicadas | 2.5% | 1.7% | 3.0% |
+| Deuda técnica estimada | 609 min (~10.2 h) | — | — |
+| Calificación de mantenibilidad | A | — | — |
+| Calificación de confiabilidad | C | — | — |
+| Calificación de seguridad | C | — | — |
+
+Las calificaciones de confiabilidad y seguridad en C no reflejan hallazgos críticos: los 6 bugs y la única vulnerabilidad son de severidad menor/media y quedan listados en detalle a continuación — ninguno corresponde a una falla explotable en producción ni a una inconsistencia funcional.
+
+**Hallazgos puntuales:**
+
+1. **Vulnerabilidad (MAJOR)** — `backend/app/ia/rutina/recomendador_rutinas.py:138`: SonarQube marca el uso del generador pseudoaleatorio estándar de Python (`random.shuffle`) como potencialmente inseguro. Revisado y descartado como falso positivo para este caso: `random` se usa únicamente para variar qué ejercicios se eligen dentro de un grupo muscular permitido (sección 1.3), no para ningún fin criptográfico o de seguridad (tokens, contraseñas), por lo que no se reemplaza por el módulo `secrets`.
+2. **3 bugs MINOR** — `web-admin/src/components/Layout.jsx:37,44,59`: elementos con manejador de clic sin manejador de teclado equivalente (accesibilidad). Pendiente de corrección, no identificado antes de esta medición.
+3. **3 bugs MAJOR** — `web-admin/src/pages/Clientes.jsx:493`, `Ejercicios.jsx:240`, `Pagos.jsx:322`: botones sin atributo `type` explícito, que por defecto toman `type="submit"` dentro de un formulario y podrían disparar un envío no intencionado. Hallazgo real y corregible con una línea de código por caso; no estaba documentado antes de esta medición.
 
 #### 6.1.2. Casos de prueba de validación (análisis dinámico)
 
