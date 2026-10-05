@@ -3,6 +3,8 @@
 # SistemaGimnasioGleyforGym
 
 > La información de este capítulo se obtuvo mediante verificación directa del código fuente del sistema (`backend/`, `web-admin/`) y de su historial de control de versiones, en lugar de inferirse de documentación previa del proyecto. El alcance cubre el sistema web (backend FastAPI + panel de administración React); la aplicación móvil complementaria (Flutter) queda fuera del alcance formal de este documento.
+>
+> **Relación con el Plan de Tesis**: este documento describe el proceso de *ingeniería de software* (cómo se construyó, probó y desplegó el sistema). El diseño de *investigación* formal del proyecto — enfoque cuantitativo, diseño preexperimental con pretest y postest en un solo grupo (`G: O₁ → X → O₂`), población de 120 usuarios activos, muestra de 92 usuarios, instrumentos validados y análisis estadístico (Shapiro-Wilk, t-Student/Wilcoxon) — se define en el Capítulo III del Plan de Tesis y no se duplica aquí. Donde este documento mide un indicador que coincide con uno de la matriz de operacionalización del Plan de Tesis (ej. tiempo de respuesta del sistema, cumplimiento funcional), se cita explícitamente la correspondencia.
 
 ---
 
@@ -10,11 +12,13 @@
 
 ### 1.1. Definición del problema
 
-GLEYFORGYM es un gimnasio cuyos procesos administrativos y deportivos se gestionaban de forma manual y dispersa: fichas de socios en papel u hojas de cálculo, cobro de membresías sin trazabilidad, y rutinas y planes nutricionales elaborados a mano por cada entrenador sin un criterio sistemático. Esta situación generaba pérdida de información histórica, dificultad para dar seguimiento al progreso físico de los socios, y tiempos de respuesta altos para tareas repetitivas como la generación de rutinas de entrenamiento.
+GLEYFORGYM es un gimnasio ubicado en la provincia de Chupaca, región Junín, Perú, cuyos procesos administrativos, deportivos y comerciales se gestionaban de forma manual: registro de clientes y membresías en cuadernos y hojas sueltas, control de pagos sin sistema unificado, registro de asistencias sin consolidación, seguimiento físico sin registro sistemático, e inexistencia de reportes consolidados para la toma de decisiones (Plan de Tesis, Tabla 3 "Situación actual de la gestión de procesos del gimnasio GLEYFORGYM"). Esta situación generaba duplicidad de registros, pérdida de información, demoras en la atención e incapacidad para ajustar oportunamente rutinas y planes nutricionales.
 
-El proyecto responde a esta problemática con una plataforma web que centraliza: control de acceso por rol, ficha biométrica del socio, venta y control de membresías, registro de asistencia física, seguimiento de progreso corporal, y generación asistida de rutinas y planes nutricionales mediante un motor de recomendación. Durante el levantamiento de requisitos se identificó además una ampliación de alcance ya implementada en el sistema: una tienda de productos del gimnasio (suplementos y merchandising) con control de inventario, categorías, proveedores y compras.
+El proyecto responde a esta problemática con una plataforma web que centraliza: control de acceso por rol, ficha biométrica del socio, venta y control de membresías, registro de asistencia física, seguimiento de progreso corporal, y generación asistida de rutinas y planes nutricionales mediante un motor de recomendación. Durante el levantamiento de requisitos se identificó además una ampliación de alcance ya implementada en el sistema: una tienda de productos del gimnasio (suplementos y merchandising) con control de inventario, categorías, proveedores y compras — correspondiente a la dimensión de **gestión comercial** del Plan de Tesis.
 
-El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por tratarse de un servicio no regulado. Las referencias a estándares en el proyecto corresponden a calidad de software, no a normativa de negocio: los requerimientos no funcionales se alinean al modelo de calidad ISO/IEC 25010 (ver sección 3.1).
+**Población y muestra** (tomadas del Plan de Tesis, sección 3.4, ya calculadas con la fórmula de poblaciones finitas para un nivel de confianza del 95% y margen de error del 5%): la población está conformada por los **120 usuarios activos** del gimnasio GLEYFORGYM que participan en los procesos administrativos, deportivos y comerciales; la muestra queda conformada por **92 usuarios activos**, seleccionados mediante muestreo probabilístico aleatorio simple.
+
+El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por tratarse de un servicio no regulado. Las referencias a estándares en el proyecto corresponden a calidad de software, no a normativa de negocio: los requerimientos no funcionales se alinean al modelo de calidad ISO/IEC 25010 (ver sección 3.1), consistente con el modelo de calidad del producto de software (ISO/IEC 9126-1) adoptado en las bases teóricas del Plan de Tesis para la característica de eficiencia.
 
 #### 1.1.1. Identificación de procesos (macroprocesos y procedimientos)
 
@@ -585,6 +589,18 @@ La validación del software en ejecución se realizó mediante las suites de pru
 | Dashboard y KPIs | 1 | `routes/reportes.py` 100% |
 
 El módulo de Comercio, en cambio, no cuenta con ninguna función de prueba dedicada: `categorias.py` 37%, `proveedores.py` 43%, `inventario.py` 26%, `productos.py` 25%, `compras.py` 20%, `ventas.py` 17% — estos porcentajes provienen únicamente de la ejecución del registro de rutas al iniciar la aplicación, no de pruebas que ejerciten su lógica de negocio. En el frontend, las páginas de Comercio presentan un patrón equivalente, entre 1.3% y 2.8% de cobertura. Esta brecha de cobertura está documentada como prioridad alta de mejora continua en `docs/07_Gestion_Proyecto/Pendientes.md` (P-04).
+
+**Correspondencia con los indicadores del Plan de Tesis (Anexo 02, Matriz de Operacionalización de Variables):**
+
+- *Cumplimiento funcional de los módulos implementados* (`Cumplimiento = Funciones correctamente implementadas / Total de funciones evaluadas × 100`): sobre las 55 pruebas de backend y 143 de frontend ejecutadas, el cumplimiento funcional medido es **100%** (198 de 198 pruebas aprobadas, 0 fallidas, 0 observadas) — excluyendo el módulo de Comercio, que no tiene funciones evaluadas todavía (ver brecha arriba).
+- *Tiempo de respuesta del sistema en la generación de rutinas y planes nutricionales*: medido con un script propio (`backend/medir_tiempo_respuesta.py`) que invoca los endpoints reales `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}` de extremo a extremo (20 repeticiones, catálogo representativo en SQLite local):
+
+  | Endpoint | Promedio | Mediana | Mínimo | Máximo |
+  |---|---|---|---|---|
+  | `POST /ia/rutina/generar/{id_cliente}` | 29.7 ms | 27.8 ms | 21.1 ms | 62.1 ms |
+  | `POST /ia/nutricion/generar/{id_cliente}` | 23.2 ms | 22.0 ms | 19.6 ms | 32.5 ms |
+
+  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye latencia de red variable) ni la comparación con el proceso manual *antes* del sistema. El dato de pretest (cuánto demora hoy un entrenador en armar una rutina a mano) requiere observación directa del proceso actual del gimnasio con la ficha de registro de tiempos del instrumento de la tesis, y no puede obtenerse del código — es información que el equipo investigador debe recolectar en campo para completar la comparación O₁ vs. O₂ del diseño preexperimental.
 
 ### 6.3. Automatización de pruebas
 
