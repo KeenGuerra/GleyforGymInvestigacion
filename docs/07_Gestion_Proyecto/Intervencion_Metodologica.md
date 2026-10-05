@@ -12,7 +12,7 @@
 
 ### 1.1. Definición del problema
 
-GLEYFORGYM es un gimnasio ubicado en la provincia de Chupaca, región Junín, Perú, cuyos procesos administrativos, deportivos y comerciales se gestionaban de forma manual: registro de clientes y membresías en cuadernos y hojas sueltas, control de pagos sin sistema unificado, registro de asistencias sin consolidación, seguimiento físico sin registro sistemático, e inexistencia de reportes consolidados para la toma de decisiones (Plan de Tesis, Tabla 3 "Situación actual de la gestión de procesos del gimnasio GLEYFORGYM"). Esta situación generaba duplicidad de registros, pérdida de información, demoras en la atención e incapacidad para ajustar oportunamente rutinas y planes nutricionales.
+GLEYFORGYM es un gimnasio ubicado en la provincia de Chupaca, región Junín, Perú, cuyos procesos administrativos, deportivos y comerciales se gestionan de forma manual: registro de clientes y membresías en cuadernos y hojas sueltas, control de pagos sin sistema unificado, registro de asistencias sin consolidación, seguimiento físico sin registro sistemático, e inexistencia de reportes consolidados para la toma de decisiones (Plan de Tesis, Tabla 3 "Situación actual de la gestión de procesos del gimnasio GLEYFORGYM"). Esta situación generaba duplicidad de registros, pérdida de información, demoras en la atención e incapacidad para ajustar oportunamente rutinas y planes nutricionales.
 
 El proyecto responde a esta problemática con una plataforma web que centraliza: control de acceso por rol, ficha biométrica del socio, venta y control de membresías, registro de asistencia física, seguimiento de progreso corporal, y generación asistida de rutinas y planes nutricionales mediante un motor de recomendación. Durante el levantamiento de requisitos se identificó además una ampliación de alcance ya implementada en el sistema: una tienda de productos del gimnasio (suplementos y merchandising) con control de inventario, categorías, proveedores y compras — correspondiente a la dimensión de **gestión comercial** del Plan de Tesis.
 
@@ -37,7 +37,7 @@ El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por 
 | P11 | Auditoría y trazabilidad de operaciones críticas | Administrador (vía API) | Implementado |
 | P12 | Gestión de entrenadores como entidad de negocio | Administrador (vía API) | Implementado |
 
-El levantamiento de requisitos sobre el código real identificó cuatro procesos (P09–P12) que ya operan en producción pero que no estaban documentados formalmente en las primeras versiones del análisis de requisitos del proyecto; esta intervención los incorpora con sus respectivos requerimientos funcionales (sección 3.1).
+El levantamiento de requisitos sobre el código real identificó cuatro procesos (P09–P12) que ya están implementados y desplegados pero que no estaban documentados formalmente en las primeras versiones del análisis de requisitos del proyecto; esta intervención los incorpora con sus respectivos requerimientos funcionales (sección 3.1).
 
 #### 1.1.2. Diagrama de procesos
 
@@ -116,7 +116,7 @@ Este diagrama cubre el requisito de modelado con carriles por actor solicitado p
 
 ### 1.2. Identificación de actores
 
-**Actores de negocio (sistema en operación):**
+**Actores de negocio (roles definidos en el sistema):**
 - **ADMIN**: administrador del gimnasio, con acceso completo al sistema.
 - **ENTRENADOR**: staff deportivo, gestiona clientes, rutinas y nutrición.
 - **CLIENTE**: socio del gimnasio, con acceso a su propia información.
@@ -209,7 +209,7 @@ gantt
     Documentacion final :2026-09-14, 2026-09-15
 ```
 
-Las fases de enero a mayo (análisis, base del backend, autenticación, motor de recomendación, rediseño visual) representan el grueso del esfuerzo de desarrollo del proyecto; las rondas de consolidación de septiembre son una etapa posterior y más breve de revisión, corrección y documentación sobre un sistema que ya estaba en producción.
+Las fases de enero a mayo (análisis, base del backend, autenticación, motor de recomendación, rediseño visual) representan el grueso del esfuerzo de desarrollo del proyecto; las rondas de consolidación de septiembre son una etapa posterior y más breve de revisión, corrección y documentación sobre un sistema ya desplegado.
 
 **Recursos del proyecto:**
 
@@ -324,7 +324,7 @@ La priorización se realizó mediante la técnica **MoSCoW**, aplicada sobre los
 | Categoría | Módulos / funcionalidades |
 |---|---|
 | **Must have** (imprescindible) | Autenticación y roles (RF-001 a RF-015, Alta), gestión de clientes (RF-016 a RF-035, Alta), membresías y asignación (RF-036 a RF-065, Alta), pagos (RF-066 a RF-080, Alta), asistencias (RF-081 a RF-090, Alta), motor de recomendación de rutinas y nutrición (RF-136 a RF-155, Alta — es el componente que distingue al sistema del resto de software administrativo de gimnasios) |
-| **Should have** (debería tener) | Seguimiento de progreso físico (RF-091 a RF-110, Media-Alta), catálogos de ejercicios y comidas (RF-111 a RF-135, Alta), dashboard de KPIs (RF-166 a RF-175, Media), módulo de Comercio (RF-191 a RF-226, Media-Alta — ya implementado y en producción, pero no forma parte del núcleo original de gestión deportiva) |
+| **Should have** (debería tener) | Seguimiento de progreso físico (RF-091 a RF-110, Media-Alta), catálogos de ejercicios y comidas (RF-111 a RF-135, Alta), dashboard de KPIs (RF-166 a RF-175, Media), módulo de Comercio (RF-191 a RF-226, Media-Alta — ya implementado y desplegado, pero no forma parte del núcleo original de gestión deportiva) |
 | **Could have** (podría tener) | Avisos editables desde el panel (RF-176 a RF-190, Media-Alta), exportación CSV/PDF, paginación de listados |
 | **Won't have** (esta versión) | Pasarela de pago real, envío de correo real, verificación de correo al registro, contenerización Docker, integración continua, modelo predictivo de no renovación de membresías |
 
@@ -523,7 +523,13 @@ sequenceDiagram
 
 Se diseñaron tres mockups en estilo visual "Dark Luxury Glassmorphic" (`docs/09_mockups/`): el panel administrativo web, que corresponde directamente al dashboard implementado en el sistema; y dos mockups de la aplicación móvil complementaria (rutinas y nutrición), que ilustran el ecosistema completo del producto aunque no forman parte del alcance evaluado de este documento.
 
-> **Pendiente de incorporar**: capturas de pantalla reales del sistema en ejecución (login, dashboard por rol, gestión de clientes, generación de rutina/nutrición) para contrastar visualmente el mockup contra la implementación final. No se generan en este documento por no contar con una herramienta de navegación/captura en este entorno; el equipo puede tomarlas directamente desde `http://localhost:5173` (local) o `https://gleyforgym-frontend.onrender.com` (producción) y agregarlas en esta sección.
+**Figura 7.** Pantalla de inicio de sesión del panel administrativo. *Fuente: panel administrativo, `http://localhost:5173/login`.*
+
+**Figura 8.** Panel principal (dashboard) por rol — ADMIN, ENTRENADOR y CLIENTE. *Fuente: panel administrativo, `/dashboard`.*
+
+**Figura 9.** Gestión de clientes — listado y formulario de ficha biométrica. *Fuente: panel administrativo, `/clientes`.*
+
+**Figura 10.** Generación de rutina y plan nutricional por el motor de recomendación. *Fuente: panel administrativo, `/rutinas` y `/nutricion`.*
 
 ---
 
@@ -537,12 +543,12 @@ La implementación siguió el backlog retrospectivo descrito en la sección 3.4,
 |---|---|---|---|
 | 1 — Base | Ene 2026 | Modelos iniciales, CRUDs de clientes/membresías/ejercicios | Backend funcional en SQLite (v1.0.0) |
 | 2 — Seguridad | Ene–Feb 2026 | Login, JWT, cifrado de contraseñas, roles | Autenticación completa (v1.1.0) |
-| 3 — Motor de recomendación | Feb–Abr 2026 | Motor de rutinas y nutrición, integración Cloudinary | Generación de rutinas/planes en producción (v2.0.0) |
+| 3 — Motor de recomendación | Feb–Abr 2026 | Motor de rutinas y nutrición, integración Cloudinary | Generación de rutinas/planes desplegada (v2.0.0) |
 | 4 — Interfaz | Abr–May 2026 | Rediseño visual, primera cobertura de pruebas | Panel administrativo estable (v2.1.0) |
 | 5 — Despliegue | Jun 2026 | Configuración de Render, migración a PostgreSQL | Sistema accesible públicamente |
-| 6 — Comercio | Jul 2026 | Categorías, productos, proveedores, compras, inventario, ventas, avisos | Tienda pública y gestión de inventario en producción |
+| 6 — Comercio | Jul 2026 | Categorías, productos, proveedores, compras, inventario, ventas, avisos | Tienda pública y gestión de inventario desplegadas |
 | 7 — Consolidación 1 | Sep 2026 | RBAC completo, motor de recomendación con restricciones médicas, entrenadores, limitador de intentos | Sistema con control de acceso reforzado |
-| 8 — Consolidación 2 | Sep 2026 | Auditoría, arquitectura de pasarela de pagos, recuperación de contraseña, recibos PDF | Trazabilidad y comprobantes en producción |
+| 8 — Consolidación 2 | Sep 2026 | Auditoría, arquitectura de pasarela de pagos, recuperación de contraseña, recibos PDF | Trazabilidad y comprobantes desplegados |
 | 9 — Consolidación 3 | Sep 2026 | Autogestión de contraseñas, avisos editables, indicadores de asistencia, paginación | Panel administrativo completo |
 | 10 — Documentación | Sep 2026 | Actualización de RF/CP/arquitectura y redacción de este documento | Documentación de tesis consistente con el código |
 
@@ -661,7 +667,9 @@ Se verificó el funcionamiento en vivo de ambos servicios de producción:
 
 El comportamiento observado en el backend corresponde al *cold start* característico del plan gratuito de Render: el servicio se suspende tras un período de inactividad y tarda unos segundos en reactivarse ante la primera solicitud. Este comportamiento, documentado como riesgo operativo en `Pendientes.md` (P-16), queda confirmado empíricamente mediante esta prueba.
 
-> **Pendiente de incorporar**: captura de pantalla de la documentación interactiva (`/docs`) y del panel web cargando desde las URLs de producción, como evidencia visual complementaria a esta tabla.
+**Figura 11.** Documentación interactiva de la API (`/docs`) cargando desde el backend desplegado. *Fuente: `https://gleyforgym-backend.onrender.com/docs`.*
+
+**Figura 12.** Panel web cargando desde el frontend desplegado. *Fuente: `https://gleyforgym-frontend.onrender.com`.*
 
 ---
 
@@ -792,7 +800,7 @@ El motor de recomendación está integrado en producción a través de los endpo
 
 #### 8.5.2. Validación de predicción en producción
 
-Al no ser un modelo con una "predicción" en el sentido estadístico (sección 8.3.2), no se valida contra un resultado real observado después del hecho (como se haría con un modelo de clasificación). La validación aplicable en producción es doble: (a) el tiempo de respuesta real de los endpoints, medido de extremo a extremo (sección 6.2), y (b) el conteo de adopción — cuántas rutinas y planes nutricionales fueron generados por el motor frente a los creados manualmente por un entrenador —, que el panel administrativo consolida en tiempo real como indicador de uso real de la herramienta por el equipo del gimnasio.
+Al no ser un modelo con una "predicción" en el sentido estadístico (sección 8.3.2), no se valida contra un resultado real observado después del hecho (como se haría con un modelo de clasificación). La validación aplicable una vez el gimnasio esté operando con el sistema será doble: (a) el tiempo de respuesta real de los endpoints en producción — el valor reportado en la sección 6.2 se midió en un entorno local de prueba, no contra el despliegue de Render con uso real —, y (b) el conteo de adopción: el panel administrativo ya está preparado para consolidar en tiempo real cuántas rutinas y planes nutricionales son generados por el motor frente a los creados manualmente por un entrenador, indicador que será representativo del uso real de la herramienta recién cuando el equipo del gimnasio comience a operar con el sistema.
 
 #### 8.5.3. Alcance de modelo y limitaciones
 
@@ -802,7 +810,7 @@ El MAPE calórico de 10.77% obtenido en 8.4.2 tiene como límite inferior estruc
 
 #### 8.5.4. Reportes para toma de decisiones
 
-El indicador de adopción descrito en 8.5.2 (rutinas y planes generados por el motor vs. creados manualmente) es, en sí mismo, un reporte para la toma de decisiones del equipo del gimnasio: permite evaluar si el motor está siendo efectivamente usado por los entrenadores o si, por el contrario, se sigue preferiendo la creación manual — información relevante para decidir si se justifica invertir en mejoras del motor (como resolver la limitación de 8.5.3) o en capacitación del personal.
+El indicador de adopción descrito en 8.5.2 (rutinas y planes generados por el motor vs. creados manualmente), una vez que el gimnasio opere con el sistema, será en sí mismo un reporte para la toma de decisiones del equipo del gimnasio: permitirá evaluar si el motor está siendo efectivamente usado por los entrenadores o si, por el contrario, se sigue preferiendo la creación manual — información relevante para decidir si se justifica invertir en mejoras del motor (como resolver la limitación de 8.5.3) o en capacitación del personal.
 
 ---
 
