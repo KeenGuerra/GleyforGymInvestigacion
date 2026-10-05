@@ -388,7 +388,7 @@ backend/.env
 Contenido:
 
 ```env
-DATABASE_URL=postgresql://postgres:keen123@localhost:5432/gleyforgym
+DATABASE_URL=postgresql://postgres:TU_PASSWORD_LOCAL@localhost:5432/gleyforgym
 
 CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
 

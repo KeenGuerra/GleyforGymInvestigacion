@@ -2,6 +2,8 @@
 
 # SistemaGimnasioGleyforGym
 
+> **Nota de alcance:** la tesis cubre formalmente el sistema **web** (backend FastAPI + frontend web-admin React). La aplicación móvil (Flutter) es un componente complementario del ecosistema y se describe aquí solo para dar una visión completa de la arquitectura; no forma parte del alcance evaluado en la tesis.
+
 ## 1. Introducción
 
 El SistemaGimnasioGleyforGym es una plataforma integral para la gestión administrativa y deportiva de gimnasios.

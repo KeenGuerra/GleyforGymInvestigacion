@@ -186,7 +186,7 @@ backend/.env
 Contenido:
 
 ```env
-DATABASE_URL=postgresql://postgres:keen123@localhost:5432/gleyforgym
+DATABASE_URL=postgresql://postgres:TU_PASSWORD_LOCAL@localhost:5432/gleyforgym
 
 SECRET_KEY=clave_super_secreta_gleyforgym
 

@@ -1,6 +1,8 @@
 # 09. Mockups del Proyecto GleyforGym
 
-Este documento detalla las propuestas de diseño visual (mockups) para el sistema **GleyforGym**, las cuales muestran de manera profesional y detallada las pantallas operativas reales del proyecto tanto para el cliente móvil como para el administrador web. Estas interfaces representan visualmente los requerimientos de la plataforma SaaS y la integración de la Inteligencia Artificial Adaptativa.
+> **Nota de alcance:** la tesis cubre únicamente el sistema web (backend + web-admin). Los mockups de las secciones 2 y 3 corresponden a la aplicación móvil complementaria (Flutter), fuera del alcance formal de la tesis — se incluyen solo como referencia visual del ecosistema completo. El mockup de la sección 4 (panel administrativo web) es el que corresponde directamente al alcance de la tesis.
+
+Este documento detalla las propuestas de diseño visual (mockups) para el sistema **GleyforGym**, las cuales muestran de manera profesional y detallada las pantallas operativas reales del proyecto tanto para el cliente móvil como para el administrador web. Estas interfaces representan visualmente los requerimientos de la plataforma SaaS y la integración del motor de recomendación basado en reglas (ver `docs/04_Arquitectura/Arquitectura_IA.md`).
 
 ---
 
@@ -15,7 +17,7 @@ Las interfaces han sido diseñadas con un estilo visual **Dark Luxury Glassmorph
 
 ## 2. Mockup de Rutinas de Entrenamiento (Aplicación Móvil - Vista Cliente)
 
-Este mockup representa la pantalla principal del socio donde se visualiza la rutina de ejercicios recomendada por el motor de **Inteligencia Artificial Adaptativa** según su perfil, objetivo físico y restricciones médicas.
+Este mockup representa la pantalla principal del socio donde se visualiza la rutina de ejercicios recomendada por el motor de **recomendación inteligente basado en reglas** según su perfil, objetivo físico y restricciones médicas.
 
 ### Elementos Clave:
 *   **Progreso de Entrenamiento:** Un indicador circular en cian que motiva al usuario indicando el avance de su sesión del día.
@@ -27,7 +29,7 @@ Este mockup representa la pantalla principal del socio donde se visualiza la rut
 
 ## 3. Mockup de Plan Alimenticio (Aplicación Móvil - Vista Cliente)
 
-Este mockup muestra la interfaz de **Nutrición Personalizada con IA**, donde el sistema calcula los macronutrientes del usuario y le prescribe su plan de comidas.
+Este mockup muestra la interfaz de **Nutrición Personalizada**, donde el sistema calcula los macronutrientes del usuario (fórmula Mifflin-St Jeor) y le prescribe su plan de comidas.
 
 ### Elementos Clave:
 *   **Distribución de Macros:** Gráfico e indicadores de la cantidad de proteínas, carbohidratos y grasas recomendadas.

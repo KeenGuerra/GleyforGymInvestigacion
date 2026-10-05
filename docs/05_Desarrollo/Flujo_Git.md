@@ -442,7 +442,7 @@ Verificar:
 ## Versión Actual
 
 ```text
-v2.0
+v2.6
 ```
 
 ---
@@ -450,7 +450,7 @@ v2.0
 ## Próxima Versión
 
 ```text
-v2.1
+v2.7 (conectar pasarela de pago real y SMTP; ver docs/07_Gestion_Proyecto/Pendientes.md)
 ```
 
 ---
@@ -458,7 +458,6 @@ v2.1
 ## Futuras
 
 ```text
-v2.5
 v3.0
 v4.0
 ```

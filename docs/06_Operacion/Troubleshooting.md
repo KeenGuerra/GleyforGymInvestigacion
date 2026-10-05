@@ -171,7 +171,7 @@ DATABASE_URL
 Ejemplo:
 
 ```env
-DATABASE_URL=postgresql://postgres:keen123@localhost:5432/gleyforgym
+DATABASE_URL=postgresql://postgres:TU_PASSWORD_LOCAL@localhost:5432/gleyforgym
 ```
 
 ---
@@ -199,7 +199,7 @@ backend/.env
 Debe existir:
 
 ```env
-DATABASE_URL=postgresql://postgres:keen123@localhost:5432/gleyforgym
+DATABASE_URL=postgresql://postgres:TU_PASSWORD_LOCAL@localhost:5432/gleyforgym
 ```
 
 ---
@@ -757,7 +757,7 @@ SistemaGimnasioGleyforGym
 Versión:
 
 ```text
-2.0 Web
+2.6
 ```
 
 Documentación relacionada:
@@ -766,7 +766,7 @@ Documentación relacionada:
 Manual_Desarrollador.md
 Guia_Instalacion.md
 Guia_Despliegue.md
-FAQ.md
+Pendientes.md (docs/07_Gestion_Proyecto)
 ```
 
 ---

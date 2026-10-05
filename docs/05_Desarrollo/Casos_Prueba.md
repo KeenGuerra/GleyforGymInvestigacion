@@ -730,7 +730,13 @@ Nuevos Parches v2.6
 ## Estado Actual
 
 ```text
-Pruebas ejecutadas y aprobadas en entorno local v2.6.
+CP-051 a CP-055 (estabilización v2.6) fueron verificados en entorno local.
+
+CP-001 a CP-050 están definidos como checklist de prueba manual/funcional;
+su equivalente ya está cubierto en gran parte por la suite automatizada del
+proyecto (pytest en backend, Vitest en frontend — ver docs/07_Gestion_Proyecto/
+Pendientes.md para el estado real de cobertura por módulo), pero no tienen
+una ejecución manual uno a uno registrada todavía con este documento.
 ```
 
 ---
