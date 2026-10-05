@@ -137,6 +137,12 @@ Es un valor por defecto solo para bootstrap local (producción usa `DATABASE_URL
 
 ---
 
+## P-18 Sin página en web-admin para Entrenadores ni Auditoría
+
+`backend/app/routes/entrenadores.py` (catálogo de entrenadores como entidad de negocio, no solo el rol ENTRENADOR) y `backend/app/routes/auditoria.py` (consulta de `RegistroAuditoria`) son módulos reales, protegidos correctamente por rol ADMIN, pero no tienen ninguna página en `web-admin/src/pages/` — solo son accesibles directamente contra la API (ej. Swagger en `/docs`). El admin no puede, desde el panel, registrar un entrenador como ficha propia ni revisar el historial de auditoría sin usar la API a mano.
+
+---
+
 # Prioridad Baja
 
 ## P-12 Migrar `class Config:` a `ConfigDict` (Pydantic v2)

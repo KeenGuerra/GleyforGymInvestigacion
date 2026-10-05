@@ -399,7 +399,14 @@ No existe `Dockerfile` ni `docker-compose.yml` en ningún directorio (confirmado
 
 ### 7.2. Validación de funcionamiento en producción
 
-El sistema está desplegado y accesible según `render.yaml`; esta revisión no incluyó una verificación en vivo de la URL de producción (fuera del alcance de una auditoría de código estático). Se recomienda que el equipo confirme manualmente que el dominio responde antes de considerar esta sección cerrada.
+Verificado en vivo en esta revisión (no es una suposición):
+
+| Servicio | URL | Resultado |
+|---|---|---|
+| Backend (Swagger) | `https://gleyforgym-backend.onrender.com/docs` | HTTP 503 en el primer intento (servicio dormido), HTTP 200 al reintentar ~16.6s después — título confirmado: "API GLEYFORGYM - Swagger UI" |
+| Frontend | `https://gleyforgym-frontend.onrender.com` | HTTP 200 inmediato (sitio estático) — título confirmado: "GleyforGym" |
+
+El comportamiento del backend (503 seguido de 200 tras ~17 segundos) es exactamente el *cold start* del plan free de Render ya documentado como riesgo en `Pendientes.md` P-16 — esta prueba lo confirma empíricamente en vez de solo citarlo como riesgo teórico.
 
 ---
 
@@ -436,7 +443,30 @@ No hay accuracy/F1/matriz de confusión porque no hay clasificación ni predicci
 
 ### 9.1. Manual de usuario
 
-No existe un manual de usuario dedicado; el comportamiento por rol está documentado funcionalmente en `docs/02_Negocio/Roles_Permisos.md` (qué puede ver/hacer cada rol) y en los mockups de `docs/09_mockups/`. Se recomienda al equipo redactar uno breve por rol (ADMIN/ENTRENADOR/CLIENTE) si el documento se usa de cara a evaluación de tesis.
+No existía un manual de usuario dedicado (solo `Roles_Permisos.md`, que documenta permisos a nivel técnico). Se redacta aquí, verificado contra las páginas reales de `web-admin/src/pages/` y sus rutas protegidas en `App.jsx`:
+
+**Visitante público (sin iniciar sesión)**
+- Página de inicio (`/`): planes de membresía, información del gimnasio.
+- Avisos (`/avisos`): horarios, coaches, clases y comunicados vigentes.
+- Tienda (`/tienda`): catálogo de productos disponibles (solo consulta).
+
+**ADMIN** (acceso completo)
+- Panel principal con KPIs: clientes activos, recaudación del mes, rutinas generadas por IA, asistencias de hoy/mes.
+- Administración: Usuarios, Clientes, Membresías, Asignar membresía, Pagos, Asistencias, Progreso.
+- IA y contenido: Ejercicios, Comidas, Rutinas IA, Nutrición IA, Avisos (gestión).
+- Comercio: Categorías, Productos, Proveedores, Compras, Inventario, Ventas.
+- Es el único rol que puede restablecer la contraseña de otro usuario directamente.
+
+**ENTRENADOR**
+- Panel con resumen de clientes asignados.
+- Entrenamiento: Clientes, Asistencias, Progreso, Ejercicios, Comidas, Rutinas IA, Nutrición IA.
+- No tiene acceso a Usuarios, Membresías, Pagos ni al módulo de Comercio.
+
+**CLIENTE** (acceso a "Mi cuenta", solo sus propios datos)
+- Mi perfil: datos personales/deportivos, cambio de contraseña propio.
+- Mi rutina, Mi nutrición, Mi progreso (registrar nuevas mediciones), Mi membresía, Mis pagos (con descarga de recibo PDF).
+
+Pendiente real (ver `Pendientes.md` P-18, agregado en esta revisión): **Entrenadores** y **Auditoría** existen como módulos del backend con permisos correctamente restringidos a ADMIN, pero no tienen página propia en `web-admin` — solo son accesibles vía Swagger/API directamente.
 
 ### 9.2. Manual de instalación y mantenimiento
 
@@ -444,10 +474,8 @@ Vigente y verificado: `docs/05_Desarrollo/Guia_Instalacion.md` (instalación loc
 
 ### 9.3. Escalabilidad y seguridad a largo plazo
 
-La fuente más confiable y honesta del propio proyecto para esta sección es `docs/07_Gestion_Proyecto/Pendientes.md` (P-01 a P-17), que no se repite aquí completo. Resumen de lo más relevante para escalabilidad/seguridad:
+La fuente más confiable y honesta del propio proyecto para esta sección es `docs/07_Gestion_Proyecto/Pendientes.md` (P-01 a P-18), que no se repite aquí completo. Resumen de lo más relevante para escalabilidad/seguridad:
 
-- **Alta prioridad**: sin verificación de correo al registro (P-01); pasarela de pago aún en modo simulación (`MockGateway`, arquitectura lista para `CulqiGateway`, P-02); envío de correo real pendiente (P-03); **0% de pruebas dedicadas en Comercio** (P-04, confirmado con cifras reales en la sección 6.2 de este documento).
-- **Media**: sin alertas de vencimiento de membresía (P-05); sin exportación PDF de rutinas/nutrición (P-06, solo existe para recibos de pago); sin CI/CD (P-09); rate limiting de login solo en memoria, no distribuido (P-10, aceptable en el tier actual de un solo worker).
-- **Baja**: migración pendiente de `class Config` a `ConfigDict` en Pydantic v2 (P-12); sin Docker (P-13); sin monitoreo/APM (P-14); sin backups propios fuera de Render (P-15); riesgo del plan free de Render — cold starts y expiración de BD a 90 días (P-16).
-
-Adicional detectado en esta revisión (no estaba en `Pendientes.md`): **no existe página propia en `web-admin` para gestionar Entrenadores ni para consultar Auditoría** — ambos módulos son solo API, protegidos correctamente por rol, pero sin interfaz. Se recomienda agregarlo como punto P-18 si el equipo actualiza `Pendientes.md`.
+- **Alta prioridad**: sin verificación de correo al registro (P-01); pasarela de pago aún en modo simulación (`MockGateway`, arquitectura lista para `CulqiGateway`, P-02); envío de correo real pendiente (P-03); **sin pruebas dedicadas en Comercio** (P-04 — no es exactamente 0% de cobertura de línea, pero sí cero funciones `test_`; cifras reales en la sección 6.2 de este documento).
+- **Media**: sin alertas de vencimiento de membresía (P-05); sin exportación PDF de rutinas/nutrición (P-06, solo existe para recibos de pago); sin CI/CD (P-09); rate limiting de login solo en memoria, no distribuido (P-10, aceptable en el tier actual de un solo worker); **sin página en `web-admin` para Entrenadores ni Auditoría** (P-18, detectado en esta revisión).
+- **Baja**: migración pendiente de `class Config` a `ConfigDict` en Pydantic v2 (P-12); sin Docker (P-13); sin monitoreo/APM (P-14); sin backups propios fuera de Render (P-15); riesgo del plan free de Render — cold starts y expiración de BD a 90 días (P-16, **confirmado empíricamente en la sección 7.2** de este documento).
