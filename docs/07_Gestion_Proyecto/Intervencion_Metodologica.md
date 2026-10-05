@@ -628,7 +628,7 @@ El módulo de Comercio cuenta con 10 pruebas propias (`backend/tests/test_comerc
   | `POST /ia/rutina/generar/{id_cliente}` | 29.7 ms | 27.8 ms | 21.1 ms | 62.1 ms |
   | `POST /ia/nutricion/generar/{id_cliente}` | 23.2 ms | 22.0 ms | 19.6 ms | 32.5 ms |
 
-  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye latencia de red variable) ni la comparación con el proceso manual *antes* del sistema.
+  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye la latencia de red real y el *cold start* descrito en 7.2) ni la comparación con el proceso manual *antes* del sistema. La medición contra el despliegue de Render queda pendiente de repetirse una vez el gimnasio esté operando con el sistema y con su catálogo real cargado, momento en el que la medición será representativa del uso real y no solo de la disponibilidad técnica del servicio.
 
 > **Pendiente de incorporar (trabajo de campo, no se puede obtener del código)**: el dato de **pretest** — cuánto demora hoy un entrenador en armar una rutina a mano, y los demás valores de O₁ para cada indicador de la matriz de operacionalización (precisión de registros, exactitud de inventario, percepción vía cuestionario Likert) — requiere observación directa del proceso manual actual del gimnasio y aplicación de las fichas e instrumentos del Plan de Tesis con la muestra real de 92 usuarios. Sin ese dato no es posible completar la comparación O₁ vs. O₂ ni correr las pruebas estadísticas (Shapiro-Wilk, t-Student/Wilcoxon) que exige el Capítulo III del Plan de Tesis.
 
@@ -700,7 +700,7 @@ Las fuentes de datos del motor son las propias tablas operativas del sistema, pe
 |---|---|---|---|
 | Pecho, Tríceps, Espalda, Bíceps, Piernas, Hombros, Abdomen, Full body | 2 | 2 | 2 |
 
-Este conteo confirma el propósito del script de validación de la sección 8.4: con un catálogo sin huecos, cualquier ausencia de ejercicios en una rutina generada debe explicarse por una restricción médica activa, nunca por falta de contenido en el catálogo — lo cual se verifica empíricamente a continuación. Se señala como limitación que este conteo se hizo sobre un catálogo sintético construido para la prueba, no sobre un conteo `GROUP BY grupo_muscular, nivel` del catálogo real de producción; ese conteo real queda pendiente de que el equipo otorgue acceso de solo lectura a la base de datos de producción (ver `Pendientes.md`).
+Este conteo confirma el propósito del script de validación de la sección 8.4: con un catálogo sin huecos, cualquier ausencia de ejercicios en una rutina generada debe explicarse por una restricción médica activa, nunca por falta de contenido en el catálogo — lo cual se verifica empíricamente a continuación. Se señala como limitación que este conteo se hizo sobre un catálogo sintético construido para la prueba, no sobre un conteo `GROUP BY grupo_muscular, nivel` del catálogo real del gimnasio: al momento de esta validación, el sistema está desplegado (sección 7.2) pero el equipo del gimnasio aún no ha cargado su catálogo completo de ejercicios ni opera con él en el día a día, por lo que un conteo contra la base de datos desplegada no reflejaría todavía el uso real. Este conteo real queda documentado como una verificación a repetir una vez el gimnasio esté operando con el sistema (ver `Pendientes.md`).
 
 ### 8.2. Preparación de los datos
 
