@@ -620,7 +620,9 @@ El módulo de Comercio, en cambio, no cuenta con ninguna función de prueba dedi
   | `POST /ia/rutina/generar/{id_cliente}` | 29.7 ms | 27.8 ms | 21.1 ms | 62.1 ms |
   | `POST /ia/nutricion/generar/{id_cliente}` | 23.2 ms | 22.0 ms | 19.6 ms | 32.5 ms |
 
-  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye latencia de red variable) ni la comparación con el proceso manual *antes* del sistema. El dato de pretest (cuánto demora hoy un entrenador en armar una rutina a mano) requiere observación directa del proceso actual del gimnasio con la ficha de registro de tiempos del instrumento de la tesis, y no puede obtenerse del código — es información que el equipo investigador debe recolectar en campo para completar la comparación O₁ vs. O₂ del diseño preexperimental.
+  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye latencia de red variable) ni la comparación con el proceso manual *antes* del sistema.
+
+> **Pendiente de incorporar (trabajo de campo, no se puede obtener del código)**: el dato de **pretest** — cuánto demora hoy un entrenador en armar una rutina a mano, y los demás valores de O₁ para cada indicador de la matriz de operacionalización (precisión de registros, exactitud de inventario, percepción vía cuestionario Likert) — requiere observación directa del proceso manual actual del gimnasio y aplicación de las fichas e instrumentos del Plan de Tesis con la muestra real de 92 usuarios. Sin ese dato no es posible completar la comparación O₁ vs. O₂ ni correr las pruebas estadísticas (Shapiro-Wilk, t-Student/Wilcoxon) que exige el Capítulo III del Plan de Tesis.
 
 ### 6.3. Automatización de pruebas
 
@@ -800,3 +802,17 @@ El detalle completo de mejoras pendientes, priorizadas y verificadas contra el c
 - **Prioridad alta**: verificación de correo electrónico al registro (P-01); activación de una pasarela de pago real — la arquitectura ya está preparada mediante una interfaz intercambiable, y actualmente opera en modo de simulación (P-02); envío real de correo electrónico (P-03); ampliación de la cobertura de pruebas del módulo de Comercio (P-04).
 - **Prioridad media**: alertas de vencimiento de membresía (P-05); exportación en PDF de rutinas y planes nutricionales, hoy disponible solo para recibos de pago (P-06); integración continua (P-09); distribución del limitador de intentos de inicio de sesión en despliegues con múltiples procesos (P-10); incorporación de páginas de administración para Entrenadores y Auditoría (P-18).
 - **Prioridad baja**: migración de la configuración de esquemas Pydantic a su sintaxis más reciente (P-12); contenerización del proyecto (P-13); monitoreo y registro centralizado de errores (P-14); respaldo de base de datos independiente del proveedor de hosting (P-15); mitigación de los riesgos del plan gratuito de Render — tiempo de reactivación del servicio y expiración de la base de datos a los 90 días sin actualización de plan (P-16), confirmado empíricamente en la sección 7.2 de este documento.
+
+---
+
+## Pendientes para completar este documento
+
+Todo el contenido de este documento está verificado contra el código real o medido con scripts reproducibles, **excepto** los siguientes puntos, que requieren una acción del equipo investigador fuera del alcance de un repositorio de código:
+
+- [ ] **Sección 4.4** — Capturas de pantalla del sistema en ejecución (login, dashboard por rol, gestión de clientes, generación de rutina/nutrición), para contrastar visualmente los mockups contra la implementación final.
+- [ ] **Sección 7.2** — Captura de pantalla de la documentación interactiva (`/docs`) y del panel web cargando desde las URLs de producción.
+- [ ] **Sección 6.2** — Datos de **pretest** (O₁ del diseño `G: O₁ → X → O₂`): tiempo real que demora hoy un entrenador en armar una rutina a mano, precisión de los registros manuales actuales, y exactitud del inventario físico antes del sistema. Se recolectan con las fichas e instrumentos del Plan de Tesis (ficha de registro de tiempos, ficha de observación, ficha de control de inventario) sobre el proceso manual real del gimnasio.
+- [ ] **Cuestionario Likert** (Plan de Tesis, Anexo 04) — aplicación a la muestra de 92 usuarios, en los dos momentos (pretest y postest), y evaluación de confiabilidad con el coeficiente alfa de Cronbach.
+- [ ] **Contrastación de hipótesis** — una vez reunidos O₁ y O₂, prueba de normalidad (Shapiro-Wilk) y la prueba inferencial correspondiente (t-Student o Wilcoxon) en SPSS, con nivel de significancia α = 0.05, para las tres hipótesis específicas y la general del Plan de Tesis.
+
+Los primeros dos son tareas de minutos (tomar capturas y pegarlas). Los últimos tres son el trabajo de campo central de la tesis y no pueden resolverse desde este repositorio — son exactamente lo que el diseño preexperimental del Capítulo III pide medir con usuarios reales del gimnasio.
