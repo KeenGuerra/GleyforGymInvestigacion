@@ -63,7 +63,7 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 ## P-04 Cobertura de tests del módulo de Comercio
 
-Sigue en 0% de cobertura, tanto backend como frontend — es la parte del sistema que maneja dinero y stock con menos pruebas:
+Sin tests dedicados, tanto backend como frontend — es la parte del sistema que maneja dinero y stock con menos pruebas. Cobertura real medida con `pytest --cov` (ver `Casos_Prueba.md`, "Estado Actual"): `categorias.py` 37%, `proveedores.py` 43%, `inventario.py` 26%, `productos.py` 23%, `compras.py` 20%, `ventas.py` 17% — no es 0% porque algunas líneas se ejecutan al registrar las rutas en `main.py` al arrancar la app, pero no hay ninguna función `test_` que ejercite su lógica de negocio.
 
 ```text
 Backend sin tests:
@@ -171,7 +171,7 @@ El despliegue actual usa el plan **free** de Render (`render.yaml`): esto implic
 
 ## P-17 Documentar formalmente el módulo de Comercio y Avisos
 
-`docs/03_Analisis/Requerimientos_Funcionales.md` (RF-001 a RF-175) no incluye ningún requerimiento para el módulo de Comercio (categorías/productos/proveedores/compras/inventario/ventas) ni para Avisos — ambos módulos ya están en producción pero se agregaron como extensión de alcance sin quedar documentados como RF formales. Vale la pena agregarlos si el documento de requerimientos se usa como referencia para la tesis.
+~~Resuelto (2026-09)~~: `Requerimientos_Funcionales.md` ya incluye RF-176 a RF-226 cubriendo Entrenadores, Avisos, Auditoría y los seis submódulos de Comercio (categorías, productos, proveedores, compras, inventario, ventas).
 
 ---
 
