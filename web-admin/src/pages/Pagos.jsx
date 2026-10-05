@@ -319,7 +319,7 @@ function Pagos() {
         </div>
 
         <div className="form-actions">
-          <button className="btn-primary">
+          <button type="submit" className="btn-primary">
             {editandoId ? "Actualizar" : "Guardar"}
           </button>
         </div>

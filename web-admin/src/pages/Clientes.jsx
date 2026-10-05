@@ -490,7 +490,7 @@ function Clientes() {
           </div>
 
           <div className="form-actions">
-            <button className="btn-primary">
+            <button type="submit" className="btn-primary">
               {editandoId ? "Actualizar cliente" : "Registrar cliente"}
             </button>
 

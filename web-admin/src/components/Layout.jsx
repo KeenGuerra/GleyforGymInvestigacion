@@ -34,14 +34,23 @@ export default function Layout() {
           <button className="menu-toggle" onClick={() => setMenuOpen(true)}>
             <FaBars />
           </button>
-          <div className="mobile-logo" onClick={() => navigate("/")}>
+          <button type="button" className="mobile-logo" onClick={() => navigate("/")}>
             <span>GLEYFORGYM</span>
-          </div>
+          </button>
         </header>
 
         {/* Overlay Backdrop */}
         {menuOpen && (
-          <div className="sidebar-overlay" onClick={() => setMenuOpen(false)} />
+          <div
+            className="sidebar-overlay"
+            role="button"
+            tabIndex={0}
+            aria-label="Cerrar menú"
+            onClick={() => setMenuOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setMenuOpen(false);
+            }}
+          />
         )}
 
         <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
@@ -56,7 +65,13 @@ export default function Layout() {
             </button>
           </div>
 
-          <nav className="sidebar-menu" onClick={() => setMenuOpen(false)}>
+          <nav
+            className="sidebar-menu"
+            onClick={() => setMenuOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setMenuOpen(false);
+            }}
+          >
             <NavLink to="/dashboard">Panel principal</NavLink>
 
             {rol === "ADMIN" && (

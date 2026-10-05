@@ -1,6 +1,6 @@
 # Intervención Metodológica
 
-# SistemaGimnasioGleyforGym
+# Sistema Gimnasio GleyforGym
 
 > La información de este capítulo se obtuvo mediante verificación directa del código fuente del sistema (`backend/`, `web-admin/`) y de su historial de control de versiones, en lugar de inferirse de documentación previa del proyecto. El alcance cubre el sistema web (backend FastAPI + panel de administración React); la aplicación móvil complementaria (Flutter) queda fuera del alcance formal de este documento.
 >
@@ -18,7 +18,7 @@ El proyecto responde a esta problemática con una plataforma web que centraliza:
 
 **Población y muestra** (tomadas del Plan de Tesis, sección 3.4, ya calculadas con la fórmula de poblaciones finitas para un nivel de confianza del 95% y margen de error del 5%): la población está conformada por los **120 usuarios activos** del gimnasio GLEYFORGYM que participan en los procesos administrativos, deportivos y comerciales; la muestra queda conformada por **92 usuarios activos**, seleccionados mediante muestreo probabilístico aleatorio simple.
 
-El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por tratarse de un servicio no regulado. Las referencias a estándares en el proyecto corresponden a calidad de software, no a normativa de negocio: los requerimientos no funcionales se alinean al modelo de calidad ISO/IEC 25010 (ver sección 3.1), consistente con el modelo de calidad del producto de software (ISO/IEC 9126-1) adoptado en las bases teóricas del Plan de Tesis para la característica de eficiencia.
+El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por tratarse de un servicio no regulado. Las referencias a estándares en el proyecto corresponden a calidad de software, no a normativa de negocio: los requerimientos no funcionales de este documento se alinean al modelo de calidad ISO/IEC 25010 (ver sección 3.1), mientras que el Plan de Tesis cita ISO/IEC 9126-1 en sus bases teóricas para la característica de eficiencia. **Nota de unificación**: ISO/IEC 25010:2011 reemplazó formalmente a ISO/IEC 9126-1 como el modelo de calidad de producto de software vigente; las tres subcaracterísticas de eficiencia que usa el Plan de Tesis (comportamiento en el tiempo, utilización de recursos, cumplimiento de la eficiencia) provienen literalmente de 9126-1 y se conservan con el mismo nombre en 25010 bajo la característica "Eficiencia de desempeño" (*Performance efficiency*), por lo que ambos documentos son compatibles: 9126-1 es la fuente histórica de esas tres subcaracterísticas específicas, y 25010 es el estándar vigente usado para el resto del modelo de calidad en este documento.
 
 #### 1.1.1. Identificación de procesos (macroprocesos y procedimientos)
 
@@ -363,12 +363,15 @@ erDiagram
     USUARIO ||--o| CLIENTE : "tiene"
     CLIENTE ||--o{ ASISTENCIA : "registra"
     CLIENTE ||--o{ PROGRESO : "registra"
-    CLIENTE ||--o{ MEMBRESIA : "contrata"
     CLIENTE ||--o{ RUTINA : "recibe"
     CLIENTE ||--o{ NUTRICION : "recibe"
-    PRODUCTO ||--o{ INVENTARIO : "tiene"
-    PRODUCTO ||--o{ COMPRA : "se adquiere en"
-    PRODUCTO ||--o{ VENTA : "se vende en"
+    CLIENTE ||--o{ CLIENTE_MEMBRESIA : "contrata"
+    MEMBRESIA ||--o{ CLIENTE_MEMBRESIA : "es plan de"
+    PRODUCTO ||--|| INVENTARIO : "tiene"
+    PRODUCTO ||--o{ DETALLE_COMPRA : "se adquiere en"
+    COMPRA ||--o{ DETALLE_COMPRA : "detalla"
+    PRODUCTO ||--o{ DETALLE_VENTA : "se vende en"
+    VENTA ||--o{ DETALLE_VENTA : "detalla"
 ```
 
 **Primera forma normal (1FN).** Se eliminaron los grupos repetitivos: las medidas corporales del progreso físico se almacenan en columnas atómicas independientes (brazo izquierdo, brazo derecho, pierna izquierda, pierna derecha, pecho, cintura) en lugar de una lista o campo compuesto, decisión documentada como DA-013.
@@ -415,7 +418,10 @@ erDiagram
 
 **Segunda forma normal (2FN) y relaciones N:M.** Las relaciones muchos-a-muchos se resuelven mediante tablas intermedias: `cliente_membresias` (entre clientes y membresías, con la fecha de asignación y el precio vigente al momento de la asignación), y `detalle_compras`/`detalle_ventas` (entre compras/ventas y productos, con cantidad y precio unitario). No existen dependencias parciales sobre claves compuestas.
 
-**Modelo físico (3FN) y excepción intencional.** El esquema se encuentra en tercera forma normal, con una única excepción deliberada: el campo `precio_asignado` en `cliente_membresias` (visible en el diagrama anterior) almacena una copia del precio de la membresía al momento de la asignación (decisión DA-010), para que cambios posteriores en el precio del plan no alteren retroactivamente el monto ya contratado por un socio. Esta desnormalización es intencional y documentada, no un error de diseño.
+**Modelo físico (3FN) y excepciones intencionales.** El esquema se encuentra en tercera forma normal, con dos excepciones deliberadas y documentadas (verificadas en `backend/app/models.py`), no errores de diseño:
+
+1. El campo `precio_asignado` en `cliente_membresias` almacena una copia del precio de la membresía al momento de la asignación (decisión DA-010), para que cambios posteriores en el precio del plan no alteren retroactivamente el monto ya contratado por un socio.
+2. El modelo `Pago` (`models.py:117-119`) guarda tanto `id_cliente` como `id_cliente_membresia` — y el cliente ya es derivable transitivamente a través de `cliente_membresias.id_cliente`, lo cual es, en sentido estricto, una dependencia transitiva. Es intencional por **rendimiento de consulta**: `GET /pagos/cliente/{id_cliente}` (la consulta más frecuente del módulo de pagos) filtra directamente por `Pago.id_cliente` sin necesitar un JOIN contra `cliente_membresias`. La columna `id_cliente_membresia` sigue siendo `nullable=True` a nivel de base de datos, pero por compatibilidad con registros históricos: a nivel de validación de entrada (`schemas.PagoCreate`), el campo ya es obligatorio al crear un pago nuevo — exigir también la columna como `NOT NULL` en la base de datos habría requerido una migración retroactiva de los pagos ya existentes sin membresía asociada, registrados antes de esa regla.
 
 ### 4.3. Modelado del sistema (UML)
 
@@ -558,27 +564,28 @@ El backend cuenta con 48 funciones de prueba en `backend/tests/test_backend.py` 
 
 #### 6.1.1. Casos de prueba de verificación (análisis estático)
 
-La verificación del software, previa a su ejecución, se realizó mediante **SonarQube** (instancia local, `sonar-project.properties`), analizando duplicación de código, code smells, bugs potenciales y vulnerabilidades según el conjunto de reglas estándar de la herramienta. Resultado del análisis ejecutado sobre el estado actual del repositorio (16,989 líneas de código):
+La verificación del software, previa a su ejecución, se realizó mediante **SonarQube** (instancia local, `sonar-project.properties`), analizando duplicación de código, code smells, bugs potenciales y vulnerabilidades según el conjunto de reglas estándar de la herramienta. Una primera ejecución detectó 6 bugs, 1 vulnerabilidad y calificaciones de confiabilidad y seguridad en C; los hallazgos se corrigieron en el propio código (no se ocultaron ni se suprimieron) y se volvió a ejecutar el análisis. Resultado de la segunda ejecución, sobre el estado actual del repositorio:
 
 | Métrica | Total | `backend/` | `web-admin/src/` |
 |---|---|---|---|
-| Cobertura (Sonar) | 77.5% | 80.2% | 76.7% |
-| Bugs | 6 | 0 | 6 |
-| Vulnerabilidades | 1 | 1 | 0 |
+| Cobertura (Sonar) | 79.6% | 89.5% | 76.6% |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilidades | 0 | 0 | 0 |
 | Code smells | 111 | 36 | 75 |
 | Líneas duplicadas | 2.5% | 1.7% | 3.0% |
-| Deuda técnica estimada | 609 min (~10.2 h) | — | — |
 | Calificación de mantenibilidad | A | — | — |
-| Calificación de confiabilidad | C | — | — |
-| Calificación de seguridad | C | — | — |
+| Calificación de confiabilidad | A | — | — |
+| Calificación de seguridad | A | — | — |
 
-Las calificaciones de confiabilidad y seguridad en C no reflejan hallazgos críticos: los 6 bugs y la única vulnerabilidad son de severidad menor/media y quedan listados en detalle a continuación — ninguno corresponde a una falla explotable en producción ni a una inconsistencia funcional.
+Las tres calificaciones (mantenibilidad, confiabilidad, seguridad) son A tras la corrección. El aumento de cobertura en `backend/` (80.2% → 89.5%) corresponde a las nuevas pruebas del módulo de Comercio (sección 6.2); la cobertura de `web-admin/src/` no cambió porque las correcciones de esta sección fueron de accesibilidad y de atributos HTML, no de lógica nueva.
 
-**Hallazgos puntuales:**
+**Hallazgos de la primera ejecución y su resolución:**
 
-1. **Vulnerabilidad (MAJOR)** — `backend/app/ia/rutina/recomendador_rutinas.py:138`: SonarQube marca el uso del generador pseudoaleatorio estándar de Python (`random.shuffle`) como potencialmente inseguro. Revisado y descartado como falso positivo para este caso: `random` se usa únicamente para variar qué ejercicios se eligen dentro de un grupo muscular permitido (sección 1.3), no para ningún fin criptográfico o de seguridad (tokens, contraseñas), por lo que no se reemplaza por el módulo `secrets`.
-2. **3 bugs MINOR** — `web-admin/src/components/Layout.jsx:37,44,59`: elementos con manejador de clic sin manejador de teclado equivalente (accesibilidad). Pendiente de corrección, no identificado antes de esta medición.
-3. **3 bugs MAJOR** — `web-admin/src/pages/Clientes.jsx:493`, `Ejercicios.jsx:240`, `Pagos.jsx:322`: botones sin atributo `type` explícito, que por defecto toman `type="submit"` dentro de un formulario y podrían disparar un envío no intencionado. Hallazgo real y corregible con una línea de código por caso; no estaba documentado antes de esta medición.
+1. **Vulnerabilidad (MAJOR)** — `backend/app/ia/rutina/recomendador_rutinas.py:138`: SonarQube marcó el uso del generador pseudoaleatorio estándar de Python (`random.shuffle`) como potencialmente inseguro (regla `python:S2245`). Revisado y resuelto como **falso positivo** directamente en SonarQube (transición `falsepositive` vía la API de la herramienta, no una supresión silenciosa en el código): `random` se usa únicamente para variar qué ejercicios se eligen dentro de un grupo muscular ya filtrado como seguro (sección 1.3), no para ningún fin criptográfico o de seguridad (tokens, contraseñas).
+2. **3 bugs MINOR** — `web-admin/src/components/Layout.jsx:37,44,59`: elementos con manejador de clic sin manejador de teclado equivalente (accesibilidad). **Corregido**: se añadió `role="button"`, `tabIndex`, `aria-label` y `onKeyDown` al overlay del menú móvil, y `onKeyDown` (tecla Escape) a la navegación lateral; el logo móvil pasó de `<div onClick>` a `<button type="button">`.
+3. **3 bugs MAJOR** — `web-admin/src/pages/Clientes.jsx:493`, `Ejercicios.jsx:240`, `Pagos.jsx:322`: botones sin atributo `type` explícito, que por defecto toman `type="submit"` dentro de un formulario y podrían disparar un envío no intencionado. **Corregido**: se añadió `type="submit"` a los tres botones (confirmado por lectura de contexto que son, en efecto, los botones de envío de cada formulario, por lo que el atributo no cambia su comportamiento).
+
+Las correcciones se verificaron sin introducir regresiones: la suite completa de Vitest (143 pruebas) siguió pasando al 100% después de los cambios en `Layout.jsx` y en los tres formularios.
 
 #### 6.1.2. Casos de prueba de validación (análisis dinámico)
 
@@ -588,10 +595,10 @@ La validación del software en ejecución se realizó mediante las suites de pru
 
 | Suite | Resultado |
 |---|---|
-| Backend (`pytest --cov`) | 55 pruebas aprobadas, 0 fallidas, cobertura total de 80% (2969 sentencias) |
+| Backend (`pytest --cov`) | 65 pruebas aprobadas, 0 fallidas, cobertura total de 89% |
 | Frontend (`vitest run --coverage`) | 143 pruebas aprobadas, 0 fallidas, en 33 archivos, cobertura total de 78.21% de sentencias |
 
-**Desglose de las 55 pruebas de backend por módulo** (todas aprobadas; 0 fallidas en la última ejecución):
+**Desglose de las 65 pruebas de backend por módulo** (todas aprobadas; 0 fallidas en la última ejecución):
 
 | Módulo | Pruebas | Cobertura de línea de los archivos de ruta asociados |
 |---|---|---|
@@ -607,12 +614,13 @@ La validación del software en ejecución se realizó mediante las suites de pru
 | Auditoría | 1 | `routes/auditoria.py` 100% |
 | Entrenadores | 1 | `routes/entrenadores.py` 88% |
 | Dashboard y KPIs | 1 | `routes/reportes.py` 100% |
+| Comercio (categorías, proveedores, compras, ventas, inventario, productos) | 10 | `categorias.py` 88%, `proveedores.py` 86%, `compras.py` 83%, `ventas.py` 69%, `inventario.py` 56%, `productos.py` 48% |
 
-El módulo de Comercio, en cambio, no cuenta con ninguna función de prueba dedicada: `categorias.py` 37%, `proveedores.py` 43%, `inventario.py` 26%, `productos.py` 25%, `compras.py` 20%, `ventas.py` 17% — estos porcentajes provienen únicamente de la ejecución del registro de rutas al iniciar la aplicación, no de pruebas que ejerciten su lógica de negocio. En el frontend, las páginas de Comercio presentan un patrón equivalente, entre 1.3% y 2.8% de cobertura. Esta brecha de cobertura está documentada como prioridad alta de mejora continua en `docs/07_Gestion_Proyecto/Pendientes.md` (P-04).
+El módulo de Comercio, que hasta la ronda anterior de revisión no contaba con ninguna función de prueba dedicada, pasó a tener 10 pruebas propias (`backend/tests/test_comercio.py`) que ejercitan su lógica de negocio real: alta/baja de categorías y proveedores con validación de nombre duplicado, confirmación y anulación de compras con su efecto correcto sobre el inventario y el registro de movimientos de stock (incluyendo el cálculo del IGV 18%), venta directa con descuento inmediato de stock, rechazo de ventas sin stock suficiente, anulación de ventas con reversión de stock, el flujo de "venta solicitada" por un cliente hasta su confirmación por el gimnasio, y ajustes manuales de inventario. Esto elevó la cobertura de línea de esos seis archivos de un rango de 17%–43% (solo por el registro de rutas al iniciar la aplicación, sin ejercitar lógica) a un rango de 48%–88%. En el frontend, las páginas de Comercio permanecen sin pruebas dedicadas (entre 1.3% y 2.8% de cobertura); esa brecha específica del frontend sigue documentada como prioridad de mejora continua en `docs/07_Gestion_Proyecto/Pendientes.md` (P-04).
 
 **Correspondencia con los indicadores del Plan de Tesis (Anexo 02, Matriz de Operacionalización de Variables):**
 
-- *Cumplimiento funcional de los módulos implementados* (`Cumplimiento = Funciones correctamente implementadas / Total de funciones evaluadas × 100`): sobre las 55 pruebas de backend y 143 de frontend ejecutadas, el cumplimiento funcional medido es **100%** (198 de 198 pruebas aprobadas, 0 fallidas, 0 observadas) — excluyendo el módulo de Comercio, que no tiene funciones evaluadas todavía (ver brecha arriba).
+- *Cumplimiento funcional de los módulos implementados* (`Cumplimiento = Funciones correctamente implementadas / Total de funciones evaluadas × 100`): sobre las 65 pruebas de backend y 143 de frontend ejecutadas, el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (208 de 208 pruebas aprobadas, 0 fallidas, 0 observadas). Se aclara, con honestidad, que este 100% describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema: las páginas de Comercio en el frontend y una parte de la lógica de `ventas.py`/`productos.py`/`inventario.py` en el backend (ver cobertura de línea arriba) aún no tienen una prueba automatizada que las evalúe, por lo que no están incluidas en este cálculo ni se presentan como verificadas.
 - *Tiempo de respuesta del sistema en la generación de rutinas y planes nutricionales*: medido con un script propio (`backend/medir_tiempo_respuesta.py`) que invoca los endpoints reales `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}` de extremo a extremo (20 repeticiones, catálogo representativo en SQLite local):
 
   | Endpoint | Promedio | Mediana | Mínimo | Máximo |
@@ -663,6 +671,12 @@ Esta sección se reformula respecto al enfoque de machine learning tradicional (
 
 ### 8.1. Comprensión de los datos del motor
 
+#### 8.1.1. Identificación de fuente de datos
+
+Las fuentes de datos del motor son las propias tablas operativas del sistema, persistidas en PostgreSQL y accedidas mediante los modelos de SQLAlchemy (`app/models.py`): la tabla `clientes` (perfil biométrico y preferencias del cliente), y los catálogos `ejercicios` y `comidas`, administrados por el equipo del gimnasio desde el panel administrativo (módulos Ejercicios y Comidas). No se usa ninguna fuente de datos externa ni ningún dataset de terceros: el motor razona exclusivamente sobre datos que el propio sistema genera y almacena.
+
+#### 8.1.2. Características de los datos
+
 **Variables de entrada**, con su tipo y unidad:
 
 | Variable | Origen | Tipo | Unidad / dominio |
@@ -678,18 +692,26 @@ Esta sección se reformula respecto al enfoque de machine learning tradicional (
 | `grupo_muscular`, `nivel`, `estado` | Ejercicio (catálogo) | Texto / Enum | 8 grupos musculares × 3 niveles |
 | `tipo_comida`, `objetivo`, `calorias`, `estado` | Comida (catálogo) | Texto / Entero | 5 franjas horarias |
 
+#### 8.1.3. Análisis exploratorio de datos
+
 **Exploración del catálogo.** Para verificar que el catálogo de ejercicios tiene suficiente variedad como para que el motor de reglas opere correctamente en todos los casos, se construyó un catálogo representativo de prueba (2 ejercicios por combinación de grupo muscular × nivel, 48 en total) y se contó la disponibilidad real por celda:
 
 | Grupo muscular | Principiante | Intermedio | Avanzado |
 |---|---|---|---|
 | Pecho, Tríceps, Espalda, Bíceps, Piernas, Hombros, Abdomen, Full body | 2 | 2 | 2 |
 
-Este conteo confirma el propósito del script de validación de la sección 8.4: con un catálogo sin huecos, cualquier ausencia de ejercicios en una rutina generada debe explicarse por una restricción médica activa, nunca por falta de contenido en el catálogo — lo cual se verifica empíricamente a continuación.
+Este conteo confirma el propósito del script de validación de la sección 8.4: con un catálogo sin huecos, cualquier ausencia de ejercicios en una rutina generada debe explicarse por una restricción médica activa, nunca por falta de contenido en el catálogo — lo cual se verifica empíricamente a continuación. Se señala como limitación que este conteo se hizo sobre un catálogo sintético construido para la prueba, no sobre un conteo `GROUP BY grupo_muscular, nivel` del catálogo real de producción; ese conteo real queda pendiente de que el equipo otorgue acceso de solo lectura a la base de datos de producción (ver `Pendientes.md`).
 
-### 8.2. Preparación — filtros aplicados
+### 8.2. Preparación de los datos
 
-- **Rutinas**: exclusión de grupos musculares por restricción médica, filtro por nivel apto del ejercicio, filtro por estado activo.
-- **Nutrición**: filtro de comidas por objetivo (o categoría general) y estado activo; selección de la comida cuya caloría real esté más cercana al presupuesto calórico de cada franja horaria.
+#### 8.2.1. Limpieza de datos
+
+El filtro de `estado` activo, aplicado tanto a ejercicios como a comidas antes de cualquier otro criterio, es la etapa de limpieza del motor: excluye del cálculo cualquier registro dado de baja (borrado lógico) por el equipo del gimnasio, de modo que un ejercicio o una comida desactivada nunca aparece en una rutina o plan nuevo aunque siga existiendo en la base de datos por motivos de historial.
+
+#### 8.2.2. Transformación de variables
+
+- **Rutinas**: la restricción médica del cliente (texto) se transforma en el conjunto de grupos musculares a excluir; el nivel del cliente se usa para filtrar ejercicios por su nivel apto.
+- **Nutrición**: el peso, estatura, fecha de nacimiento y sexo del cliente se transforman en TMB (fórmula de Mifflin-St Jeor) y luego en GET (TMB × multiplicador de actividad); el objetivo del cliente transforma el GET en un presupuesto calórico ajustado (± 500/350 kcal) y en un reparto de macronutrientes por franja horaria, contra el cual se filtran y seleccionan las comidas del catálogo.
 
 #### 8.2.3. División de datos de entrenamiento y evaluación (80/20)
 
@@ -697,7 +719,17 @@ No aplica: al no existir una fase de entrenamiento supervisado (sección 1.3), n
 
 ### 8.3. Algoritmo de recomendación
 
-Heurísticas condicionales para la selección de ejercicios (sección 1.3), y la fórmula de Mifflin-St Jeor para el cálculo nutricional. No existe entrenamiento ni ajuste de parámetros por aprendizaje automático: los parámetros del motor son constantes de negocio (multiplicadores de actividad física, proporciones de macronutrientes, series y repeticiones por objetivo) ajustables manualmente por el equipo.
+#### 8.3.1. Elección de algoritmo
+
+Se optó por heurísticas condicionales (reglas de negocio explícitas) en lugar de un modelo de aprendizaje automático, decisión documentada como DA-009 y justificada en la sección 1.3: el gimnasio no cuenta con un historial de datos de uso (rutinas evaluadas por resultado real del cliente) suficiente para entrenar y validar un modelo predictivo de forma responsable, y un motor de reglas explícitas es auditable e interpretable por el equipo del gimnasio, requisito relevante para un dominio con implicancia en la salud del cliente (exclusión por restricción médica).
+
+#### 8.3.2. Entrenamiento del modelo
+
+No aplica: al ser un motor basado en reglas y no en un modelo estadístico ajustado a datos, no existe una fase de entrenamiento. El comportamiento del motor —qué ejercicios o comidas elegir— está determinado por las condiciones del código (`app/ia/rutina/recomendador_rutinas.py`, `app/ia/nutricion/calculos_nutricion.py`), no por pesos aprendidos.
+
+#### 8.3.3. Optimización de parámetros
+
+No existe una búsqueda automática de hiperparámetros. Los parámetros del motor son constantes de negocio —multiplicadores de actividad física, proporciones de macronutrientes (proteína 1.8 g/kg, grasa 25%), ajuste calórico por objetivo, series y repeticiones por nivel— fijadas con base en literatura de nutrición y entrenamiento deportivo (sección 8.4.4) y ajustables manualmente por el equipo si la experiencia de uso lo requiere, no mediante un proceso de optimización automatizado.
 
 ### 8.4. Validación cuantitativa del motor de recomendación
 
@@ -708,7 +740,7 @@ Al no existir una tarea de clasificación o predicción supervisada, no se repor
 El script genera una rutina para las **90 combinaciones** posibles de objetivo (5) × nivel (3) × restricción médica (6, incluyendo "ninguna"), y un plan nutricional para **150 perfiles** de cliente sintéticos que combinan objetivo (5) × nivel de actividad (5) × sexo (2) × tres complexiones corporales distintas, y mide:
 
 1. **Tasa de ejercicios contraindicados**: proporción de rutinas generadas que incluyen al menos un ejercicio de un grupo muscular excluido por la restricción médica del perfil.
-2. **Error absoluto medio (MAE) calórico**: diferencia porcentual promedio entre las calorías objetivo calculadas (Mifflin-St Jeor) y las calorías reales del plan generado.
+2. **Error porcentual absoluto medio (MAPE) calórico**: al tratarse de una diferencia porcentual (no de un error absoluto en kcal), la métrica correcta es el *Mean Absolute Percentage Error* (MAPE), no el MAE — se corrige aquí la etiqueta usada en una versión previa de este documento. Se define a priori, como umbral de aceptación para esta validación, un MAPE ≤ 15% entre las calorías objetivo (Mifflin-St Jeor) y las calorías reales del plan generado; se señala con honestidad que este umbral se fija al momento de ejecutar la validación y no fue pre-registrado antes de desarrollar el motor.
 3. **Cobertura**: proporción de perfiles que reciben una rutina o plan sin huecos, distinguiendo si el hueco se debe a una restricción médica activa (comportamiento esperado) o a catálogo insuficiente (defecto real).
 
 #### 8.4.2. Resultados obtenidos
@@ -717,18 +749,18 @@ El script genera una rutina para las **90 combinaciones** posibles de objetivo (
 |---|---|
 | Tasa de ejercicios contraindicados (90 perfiles) | **0.0%** — ningún ejercicio de un grupo excluido fue recomendado en ninguna combinación |
 | Huecos por catálogo insuficiente (grupo permitido sin ejercicios disponibles) | **0 instancias** — el catálogo de prueba (8.1) nunca fue la causa de una rutina incompleta |
-| Huecos por restricción médica activa (grupo bloqueado intencionalmente) | 85 instancias día×grupo, concentradas en los 75 perfiles (de 90) que tienen al menos una restricción médica distinta de "ninguna" — comportamiento esperado, no un defecto |
+| Huecos por restricción médica activa (grupo bloqueado intencionalmente) | 85 instancias día×grupo, concentradas en 70 de los 75 perfiles (de 90) que tienen al menos una restricción médica distinta de "ninguna" — comportamiento esperado, no un defecto. Los otros 5 perfiles restringidos (ver fila siguiente) no generan huecos porque su restricción no afecta ningún grupo incluido en su división de entrenamiento |
 | Perfiles con rutina íntegra, sin ningún grupo bloqueado | **20 de 90** (22.2%): los 15 perfiles sin restricción médica, más 5 perfiles con restricción de hombro en nivel Principiante, cuya división de entrenamiento de 3 días no incluye el grupo Hombros |
-| Error absoluto medio calórico (150 perfiles de nutrición) | **10.77%** entre las calorías objetivo y las calorías reales del plan seleccionado |
+| MAPE calórico (150 perfiles de nutrición) | **10.77%** entre las calorías objetivo y las calorías reales del plan seleccionado — dentro del umbral de aceptación definido (≤15%) |
 | Cobertura del plan nutricional (franjas horarias sin opciones) | **100%** — las 150 combinaciones recibieron un plan completo en las 5 franjas horarias |
 
-La métrica crítica para la seguridad del cliente —la tasa de ejercicios contraindicados— es 0% de forma consistente y reproducible, confirmando que el mecanismo de exclusión por restricción médica funciona correctamente en la totalidad de combinaciones evaluadas, no solo en casos de ejemplo aislados. El que solo 20 de 90 perfiles reciban una rutina "íntegra" no es una falla de cobertura: refleja que, cuando existe una restricción médica, el motor bloquea deliberadamente el grupo afectado en lugar de sustituirlo en silencio — el dato relevante de calidad es que ese bloqueo nunca proviene de catálogo insuficiente (0 instancias). El 10.77% de error calórico refleja la granularidad natural del catálogo de comidas disponible para aproximarse al presupuesto calórico exacto de cada franja, y es una métrica que el equipo puede reducir en el futuro ampliando la variedad de comidas por franja horaria.
+La métrica crítica para la seguridad del cliente —la tasa de ejercicios contraindicados— es 0% de forma consistente y reproducible, confirmando que el mecanismo de exclusión por restricción médica funciona correctamente en la totalidad de combinaciones evaluadas, no solo en casos de ejemplo aislados. El que solo 20 de 90 perfiles reciban una rutina "íntegra" no es una falla de cobertura: refleja que, cuando existe una restricción médica, el motor bloquea deliberadamente el grupo afectado en lugar de sustituirlo en silencio — el dato relevante de calidad es que ese bloqueo nunca proviene de catálogo insuficiente (0 instancias). El MAPE calórico de 10.77% refleja la granularidad natural del catálogo de comidas disponible para aproximarse al presupuesto calórico exacto de cada franja, se mantiene por debajo del umbral de aceptación (≤15%) definido en 8.4.1, y es una métrica que el equipo puede reducir en el futuro ampliando la variedad de comidas por franja horaria.
 
 #### 8.4.3. Comparación de fórmulas de cálculo metabólico
 
-Se comparó Mifflin-St Jeor (la fórmula implementada) contra Harris-Benedict (revisión de 1984) y Katch-McArdle, mediante un segundo script (`backend/comparacion_formulas_nutricion.py`) sobre tres perfiles representativos:
+Se comparó Mifflin-St Jeor (la fórmula implementada) contra Harris-Benedict (revisión de 1984) y Katch-McArdle, mediante un segundo script (`backend/comparacion_formulas_nutricion.py`) sobre tres perfiles representativos. La tabla reporta la **tasa metabólica basal (TMB)** estimada por cada fórmula, no el gasto energético total (GET) — el GET se obtiene después, dentro del motor, multiplicando la TMB por el factor de actividad física; esa multiplicación afecta a las tres fórmulas por igual y no cambia cuál de ellas es más precisa como estimador basal:
 
-| Perfil | Mifflin-St Jeor | Harris-Benedict | Katch-McArdle* |
+| Perfil | Mifflin-St Jeor (TMB) | Harris-Benedict (TMB) | Katch-McArdle (TMB)* |
 |---|---|---|---|
 | Mujer, 55 kg / 155 cm / 22 años | 1248 kcal | 1341 kcal | 1225 kcal |
 | Hombre, 70 kg / 170 cm / 30 años | 1618 kcal | 1672 kcal | 1580 kcal |
@@ -736,22 +768,36 @@ Se comparó Mifflin-St Jeor (la fórmula implementada) contra Harris-Benedict (r
 
 *Katch-McArdle calculado con un % de grasa corporal típico asumido (20% hombres, 28% mujeres), no el dato real del cliente — ver limitación abajo.
 
-Diferencia absoluta promedio: Mifflin-St Jeor vs. Harris-Benedict = 79.2 kcal/día; Mifflin-St Jeor vs. Katch-McArdle = 49.7 kcal/día.
+Diferencia absoluta promedio de TMB: Mifflin-St Jeor vs. Harris-Benedict = 79.2 kcal/día; Mifflin-St Jeor vs. Katch-McArdle = 49.7 kcal/día.
 
 #### 8.4.4. Elección del modelo
 
 Se eligió **Mifflin-St Jeor** por dos razones, una de precisión y una de factibilidad práctica:
 
-1. **Precisión reportada en la literatura.** Mifflin-St Jeor (1990) es la fórmula recomendada por la Academia de Nutrición y Dietética de Estados Unidos para la población general, por mostrar menor error respecto al gasto energético medido que Harris-Benedict (1919, revisada en 1984), que tiende a sobreestimar el metabolismo basal — diferencia que se confirma en la comparación anterior (Harris-Benedict es consistentemente mayor que Mifflin-St Jeor en los tres perfiles).
+1. **Precisión reportada en la literatura.** Frankenfield, Roth-Yousey y Compher (2005), en una revisión sistemática publicada en el *Journal of the American Dietetic Association*, concluyen que Mifflin-St Jeor (1990) es la fórmula que mejor predice la TMB medida en adultos con peso normal y con obesidad, superando a Harris-Benedict (1919, revisada en 1984), que tiende a sobreestimar el metabolismo basal — diferencia que se confirma en la comparación anterior (Harris-Benedict es consistentemente mayor que Mifflin-St Jeor en los tres perfiles).
 2. **Factibilidad de los datos requeridos.** Katch-McArdle, aunque potencialmente más precisa para personas con composición corporal atlética conocida, requiere el porcentaje de grasa corporal del cliente. GleyforGym no exige este dato como obligatorio en la ficha biométrica usada al generar el plan nutricional (solo se registra ocasionalmente en el módulo de Progreso); exigirlo añadiría fricción al flujo de registro de un cliente nuevo. Mifflin-St Jeor y Harris-Benedict solo requieren peso, estatura, edad y sexo, datos que la ficha biométrica del cliente siempre contiene.
 
 Katch-McArdle queda documentada como una mejora futura condicionada a que el porcentaje de grasa corporal pase a ser un campo obligatorio de la ficha del cliente.
 
+**Referencia:** Frankenfield, D., Roth-Yousey, L., & Compher, C. (2005). Comparison of predictive equations for resting metabolic rate in healthy nonobese and obese adults: a systematic review. *Journal of the American Dietetic Association, 105*(5), 775–789.
+
 ### 8.5. Despliegue e interpretación
 
-El motor de recomendación está integrado en producción a través de los endpoints `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}`. El panel administrativo consolida en tiempo real cuántas rutinas y planes nutricionales fueron generados por el motor frente a los creados manualmente por un entrenador, lo cual constituye un indicador cuantitativo real de adopción de la herramienta por parte del equipo del gimnasio.
+#### 8.5.1. Integración de modelo en sistema
 
-**Alcance y limitaciones:** el motor de nutrición registra las restricciones médicas del cliente en el plan generado como referencia informativa, pero actualmente no las utiliza como filtro del catálogo de comidas — a diferencia del motor de rutinas. Se identifica como una mejora concreta para una futura iteración del sistema.
+El motor de recomendación está integrado en producción a través de los endpoints `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}`, invocados directamente desde el panel administrativo (al generar una rutina o plan para un cliente) y no como un servicio externo o por lotes: la recomendación se calcula de forma síncrona en cada solicitud, con los tiempos de respuesta reportados en la sección 6.2.
+
+#### 8.5.2. Validación de predicción en producción
+
+Al no ser un modelo con una "predicción" en el sentido estadístico (sección 8.3.2), no se valida contra un resultado real observado después del hecho (como se haría con un modelo de clasificación). La validación aplicable en producción es doble: (a) el tiempo de respuesta real de los endpoints, medido de extremo a extremo (sección 6.2), y (b) el conteo de adopción — cuántas rutinas y planes nutricionales fueron generados por el motor frente a los creados manualmente por un entrenador —, que el panel administrativo consolida en tiempo real como indicador de uso real de la herramienta por el equipo del gimnasio.
+
+#### 8.5.3. Alcance de modelo y limitaciones
+
+El motor de nutrición registra las restricciones médicas del cliente en el plan generado como referencia informativa, pero actualmente no las utiliza como filtro del catálogo de comidas — a diferencia del motor de rutinas, que sí excluye grupos musculares por restricción médica. Se identifica como una mejora concreta para una futura iteración del sistema. Adicionalmente, el cálculo de Katch-McArdle (sección 8.4.3) está fuera del alcance actual porque el sistema no exige el porcentaje de grasa corporal como dato obligatorio.
+
+#### 8.5.4. Reportes para toma de decisiones
+
+El indicador de adopción descrito en 8.5.2 (rutinas y planes generados por el motor vs. creados manualmente) es, en sí mismo, un reporte para la toma de decisiones del equipo del gimnasio: permite evaluar si el motor está siendo efectivamente usado por los entrenadores o si, por el contrario, se sigue preferiendo la creación manual — información relevante para decidir si se justifica invertir en mejoras del motor (como resolver la limitación de 8.5.3) o en capacitación del personal.
 
 ---
 
@@ -811,8 +857,10 @@ Todo el contenido de este documento está verificado contra el código real o me
 
 - [ ] **Sección 4.4** — Capturas de pantalla del sistema en ejecución (login, dashboard por rol, gestión de clientes, generación de rutina/nutrición), para contrastar visualmente los mockups contra la implementación final.
 - [ ] **Sección 7.2** — Captura de pantalla de la documentación interactiva (`/docs`) y del panel web cargando desde las URLs de producción.
+- [ ] **Sección 8.1.3** — Conteo real del catálogo de ejercicios en producción (`GROUP BY grupo_muscular, nivel`), en lugar del catálogo sintético usado en esta validación. Requiere que el equipo otorgue acceso de solo lectura a `DATABASE_URL` de producción.
+- [ ] **Sección 6.2** — Medición del tiempo de respuesta de los endpoints de IA contra el despliegue real en Render (hoy solo medido en local con SQLite). Requiere credenciales de una cuenta válida en producción.
 - [ ] **Sección 6.2** — Datos de **pretest** (O₁ del diseño `G: O₁ → X → O₂`): tiempo real que demora hoy un entrenador en armar una rutina a mano, precisión de los registros manuales actuales, y exactitud del inventario físico antes del sistema. Se recolectan con las fichas e instrumentos del Plan de Tesis (ficha de registro de tiempos, ficha de observación, ficha de control de inventario) sobre el proceso manual real del gimnasio.
 - [ ] **Cuestionario Likert** (Plan de Tesis, Anexo 04) — aplicación a la muestra de 92 usuarios, en los dos momentos (pretest y postest), y evaluación de confiabilidad con el coeficiente alfa de Cronbach.
 - [ ] **Contrastación de hipótesis** — una vez reunidos O₁ y O₂, prueba de normalidad (Shapiro-Wilk) y la prueba inferencial correspondiente (t-Student o Wilcoxon) en SPSS, con nivel de significancia α = 0.05, para las tres hipótesis específicas y la general del Plan de Tesis.
 
-Los primeros dos son tareas de minutos (tomar capturas y pegarlas). Los últimos tres son el trabajo de campo central de la tesis y no pueden resolverse desde este repositorio — son exactamente lo que el diseño preexperimental del Capítulo III pide medir con usuarios reales del gimnasio.
+Los primeros dos son tareas de minutos (tomar capturas y pegarlas). Los dos siguientes requieren una decisión del equipo (acceso de solo lectura a producción) y se pueden resolver en minutos una vez otorgado el acceso. Los últimos tres son el trabajo de campo central de la tesis y no pueden resolverse desde este repositorio — son exactamente lo que el diseño preexperimental del Capítulo III pide medir con usuarios reales del gimnasio.

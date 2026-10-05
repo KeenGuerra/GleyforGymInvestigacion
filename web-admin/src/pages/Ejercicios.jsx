@@ -237,7 +237,7 @@ function Ejercicios() {
           </div>
 
           <div className="form-actions">
-            <button className="btn-primary" disabled={cargando}>
+            <button type="submit" className="btn-primary" disabled={cargando}>
               {cargando ? "Guardando..." : "Guardar ejercicio"}
             </button>
 
