@@ -288,7 +288,22 @@ def iniciar_checkout_venta(
     if venta.estado != "PENDIENTE":
         raise HTTPException(status_code=400, detail="La venta no está en estado PENDIENTE")
 
-    sesion = gateway.crear_checkout(venta.total, referencia=f"venta-{venta.id_venta}")
+    if venta.cliente:
+        datos_cliente = {
+            "nombres": venta.cliente.nombres,
+            "apellidos": venta.cliente.apellidos,
+            "correo": venta.cliente.usuario.correo,
+            "telefono": venta.cliente.telefono,
+        }
+    else:
+        datos_cliente = {
+            "nombres": "Cliente",
+            "apellidos": "GleyforGym",
+            "correo": venta.usuario.correo,
+            "telefono": None,
+        }
+
+    sesion = gateway.crear_checkout(venta.total, referencia=f"venta-{venta.id_venta}", cliente=datos_cliente)
 
     venta.id_transaccion_externa = sesion["id_transaccion_externa"]
     db.commit()

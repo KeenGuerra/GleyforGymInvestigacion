@@ -4,6 +4,13 @@ import pytest
 
 from app.pagos_gateway.culqi import CulqiGateway
 
+CLIENTE_PRUEBA = {
+    "nombres": "Keen",
+    "apellidos": "Guerra",
+    "correo": "keen@example.com",
+    "telefono": "987654321",
+}
+
 
 def _mock_respuesta(json_data):
     respuesta = MagicMock()
@@ -25,15 +32,17 @@ def test_crear_checkout_mapea_la_respuesta_de_culqi(monkeypatch):
 
     respuesta = _mock_respuesta({
         "id": "ord_test_123",
-        "checkout_url": "https://checkout.culqi.com/ord_test_123",
+        "url_pe": "https://pre1a.payment.pagoefectivo.pe/abc123.html",
+        "qr": "https://niubizqr.pagoefectivo.pe/abc123.png",
     })
 
     with patch("app.pagos_gateway.culqi.httpx.post", return_value=respuesta) as mock_post:
-        resultado = gateway.crear_checkout(10.5, "pago-1")
+        resultado = gateway.crear_checkout(10.5, "pago-1", CLIENTE_PRUEBA)
 
     assert resultado == {
         "id_transaccion_externa": "ord_test_123",
-        "url_checkout": "https://checkout.culqi.com/ord_test_123",
+        "url_checkout": "https://pre1a.payment.pagoefectivo.pe/abc123.html",
+        "qr_yape": "https://niubizqr.pagoefectivo.pe/abc123.png",
         "estado": "PENDIENTE",
     }
 
@@ -41,21 +50,42 @@ def test_crear_checkout_mapea_la_respuesta_de_culqi(monkeypatch):
     assert enviado["amount"] == 1050  # S/ 10.50 -> 1050 centavos
     assert enviado["currency_code"] == "PEN"
     assert enviado["order_number"] == "pago-1"
+    assert enviado["expiration_date"] > 0
+    assert enviado["client_details"] == {
+        "first_name": "Keen",
+        "last_name": "Guerra",
+        "email": "keen@example.com",
+        "phone_number": "987654321",
+    }
 
     headers = mock_post.call_args.kwargs["headers"]
     assert headers["Authorization"] == "Bearer sk_test_fake"
 
 
-def test_crear_checkout_sin_checkout_url_usa_fallback(monkeypatch):
+def test_crear_checkout_sin_url_pe_usa_fallback(monkeypatch):
     monkeypatch.setattr("app.config.CULQI_SECRET_KEY", "sk_test_fake")
     gateway = CulqiGateway()
 
     respuesta = _mock_respuesta({"id": "ord_test_456"})
 
     with patch("app.pagos_gateway.culqi.httpx.post", return_value=respuesta):
-        resultado = gateway.crear_checkout(5, "venta-9")
+        resultado = gateway.crear_checkout(5, "venta-9", CLIENTE_PRUEBA)
 
-    assert resultado["url_checkout"] == "https://checkout.culqi.com/ord_test_456"
+    assert resultado["url_checkout"] == "https://api.culqi.com/v2/orders/ord_test_456"
+    assert resultado["qr_yape"] is None
+
+
+def test_crear_checkout_sin_telefono_envia_cadena_vacia(monkeypatch):
+    monkeypatch.setattr("app.config.CULQI_SECRET_KEY", "sk_test_fake")
+    gateway = CulqiGateway()
+
+    respuesta = _mock_respuesta({"id": "ord_test_789"})
+    cliente_sin_telefono = {**CLIENTE_PRUEBA, "telefono": None}
+
+    with patch("app.pagos_gateway.culqi.httpx.post", return_value=respuesta) as mock_post:
+        gateway.crear_checkout(5, "venta-9", cliente_sin_telefono)
+
+    assert mock_post.call_args.kwargs["json"]["client_details"]["phone_number"] == ""
 
 
 def test_crear_checkout_sin_id_lanza_error(monkeypatch):
@@ -66,7 +96,7 @@ def test_crear_checkout_sin_id_lanza_error(monkeypatch):
 
     with patch("app.pagos_gateway.culqi.httpx.post", return_value=respuesta):
         with pytest.raises(RuntimeError, match="Respuesta inesperada"):
-            gateway.crear_checkout(5, "venta-9")
+            gateway.crear_checkout(5, "venta-9", CLIENTE_PRUEBA)
 
 
 @pytest.mark.parametrize("estado_culqi,esperado", [

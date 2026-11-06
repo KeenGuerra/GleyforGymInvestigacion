@@ -109,7 +109,17 @@ def iniciar_checkout_pago(
     if pago_db.estado != "PENDIENTE":
         raise HTTPException(status_code=400, detail="El pago no está en estado PENDIENTE")
 
-    sesion = gateway.crear_checkout(pago_db.monto, referencia=f"pago-{pago_db.id_pago}")
+    cliente_db = pago_db.cliente
+    sesion = gateway.crear_checkout(
+        pago_db.monto,
+        referencia=f"pago-{pago_db.id_pago}",
+        cliente={
+            "nombres": cliente_db.nombres,
+            "apellidos": cliente_db.apellidos,
+            "correo": cliente_db.usuario.correo,
+            "telefono": cliente_db.telefono,
+        },
+    )
 
     pago_db.id_transaccion_externa = sesion["id_transaccion_externa"]
     db.commit()

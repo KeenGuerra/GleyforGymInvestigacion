@@ -18,7 +18,7 @@ class MockGateway(GatewayPago):
         self._transacciones: dict[str, dict] = {}
         self._lock = Lock()
 
-    def crear_checkout(self, monto: float, referencia: str) -> dict:
+    def crear_checkout(self, monto: float, referencia: str, cliente: dict) -> dict:
         id_transaccion = f"mock_{uuid.uuid4().hex[:16]}"
         with self._lock:
             self._transacciones[id_transaccion] = {

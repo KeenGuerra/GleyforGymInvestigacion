@@ -1,5 +1,6 @@
 # pyrefly: ignore [missing-import]
 import httpx
+import time
 
 from app.pagos_gateway.base import GatewayPago
 
@@ -12,30 +13,26 @@ class CulqiGateway(GatewayPago):
     GleyforGym — ver la comparación frente a Niubiz/Izipay/MercadoPago/Stripe
     en docs/07_Gestion_Proyecto/Pendientes.md (P-02).
 
-    Usa la API de Órdenes de Culqi (POST /v2/orders), que crea una orden de
-    cobro completada por el cliente en un checkout alojado por Culqi
-    (incluye Yape) y notificada de forma asíncrona por webhook — el mismo
-    flujo de dos pasos (checkout -> espera -> webhook) que ya simula
-    MockGateway, por lo que pagos.py/ventas.py no necesitan cambios.
+    Usa la API de Órdenes de Culqi (POST /v2/orders). Probada contra el
+    sandbox real (2026-11): la orden creada no incluye un "checkout_url"
+    genérico como se asumió originalmente — el cliente paga escaneando el
+    QR de Yape (`qr`) o a través del link de PagoEfectivo (`url_pe`), y el
+    estado se confirma después por webhook, igual que simula MockGateway.
 
-    IMPORTANTE: esta clase se escribió sin credenciales reales de Culqi (no
-    se contaba con una cuenta al momento de implementarla), guiándose por la
-    documentación pública de Culqi. Antes de reemplazar MockGateway por esta
-    clase en `pagos_gateway/__init__.py`, hay que:
+    IMPORTANTE pendiente de confirmar: solo se probó la creación y consulta
+    de una orden; no se completó un pago real, así que el mapeo de estados
+    "pagado" en `consultar_estado()` (paid/completed) no está confirmado
+    contra una transacción real pagada — falta probarlo cuando se complete
+    un cobro de prueba de punta a punta.
 
-    1. Crear una cuenta de Culqi (el modo de prueba/sandbox es gratuito) y
-       obtener las llaves `sk_test_...` / `pk_test_...`.
-    2. Probar `crear_checkout()` y `consultar_estado()` contra el sandbox real
-       y confirmar en https://docs.culqi.com que los nombres de campo usados
-       aquí (`amount`, `currency_code`, `order_number`, `state`, etc.) siguen
-       siendo los vigentes — las pasarelas de pago cambian sus contratos de
-       API con el tiempo.
-    3. Revisar `routes/webhooks.py`: hoy ese endpoint confía en el campo
-       `resultado` que le envía el llamador, válido solo para MockGateway. Con
-       Culqi real, el payload del webhook tiene su propio formato (evento +
-       objeto de la orden), así que el endpoint deberá adaptarse para leer el
-       estado real de ese payload — y, por seguridad, revalidarlo llamando a
-       `consultar_estado()` en vez de confiar únicamente en lo recibido.
+    Antes de reemplazar MockGateway por esta clase en
+    `pagos_gateway/__init__.py`, hay que revisar `routes/webhooks.py`: hoy
+    ese endpoint confía en el campo `resultado` que le envía el llamador,
+    válido solo para MockGateway. Con Culqi real, el payload del webhook
+    tiene su propio formato (evento + objeto de la orden), así que el
+    endpoint deberá adaptarse para leer el estado real de ese payload — y,
+    por seguridad, revalidarlo llamando a `consultar_estado()` en vez de
+    confiar únicamente en lo recibido.
     """
 
     def __init__(self):
@@ -55,7 +52,7 @@ class CulqiGateway(GatewayPago):
             "Content-Type": "application/json",
         }
 
-    def crear_checkout(self, monto: float, referencia: str) -> dict:
+    def crear_checkout(self, monto: float, referencia: str, cliente: dict) -> dict:
         # Culqi expresa los montos en centavos (ej. S/ 10.50 -> 1050).
         monto_centavos = round(monto * 100)
 
@@ -67,6 +64,14 @@ class CulqiGateway(GatewayPago):
                 "currency_code": "PEN",
                 "description": referencia,
                 "order_number": referencia,
+                # Culqi exige una fecha de expiración futura para la orden.
+                "expiration_date": int(time.time()) + 86400,
+                "client_details": {
+                    "first_name": cliente["nombres"],
+                    "last_name": cliente["apellidos"],
+                    "email": cliente["correo"],
+                    "phone_number": cliente.get("telefono") or "",
+                },
             },
             timeout=15,
         )
@@ -77,9 +82,12 @@ class CulqiGateway(GatewayPago):
         if not id_orden:
             raise RuntimeError(f"Respuesta inesperada de Culqi al crear la orden: {orden}")
 
+        # La orden no tiene una única "checkout_url": el cliente paga con el
+        # link de PagoEfectivo o escaneando el QR de Yape.
         return {
             "id_transaccion_externa": id_orden,
-            "url_checkout": orden.get("checkout_url") or f"https://checkout.culqi.com/{id_orden}",
+            "url_checkout": orden.get("url_pe") or f"https://api.culqi.com/v2/orders/{id_orden}",
+            "qr_yape": orden.get("qr"),
             "estado": "PENDIENTE",
         }
 

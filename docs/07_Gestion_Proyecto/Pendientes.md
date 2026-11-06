@@ -33,14 +33,21 @@ backend/app/pagos_gateway/culqi.py    → CulqiGateway (esqueleto, ver abajo)
 backend/app/pagos_gateway/__init__.py → singleton `gateway`, punto único de cambio
 ```
 
-**Avance (2026-11)**: se escribió `CulqiGateway` (`crear_checkout`/`consultar_estado` contra la API de Órdenes de Culqi), con pruebas (`backend/tests/test_culqi_gateway.py`, 11 pruebas con la llamada HTTP simulada) y las variables `CULQI_SECRET_KEY`/`CULQI_PUBLIC_KEY` ya declaradas en `app/config.py` y `.env.example`. **No se escribió contra una cuenta real de Culqi** (no se contaba con credenciales al momento de implementarla) — ver la advertencia al inicio de `culqi.py`.
+**Avance (2026-11)**: se creó una cuenta real de Culqi (RUC de pruebas, panel DEVS) y se probó `CulqiGateway` contra el sandbox real, no solo simulado. Esto reveló dos diferencias con el esqueleto original:
+
+1. La API de Órdenes exige además `client_details` (nombres, apellidos, correo, teléfono) y `expiration_date` — ya corregido en `culqi.py`. Por eso `GatewayPago.crear_checkout()` ahora recibe un tercer parámetro `cliente: dict`, y `pagos.py`/`ventas.py` arman ese dict desde `Cliente`/`Usuario` antes de llamar al gateway (sí fue necesario tocar las rutas, a diferencia de lo asumido originalmente).
+2. La orden creada **no tiene un `checkout_url` genérico**: el cliente paga con el link de PagoEfectivo (`url_pe`) o escaneando el QR de Yape (`qr`) — ambos ya mapeados en el resultado de `crear_checkout()` (`url_checkout` + `qr_yape`).
+
+`backend/tests/test_culqi_gateway.py` (12 pruebas) actualizado para reflejar el formato real. Aún con la llamada HTTP simulada en las pruebas, pero verificado manualmente contra `api.culqi.com` con las llaves de prueba.
+
+**Sin confirmar todavía**: completar un pago real de prueba de punta a punta (pagar la orden y ver si `consultar_estado()`/el webhook realmente reportan "paid"/"completed" como se asume) — solo se probó crear y consultar una orden en estado "pending".
 
 Falta:
 
-1. Crear una cuenta de Culqi (el modo de prueba/sandbox es gratuito) y obtener las llaves `sk_test_...`/`pk_test_...`.
-2. Probar `CulqiGateway` contra el sandbox real y confirmar en la documentación vigente de Culqi que los nombres de campo usados (`amount`, `currency_code`, `order_number`, `state`, etc.) siguen siendo los correctos.
-3. Reemplazar `gateway = MockGateway()` por `gateway = CulqiGateway()` en `pagos_gateway/__init__.py:7` una vez probado. Las rutas de `pagos.py`/`ventas.py` no necesitan cambios.
-4. Adaptar `routes/webhooks.py`: hoy asume el formato propio de `MockGateway` (`id_transaccion_externa` + `resultado`) y confía en ese campo sin verificarlo contra el proveedor. El webhook real de Culqi llega con su propio formato de evento — hay que leerlo y, por seguridad, revalidar el estado llamando a `gateway.consultar_estado()` en vez de confiar directamente en el payload entrante (si no, cualquiera podría llamar a esa URL y falsificar un pago).
+1. Completar un pago de prueba real (QR de Yape sandbox o PagoEfectivo) y confirmar el webhook/estado "pagado".
+2. Reemplazar `gateway = MockGateway()` por `gateway = CulqiGateway()` en `pagos_gateway/__init__.py:7` una vez confirmado el punto 1.
+3. Adaptar `routes/webhooks.py`: hoy asume el formato propio de `MockGateway` (`id_transaccion_externa` + `resultado`) y confía en ese campo sin verificarlo contra el proveedor. El webhook real de Culqi llega con su propio formato de evento — hay que leerlo y, por seguridad, revalidar el estado llamando a `gateway.consultar_estado()` en vez de confiar directamente en el payload entrante (si no, cualquiera podría llamar a esa URL y falsificar un pago).
+4. Construir en el frontend (`Pagos.jsx`/`Tienda.jsx`) la pantalla que consuma `url_checkout`/`qr_yape` — hoy ninguna de las dos páginas usa ese resultado todavía.
 
 Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
 

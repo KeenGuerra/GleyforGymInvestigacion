@@ -9,8 +9,11 @@ class GatewayPago(ABC):
     """
 
     @abstractmethod
-    def crear_checkout(self, monto: float, referencia: str) -> dict:
-        """Inicia una sesión de cobro. Debe devolver al menos:
+    def crear_checkout(self, monto: float, referencia: str, cliente: dict) -> dict:
+        """Inicia una sesión de cobro para el cliente dado. `cliente` debe
+        incluir correo, nombres y apellidos (telefono opcional) — algunos
+        proveedores reales (Culqi incluido) exigen estos datos para crear la
+        orden. Debe devolver al menos:
         {"id_transaccion_externa": str, "url_checkout": str, "estado": "PENDIENTE"}"""
         raise NotImplementedError
 
