@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from sqlalchemy import create_engine
@@ -7,8 +8,9 @@ from sqlalchemy.sql import text
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.append(str(BASE_DIR))
 
-# Database configuration to create the database (connecting to default 'postgres' database)
-DEFAULT_DB_URL = "postgresql://postgres:keen123@localhost:5432/postgres"
+# Database configuration to create the database (connecting to default 'postgres' database).
+# Solo un default para bootstrap local; nunca reutilizar esta contraseña en un entorno real.
+DEFAULT_DB_URL = os.getenv("DEFAULT_DB_URL", "postgresql://postgres:postgres@localhost:5432/postgres")
 TARGET_DB_NAME = "gleyforgym"
 
 def create_database_if_not_exists():

@@ -104,7 +104,7 @@ Hoy solo hay exportación CSV de clientes (`web-admin/src/utils/exportarCsv.js`)
 
 ## P-08 Tests de `Navbar.jsx` y `NotFound.jsx`
 
-Confirmado en la auditoría de esta sesión: ninguno de los dos tiene archivo de test, a diferencia de `Layout.jsx` y `ProtectedRoute.jsx`, que sí lo tienen.
+~~Resuelto (2026-11)~~: se agregaron `Navbar.test.jsx` (7 pruebas) y `NotFound.test.jsx` (1 prueba). Ambos componentes quedan en 100% de cobertura.
 
 ---
 
@@ -122,12 +122,7 @@ Confirmado en la auditoría de esta sesión: ninguno de los dos tiene archivo de
 
 ## P-11 Password de desarrollo local hardcodeada
 
-```text
-backend/create_db.py:12
-DEFAULT_DB_URL = "postgresql://postgres:keen123@localhost:5432/postgres"
-```
-
-Es un valor por defecto solo para bootstrap local (producción usa `DATABASE_URL` inyectada por Render, ver `render.yaml`), pero conviene no reutilizar esa contraseña en ningún entorno real ni futuro proyecto.
+~~Resuelto (2026-11)~~: `DEFAULT_DB_URL` en `create_db.py` ahora lee de la variable de entorno opcional `DEFAULT_DB_URL` (con un default genérico `postgres:postgres`, ya no la contraseña real que se reutilizaba). Producción sigue sin verse afectada (usa `DATABASE_URL` inyectada por Render).
 
 ---
 
@@ -141,7 +136,7 @@ Es un valor por defecto solo para bootstrap local (producción usa `DATABASE_URL
 
 ## P-12 Migrar `class Config:` a `ConfigDict` (Pydantic v2)
 
-Alrededor de 20 clases en `backend/app/schemas.py` siguen usando el estilo de configuración de Pydantic v1 (`class Config:`). Hoy solo genera un warning de deprecación bajo Pydantic 2.13; no rompe nada, pero habrá que migrarlo a `model_config = ConfigDict(...)` antes de que el proyecto actualice a Pydantic v3.
+~~Resuelto (2026-11)~~: las 26 clases `class Config: from_attributes = True` en `schemas.py` se migraron a `model_config = ConfigDict(from_attributes=True)`. Sin warnings de deprecación de Pydantic en la suite de tests.
 
 ---
 

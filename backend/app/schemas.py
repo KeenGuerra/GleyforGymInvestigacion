@@ -1,5 +1,5 @@
 # pyrefly: ignore [missing-import]
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import date, datetime, time
 from typing import Optional, List, Literal
 
@@ -43,8 +43,7 @@ class UsuarioResponse(UsuarioBase):
     estado: EstadoUsuario
     fecha_creacion: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LoginRequest(BaseModel):
@@ -122,8 +121,7 @@ class ClienteResponse(ClienteBase):
     estado: EstadoUsuario
     fecha_registro: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClienteConCorreoResponse(ClienteResponse):
@@ -161,8 +159,7 @@ class EntrenadorResponse(EntrenadorBase):
     id_usuario: int
     estado: EstadoUsuario
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -194,8 +191,7 @@ class MembresiaUpdate(BaseModel):
 class MembresiaResponse(MembresiaBase):
     id_membresia: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -227,8 +223,7 @@ class ClienteMembresiaResponse(BaseModel):
     precio_asignado: Optional[float] = None
     nombre_membresia: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -258,8 +253,7 @@ class PagoResponse(PagoCreate):
     id_pago: int
     id_transaccion_externa: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -285,8 +279,7 @@ class AsistenciaResponse(AsistenciaCreate):
     id_asistencia: int
     estado: str = "ACTIVO"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -333,8 +326,7 @@ class ProgresoResponse(ProgresoCreate):
     masa_grasa: Optional[float] = None
     masa_magra: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -366,8 +358,7 @@ class RutinaResponse(RutinaCreate):
     id_rutina: int
     fecha_creacion: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RutinaEjercicioCreate(BaseModel):
@@ -385,8 +376,7 @@ class RutinaEjercicioCreate(BaseModel):
 class RutinaEjercicioResponse(RutinaEjercicioCreate):
     id_rutina_ejercicio: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -404,8 +394,7 @@ class PlanComidaCreate(BaseModel):
 class PlanComidaResponse(PlanComidaCreate):
     id_comida: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlanNutricionalCreate(BaseModel):
@@ -444,8 +433,7 @@ class PlanNutricionalResponse(PlanNutricionalCreate):
     fecha_creacion: datetime
     comidas: List[PlanComidaResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -487,8 +475,7 @@ class EjercicioUpdate(BaseModel):
 class EjercicioOut(EjercicioBase):
     id_ejercicio: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -522,8 +509,7 @@ class ComidaUpdate(BaseModel):
 class ComidaOut(ComidaCreate):
     id_comida_catalogo: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -558,8 +544,7 @@ class CategoriaResponse(CategoriaCreate):
     id_categoria: int
     fecha_creacion: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -602,8 +587,7 @@ class ProductoResponse(ProductoCreate):
     stock_actual: Optional[float] = 0
     nombre_categoria: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -634,8 +618,7 @@ class ProveedorResponse(ProveedorCreate):
     id_proveedor: int
     fecha_creacion: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -654,8 +637,7 @@ class DetalleCompraResponse(DetalleCompraCreate):
     subtotal: float
     nombre_producto: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -682,8 +664,7 @@ class CompraResponse(BaseModel):
     nombre_proveedor: Optional[str] = None
     nombre_usuario: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -700,8 +681,7 @@ class InventarioResponse(BaseModel):
     nombre_producto: Optional[str] = None
     unidad_medida: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AjusteInventarioCreate(BaseModel):
@@ -734,8 +714,7 @@ class LoteResponse(LoteCreate):
     estado: EstadoLote
     nombre_producto: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -756,8 +735,7 @@ class MovimientoStockResponse(BaseModel):
     fecha_movimiento: datetime
     nombre_producto: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -781,8 +759,7 @@ class DetalleVentaResponse(BaseModel):
     subtotal: float
     nombre_producto: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -820,8 +797,7 @@ class VentaResponse(BaseModel):
     nombre_cliente: Optional[str] = None
     nombre_usuario: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -860,8 +836,7 @@ class RegistroAuditoriaResponse(BaseModel):
     detalle: Optional[str] = None
     fecha: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================
@@ -895,5 +870,4 @@ class AvisoResponse(AvisoBase):
     id_aviso: int
     fecha_creacion: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
