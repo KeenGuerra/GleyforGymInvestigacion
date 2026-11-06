@@ -63,28 +63,7 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 ## P-04 Cobertura de tests del módulo de Comercio
 
-Sin tests dedicados, tanto backend como frontend — es la parte del sistema que maneja dinero y stock con menos pruebas. Cobertura real medida con `pytest --cov` (ver `Casos_Prueba.md`, "Estado Actual"): `categorias.py` 37%, `proveedores.py` 43%, `inventario.py` 26%, `productos.py` 23%, `compras.py` 20%, `ventas.py` 17% — no es 0% porque algunas líneas se ejecutan al registrar las rutas en `main.py` al arrancar la app, pero no hay ninguna función `test_` que ejercite su lógica de negocio.
-
-```text
-Backend sin tests:
-  backend/app/routes/categorias.py
-  backend/app/routes/productos.py
-  backend/app/routes/proveedores.py
-  backend/app/routes/compras.py
-  backend/app/routes/inventario.py
-  backend/app/routes/ventas.py
-
-Frontend sin tests:
-  web-admin/src/pages/Categorias.jsx
-  web-admin/src/pages/Productos.jsx
-  web-admin/src/pages/Proveedores.jsx
-  web-admin/src/pages/Compras.jsx
-  web-admin/src/pages/Inventario.jsx
-  web-admin/src/pages/Ventas.jsx
-  web-admin/src/pages/Tienda.jsx
-```
-
-Alcance sugerido para cuando se retome: tests de humo backend (CRUD básico + reglas de stock/lotes) y un test por página en frontend, siguiendo el mismo patrón usado en el resto del proyecto (`vi.mock` de `api`, `render` + `waitFor`).
+~~Resuelto (2026-11)~~: backend y frontend tienen ahora pruebas dedicadas. Backend: `backend/tests/test_comercio.py` (10 pruebas) eleva `categorias.py` 37%→88%, `proveedores.py` 43%→86%, `compras.py` 20%→83%, `ventas.py` 17%→69%, `inventario.py` 26%→56%, `productos.py` 23%→48%. Frontend: un archivo `*.test.jsx` por página (`Categorias`, `Productos`, `Proveedores`, `Compras`, `Inventario`, `Ventas`, `Tienda`) eleva esos siete archivos de un rango de 1.3%-2.8% a 87.9%-100%, y la cobertura total de frontend de 78.21% a 94.33%.
 
 ---
 
@@ -139,7 +118,7 @@ Es un valor por defecto solo para bootstrap local (producción usa `DATABASE_URL
 
 ## P-18 Sin página en web-admin para Entrenadores ni Auditoría
 
-`backend/app/routes/entrenadores.py` (catálogo de entrenadores como entidad de negocio, no solo el rol ENTRENADOR) y `backend/app/routes/auditoria.py` (consulta de `RegistroAuditoria`) son módulos reales, protegidos correctamente por rol ADMIN, pero no tienen ninguna página en `web-admin/src/pages/` — solo son accesibles directamente contra la API (ej. Swagger en `/docs`). El admin no puede, desde el panel, registrar un entrenador como ficha propia ni revisar el historial de auditoría sin usar la API a mano.
+~~Resuelto (2026-11)~~: se agregaron `web-admin/src/pages/Entrenadores.jsx` (CRUD completo) y `Auditoria.jsx` (vista de solo lectura con filtro por entidad), con sus rutas `/entrenadores` y `/auditoria` (solo ADMIN) y los enlaces correspondientes en el sidebar, cada una con su archivo de pruebas.
 
 ---
 
