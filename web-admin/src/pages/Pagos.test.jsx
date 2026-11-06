@@ -270,4 +270,62 @@ describe("Pagos Page Component", () => {
       expect(screen.getByText("Error al anular el pago")).toBeDefined();
     });
   });
+
+  it("starts a checkout for a pending payment and shows the result in the modal", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
+      return Promise.resolve({
+        data: [{ ...mockPagos[0], estado: "PENDIENTE" }],
+      });
+    });
+    api.post.mockResolvedValue({
+      data: {
+        id_pago: 1,
+        url_checkout: "https://api.culqi.com/v2/orders/ord_test_123",
+        qr_yape: "https://niubizqr.pagoefectivo.pe/abc.png",
+        id_transaccion_externa: "ord_test_123",
+      },
+    });
+
+    render(<Pagos />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Cobrar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Cobrar"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/pagos/1/checkout");
+      expect(screen.getByText("Completar pago")).toBeDefined();
+      expect(screen.getByAltText("Código QR para pagar con Yape")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Cerrar"));
+    expect(screen.queryByText("Completar pago")).toBeNull();
+  });
+
+  it("shows an error when starting a checkout fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
+      return Promise.resolve({
+        data: [{ ...mockPagos[0], estado: "PENDIENTE" }],
+      });
+    });
+    api.post.mockRejectedValue({ response: { data: { detail: "CULQI_SECRET_KEY no configurada" } } });
+
+    render(<Pagos />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Cobrar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Cobrar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("CULQI_SECRET_KEY no configurada")).toBeDefined();
+    });
+  });
 });

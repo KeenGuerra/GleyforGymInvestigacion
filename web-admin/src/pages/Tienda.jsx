@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
+import CheckoutModal from "../components/CheckoutModal";
 
 const CART_KEY = "carrito_tienda";
 
@@ -22,6 +23,8 @@ function Tienda() {
   const [metodoPago, setMetodoPago] = useState("EFECTIVO");
   const [observaciones, setObservaciones] = useState("");
   const [procesando, setProcesando] = useState(false);
+  const [pagandoId, setPagandoId] = useState(null);
+  const [checkoutInfo, setCheckoutInfo] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(CART_KEY, JSON.stringify(carrito));
@@ -98,6 +101,19 @@ function Tienda() {
     } catch (err) {
       setError(err.response?.data?.detail || "Error al realizar el pedido");
     } finally { setProcesando(false); }
+  };
+
+  const pagarPedido = async (id_venta) => {
+    try {
+      setPagandoId(id_venta);
+      setError("");
+      const res = await api.post(`/ventas/${id_venta}/checkout`);
+      setCheckoutInfo(res.data);
+    } catch (err) {
+      setError(err.response?.data?.detail || "No se pudo iniciar el pago");
+    } finally {
+      setPagandoId(null);
+    }
   };
 
   const filtrados = productos.filter((p) => {
@@ -274,6 +290,16 @@ function Tienda() {
                         ))}
                       </div>
                     )}
+                    {v.estado === "PENDIENTE" && (
+                      <button
+                        className="btn-primary"
+                        style={{ marginTop: "0.75rem", width: "100%" }}
+                        disabled={pagandoId === v.id_venta}
+                        onClick={() => pagarPedido(v.id_venta)}
+                      >
+                        {pagandoId === v.id_venta ? "Generando pago..." : "Pagar ahora"}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -286,6 +312,8 @@ function Tienda() {
         <h3>Gleyfor<span>Gym</span></h3>
         <p>© 2026 Todos los derechos reservados</p>
       </footer>
+
+      <CheckoutModal info={checkoutInfo} onClose={() => setCheckoutInfo(null)} />
     </div>
   );
 }

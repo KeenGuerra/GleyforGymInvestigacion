@@ -42,12 +42,17 @@ backend/app/pagos_gateway/__init__.py → singleton `gateway`, punto único de c
 
 **Sin confirmar todavía**: completar un pago real de prueba de punta a punta (pagar la orden y ver si `consultar_estado()`/el webhook realmente reportan "paid"/"completed" como se asume) — solo se probó crear y consultar una orden en estado "pending".
 
+**Avance (2026-11, continuación)**: se construyó la pantalla de checkout en el frontend. `web-admin/src/components/CheckoutModal.jsx` (nuevo) muestra el link de pago (`url_checkout`) y el QR de Yape (`qr_yape`) devueltos por el backend. Conectado en:
+- `Pagos.jsx`: botón "Cobrar" en cada pago con estado `PENDIENTE`, llama a `POST /pagos/{id}/checkout`.
+- `Tienda.jsx` (pestaña "Mis pedidos"): botón "Pagar ahora" en cada pedido `PENDIENTE`, llama a `POST /ventas/{id}/checkout`.
+
+Pruebas agregadas en `Pagos.test.jsx` y `Tienda.test.jsx` para ambos flujos (éxito y error). Suite de frontend: 42 archivos / 220 pruebas.
+
 Falta:
 
 1. Completar un pago de prueba real (QR de Yape sandbox o PagoEfectivo) y confirmar el webhook/estado "pagado".
 2. Reemplazar `gateway = MockGateway()` por `gateway = CulqiGateway()` en `pagos_gateway/__init__.py:7` una vez confirmado el punto 1.
 3. Adaptar `routes/webhooks.py`: hoy asume el formato propio de `MockGateway` (`id_transaccion_externa` + `resultado`) y confía en ese campo sin verificarlo contra el proveedor. El webhook real de Culqi llega con su propio formato de evento — hay que leerlo y, por seguridad, revalidar el estado llamando a `gateway.consultar_estado()` en vez de confiar directamente en el payload entrante (si no, cualquiera podría llamar a esa URL y falsificar un pago).
-4. Construir en el frontend (`Pagos.jsx`/`Tienda.jsx`) la pantalla que consuma `url_checkout`/`qr_yape` — hoy ninguna de las dos páginas usa ese resultado todavía.
 
 Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
 

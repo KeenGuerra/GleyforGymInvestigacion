@@ -3,6 +3,7 @@ import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
 import { descargarBlob } from "../utils/descargarArchivo";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
+import CheckoutModal from "../components/CheckoutModal";
 
 const PAGOS_POR_PAGINA = 20;
 
@@ -15,6 +16,8 @@ function Pagos() {
   const [error, setError] = useState("");
   const [pagina, setPagina] = useState(0);
   const [haySiguiente, setHaySiguiente] = useState(false);
+  const [cobrandoId, setCobrandoId] = useState(null);
+  const [checkoutInfo, setCheckoutInfo] = useState(null);
 
   const hoy = new Date().toISOString().split("T")[0];
 
@@ -157,6 +160,20 @@ function Pagos() {
     } catch (error) {
       console.error(error);
       setError("Error al anular el pago");
+    }
+  };
+
+  const cobrarPago = async (id_pago) => {
+    try {
+      setCobrandoId(id_pago);
+      setError("");
+      const res = await api.post(`/pagos/${id_pago}/checkout`);
+      setCheckoutInfo(res.data);
+    } catch (error) {
+      console.error(error);
+      setError(error.response?.data?.detail || "No se pudo iniciar el cobro");
+    } finally {
+      setCobrandoId(null);
     }
   };
 
@@ -363,6 +380,14 @@ function Pagos() {
                 </td>
                 <td className="table-actions">
                   <button onClick={() => editarPago(p)}>Editar</button>
+                  {p.estado === "PENDIENTE" && (
+                    <button
+                      disabled={cobrandoId === p.id_pago}
+                      onClick={() => cobrarPago(p.id_pago)}
+                    >
+                      {cobrandoId === p.id_pago ? "Generando..." : "Cobrar"}
+                    </button>
+                  )}
                   <button onClick={() => descargarRecibo(p.id_pago)}>Recibo</button>
                   <button
                     className="btn-danger"
@@ -394,6 +419,8 @@ function Pagos() {
           </button>
         </div>
       </section>
+
+      <CheckoutModal info={checkoutInfo} onClose={() => setCheckoutInfo(null)} />
     </div>
   );
 }

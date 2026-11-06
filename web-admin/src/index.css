@@ -2089,6 +2089,50 @@ tr:hover td {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.checkout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.checkout-modal {
+  background: #14141a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 32px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.checkout-modal h3 {
+  margin: 0;
+}
+
+.checkout-modal-qr img {
+  width: 100%;
+  max-width: 220px;
+  border-radius: 12px;
+  margin: 0 auto;
+}
+
+.checkout-modal-qr p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
 .social-links a:hover {
   color: #000;
   background: var(--orange);
