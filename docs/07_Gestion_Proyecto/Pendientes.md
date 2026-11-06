@@ -110,7 +110,7 @@ Confirmado en la auditoría de esta sesión: ninguno de los dos tiene archivo de
 
 ## P-09 CI/CD
 
-No existe carpeta `.github/workflows`. Los tests (`pytest`, `npm run test`) y el lint solo corren cuando alguien los ejecuta manualmente, como en cada ronda de revisión de esta sesión. Un workflow simple que corra ambas suites en cada push/PR evitaría que una regresión llegue a `main` sin detectarse.
+~~Resuelto (2026-11)~~: se agregó `.github/workflows/tests.yml` con dos jobs (`backend`: `pytest`; `frontend`: `npm run lint` + `npm run test`) que corren en cada push/PR a `main`. Verificado que la suite de backend pasa sin `backend/.env` presente, igual que correrá en CI.
 
 ---
 
