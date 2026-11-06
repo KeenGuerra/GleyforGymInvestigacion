@@ -24,5 +24,12 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 
+# Culqi (pasarela de pago, ver docs/07_Gestion_Proyecto/Pendientes.md P-02).
+# No son obligatorias: mientras no se active CulqiGateway en
+# pagos_gateway/__init__.py, el sistema sigue operando con MockGateway sin
+# necesitar estas llaves.
+CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY")
+CULQI_PUBLIC_KEY = os.getenv("CULQI_PUBLIC_KEY")
+
 # CORS Origins - default allows all for development, but customizable via env
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")

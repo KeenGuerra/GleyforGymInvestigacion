@@ -29,15 +29,18 @@ La arquitectura ya está lista:
 ```text
 backend/app/pagos_gateway/base.py     → interfaz GatewayPago (ABC)
 backend/app/pagos_gateway/mock.py     → MockGateway (simulación en memoria)
+backend/app/pagos_gateway/culqi.py    → CulqiGateway (esqueleto, ver abajo)
 backend/app/pagos_gateway/__init__.py → singleton `gateway`, punto único de cambio
 ```
 
+**Avance (2026-11)**: se escribió `CulqiGateway` (`crear_checkout`/`consultar_estado` contra la API de Órdenes de Culqi), con pruebas (`backend/tests/test_culqi_gateway.py`, 11 pruebas con la llamada HTTP simulada) y las variables `CULQI_SECRET_KEY`/`CULQI_PUBLIC_KEY` ya declaradas en `app/config.py` y `.env.example`. **No se escribió contra una cuenta real de Culqi** (no se contaba con credenciales al momento de implementarla) — ver la advertencia al inicio de `culqi.py`.
+
 Falta:
 
-1. Escribir una clase nueva (ej. `CulqiGateway`) que implemente `crear_checkout()` y `consultar_estado()`.
-2. Reemplazar `gateway = MockGateway()` por `gateway = CulqiGateway()` en `pagos_gateway/__init__.py:7`. Las rutas de `pagos.py`/`ventas.py` no necesitan cambios.
-3. Configurar credenciales reales como variable de entorno (nunca hardcodeadas).
-4. Validar la firma/secreto del webhook en `routes/webhooks.py` — hoy solo lo dispara el flujo mock, sin verificación de origen. Una pasarela real permitiría que cualquiera llame al webhook y falsifique un pago si no se valida la firma.
+1. Crear una cuenta de Culqi (el modo de prueba/sandbox es gratuito) y obtener las llaves `sk_test_...`/`pk_test_...`.
+2. Probar `CulqiGateway` contra el sandbox real y confirmar en la documentación vigente de Culqi que los nombres de campo usados (`amount`, `currency_code`, `order_number`, `state`, etc.) siguen siendo los correctos.
+3. Reemplazar `gateway = MockGateway()` por `gateway = CulqiGateway()` en `pagos_gateway/__init__.py:7` una vez probado. Las rutas de `pagos.py`/`ventas.py` no necesitan cambios.
+4. Adaptar `routes/webhooks.py`: hoy asume el formato propio de `MockGateway` (`id_transaccion_externa` + `resultado`) y confía en ese campo sin verificarlo contra el proveedor. El webhook real de Culqi llega con su propio formato de evento — hay que leerlo y, por seguridad, revalidar el estado llamando a `gateway.consultar_estado()` en vez de confiar directamente en el payload entrante (si no, cualquiera podría llamar a esa URL y falsificar un pago).
 
 Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
 

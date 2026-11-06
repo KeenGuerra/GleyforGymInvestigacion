@@ -28,6 +28,14 @@ def webhook_pagos(payload: WebhookPagoPayload, db: Annotated[Session, Depends(ge
     MockGateway; con una pasarela real este endpoint debe además verificar la
     firma/secreto del proveedor antes de confiar en el payload — no se hace
     aquí porque no hay pasarela real conectada todavía).
+
+    NOTA al activar CulqiGateway (ver app/pagos_gateway/culqi.py): este
+    endpoint y su `WebhookPagoPayload` asumen el formato propio de
+    MockGateway (id_transaccion_externa + resultado). El webhook real de
+    Culqi llega con su propio formato de evento, y no debe confiarse en el
+    campo "resultado" del payload entrante sin antes revalidar el estado
+    llamando a `gateway.consultar_estado(id_transaccion_externa)` — de lo
+    contrario cualquiera podría llamar a esta URL y falsificar un pago.
     """
     resultado_mock = gateway.resolver_transaccion(
         payload.id_transaccion_externa, exito=(payload.resultado == "EXITOSO")
