@@ -36,6 +36,8 @@ import Ventas from "./pages/Ventas";
 import Tienda from "./pages/Tienda";
 import Avisos from "./pages/Avisos";
 import GestionAvisos from "./pages/GestionAvisos";
+import Entrenadores from "./pages/Entrenadores";
+import Auditoria from "./pages/Auditoria";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -83,6 +85,24 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["ADMIN"]}>
                 <GestionAvisos />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/entrenadores"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Entrenadores />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/auditoria"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Auditoria />
               </ProtectedRoute>
             }
           />
