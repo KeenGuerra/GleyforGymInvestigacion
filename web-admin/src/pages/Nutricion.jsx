@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { descargarBlob } from "../utils/descargarArchivo";
 
 function Nutricion() {
   const [clientes, setClientes] = useState([]);
@@ -7,6 +8,21 @@ function Nutricion() {
   const [planes, setPlanes] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [descargandoId, setDescargandoId] = useState(null);
+
+  const descargarPdf = async (idPlan) => {
+    try {
+      setDescargandoId(idPlan);
+      setError("");
+      const res = await api.get(`/nutricion/${idPlan}/pdf`, { responseType: "blob" });
+      descargarBlob(res.data, `plan-nutricional-${idPlan}.pdf`);
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo descargar el PDF del plan");
+    } finally {
+      setDescargandoId(null);
+    }
+  };
 
   const cargarClientes = async () => {
     try {
@@ -256,6 +272,13 @@ function Nutricion() {
                 )}
 
                 <div className="form-actions">
+                  <button
+                    className="btn-secondary"
+                    disabled={descargandoId === plan.id_plan}
+                    onClick={() => descargarPdf(plan.id_plan)}
+                  >
+                    {descargandoId === plan.id_plan ? "Generando..." : "Descargar PDF"}
+                  </button>
                   <button
                     className="btn-danger"
                     onClick={() => desactivarPlan(plan.id_plan)}

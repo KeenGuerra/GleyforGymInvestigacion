@@ -1,11 +1,27 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { useClienteActual } from "../hooks/useClienteActual";
+import { descargarBlob } from "../utils/descargarArchivo";
 
 function MiNutricion() {
   const { cliente, error: errorCliente } = useClienteActual();
   const [planes, setPlanes] = useState([]);
   const [error, setError] = useState("");
+  const [descargandoId, setDescargandoId] = useState(null);
+
+  const descargarPdf = async (idPlan) => {
+    try {
+      setDescargandoId(idPlan);
+      setError("");
+      const res = await api.get(`/nutricion/${idPlan}/pdf`, { responseType: "blob" });
+      descargarBlob(res.data, `plan-nutricional-${idPlan}.pdf`);
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo descargar el PDF del plan");
+    } finally {
+      setDescargandoId(null);
+    }
+  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -82,6 +98,16 @@ function MiNutricion() {
                     <strong>{plan.calorias_diarias || 0}</strong>
                     <span>kcal/día</span>
                   </div>
+                </div>
+
+                <div className="form-actions">
+                  <button
+                    className="btn-secondary"
+                    disabled={descargandoId === plan.id_plan}
+                    onClick={() => descargarPdf(plan.id_plan)}
+                  >
+                    {descargandoId === plan.id_plan ? "Generando..." : "Descargar PDF"}
+                  </button>
                 </div>
 
                 <div className="mini-stats-grid">

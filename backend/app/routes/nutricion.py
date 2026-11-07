@@ -1,12 +1,15 @@
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException
 # pyrefly: ignore [missing-import]
+from fastapi.responses import Response
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
 
 from app import models, schemas
 from app.database import get_db
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
+from app.recibos import generar_pdf_plan_nutricional
 from app.constants import (
     MSG_CLIENTE_NO_ENCONTRADO,
     MSG_CLIENTE_INACTIVO,
@@ -173,3 +176,42 @@ def eliminar_plan(
     db.commit()
 
     return {"mensaje": "Plan nutricional desactivado correctamente"}
+
+
+# =========================
+# PDF DEL PLAN NUTRICIONAL
+# =========================
+@router.get(
+    "/{id_plan}/pdf",
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Plan no encontrado"}
+    }
+)
+def descargar_pdf_plan(
+    id_plan: int,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    plan = db.query(models.PlanNutricional).filter(
+        models.PlanNutricional.id_plan == id_plan
+    ).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail=MSG_PLAN_NO_ENCONTRADO)
+
+    verificar_propiedad_cliente(usuario_actual, plan.id_cliente, db)
+
+    cliente = db.query(models.Cliente).filter(
+        models.Cliente.id_cliente == plan.id_cliente
+    ).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail=MSG_CLIENTE_NO_ENCONTRADO)
+
+    pdf_bytes = generar_pdf_plan_nutricional(plan, cliente)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=plan-nutricional-{plan.id_plan}.pdf"},
+    )

@@ -52,6 +52,19 @@ function DashboardAdmin() {
     (m) => m.estado === "ACTIVA"
   );
 
+  const diasHasta = (fecha) => {
+    if (!fecha) return null;
+    const msPorDia = 1000 * 60 * 60 * 24;
+    const hoyUtc = new Date(hoy).getTime();
+    const fechaUtc = new Date(fecha.slice(0, 10)).getTime();
+    return Math.round((fechaUtc - hoyUtc) / msPorDia);
+  };
+
+  const membresiasPorVencer = membresiasActivas
+    .map((m) => ({ ...m, diasRestantes: diasHasta(m.fecha_fin) }))
+    .filter((m) => m.diasRestantes !== null && m.diasRestantes >= 0 && m.diasRestantes <= 7)
+    .sort((a, b) => a.diasRestantes - b.diasRestantes);
+
   const pagosValidos = pagos.filter((p) => p.estado !== "ANULADO");
 
   const ingresosTotales = pagosValidos.reduce(
@@ -309,6 +322,24 @@ function DashboardAdmin() {
                 <p>Ingresos registrados</p>
               </div>
             </div>
+          </div>
+
+          <div className="card info-card">
+            <h2>Membresías por vencer</h2>
+            <p>Activas que vencen en los próximos 7 días.</p>
+
+            {membresiasPorVencer.length === 0 ? (
+              <p className="empty-message">Sin membresías por vencer esta semana.</p>
+            ) : (
+              <div className="status-list">
+                {membresiasPorVencer.map((m) => (
+                  <span key={m.id_cliente_membresia}>
+                    {obtenerNombreCliente(m.id_cliente)} —{" "}
+                    {m.diasRestantes === 0 ? "vence hoy" : `${m.diasRestantes} día(s)`}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="card promo-card">

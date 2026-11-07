@@ -86,13 +86,13 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 ## P-05 Alertas de vencimiento de membresía
 
-No se encontró ningún job ni notificación que avise antes de que una membresía expire. Lo único automático hoy es el cambio de estado a `TERMINADA` cuando la fecha ya pasó (tarea periódica en el `lifespan` de `main.py`). Faltaría una notificación (en la UI del admin, o por correo una vez resuelto P-03) unos días antes del vencimiento.
+~~Resuelto (2026-11)~~: `DashboardAdmin.jsx` ahora muestra una tarjeta "Membresías por vencer" con las membresías `ACTIVA` cuya `fecha_fin` cae en los próximos 7 días, usando datos que `GET /cliente-membresias/` ya devolvía. Sin cambios de backend. La notificación por correo queda pendiente de P-03.
 
 ---
 
 ## P-06 Exportación/impresión PDF de rutinas y planes nutricionales
 
-Solo existe generación de PDF para recibos de pago (`backend/app/recibos.py`, con `reportlab`). Rutinas y planes nutricionales no tienen equivalente. Se podría reutilizar el mismo patrón de `recibos.py`.
+~~Resuelto (2026-11)~~: se agregaron `generar_pdf_rutina()` y `generar_pdf_plan_nutricional()` en `backend/app/recibos.py` (mismo patrón de `reportlab` que el recibo de pago), expuestas en `GET /rutinas/{id}/pdf` y `GET /nutricion/{id}/pdf` (mismo control de acceso ADMIN/ENTRENADOR o el cliente dueño). Botón "Descargar PDF" agregado en `DetalleRutina.jsx`, `MiRutina.jsx`, `Nutricion.jsx` y `MiNutricion.jsx`.
 
 ---
 

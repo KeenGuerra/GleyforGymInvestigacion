@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { useClienteActual } from "../hooks/useClienteActual";
+import { descargarBlob } from "../utils/descargarArchivo";
 
 function MiRutina() {
   const navigate = useNavigate();
@@ -9,6 +10,21 @@ function MiRutina() {
   const { cliente, error: errorCliente } = useClienteActual();
   const [rutinas, setRutinas] = useState([]);
   const [error, setError] = useState("");
+  const [descargandoId, setDescargandoId] = useState(null);
+
+  const descargarPdf = async (id_rutina) => {
+    try {
+      setDescargandoId(id_rutina);
+      setError("");
+      const res = await api.get(`/rutinas/${id_rutina}/pdf`, { responseType: "blob" });
+      descargarBlob(res.data, `rutina-${id_rutina}.pdf`);
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo descargar el PDF de la rutina");
+    } finally {
+      setDescargandoId(null);
+    }
+  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -78,12 +94,21 @@ function MiRutina() {
                 <p><span>Generada por IA</span><strong>{rutina.generada_por_ia ? "Sí" : "No"}</strong></p>
               </div>
 
-              <button
-                className="btn-primary"
-                onClick={() => navigate(`/rutinas/${rutina.id_rutina}/detalle`)}
-              >
-                Ver detalle con videos
-              </button>
+              <div className="form-actions">
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate(`/rutinas/${rutina.id_rutina}/detalle`)}
+                >
+                  Ver detalle con videos
+                </button>
+                <button
+                  className="btn-secondary"
+                  disabled={descargandoId === rutina.id_rutina}
+                  onClick={() => descargarPdf(rutina.id_rutina)}
+                >
+                  {descargandoId === rutina.id_rutina ? "Generando..." : "Descargar PDF"}
+                </button>
+              </div>
             </article>
           ))}
         </section>

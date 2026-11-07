@@ -223,6 +223,63 @@ describe("Nutricion Page Component", () => {
     });
   });
 
+  it("downloads the plan PDF when the button is clicked", async () => {
+    URL.createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
+    URL.revokeObjectURL = vi.fn();
+    const clickSpy = vi.fn();
+    const crearElementoOriginal = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      const el = crearElementoOriginal(tag);
+      el.click = clickSpy;
+      return el;
+    });
+
+    api.get.mockImplementation((url) => {
+      if (url.includes("/pdf")) return Promise.resolve({ data: new Blob(["pdf"]) });
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/nutricion/cliente/")) return Promise.resolve({ data: mockPlanes });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Nutricion />);
+    await waitFor(() => expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined());
+
+    const select = screen.getByLabelText("Cliente");
+    fireEvent.change(select, { target: { value: "1" } });
+
+    await waitFor(() => expect(screen.getByText("Descargar PDF")).toBeDefined());
+    fireEvent.click(screen.getByText("Descargar PDF"));
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/nutricion/10/pdf", { responseType: "blob" });
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    vi.restoreAllMocks();
+  });
+
+  it("shows an error when the plan PDF download fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/pdf")) return Promise.reject(new Error("fail"));
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/nutricion/cliente/")) return Promise.resolve({ data: mockPlanes });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Nutricion />);
+    await waitFor(() => expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined());
+
+    const select = screen.getByLabelText("Cliente");
+    fireEvent.change(select, { target: { value: "1" } });
+
+    await waitFor(() => expect(screen.getByText("Descargar PDF")).toBeDefined());
+    fireEvent.click(screen.getByText("Descargar PDF"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo descargar el PDF del plan")).toBeDefined();
+    });
+  });
+
   it("displays empty message when client has no active plans", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });

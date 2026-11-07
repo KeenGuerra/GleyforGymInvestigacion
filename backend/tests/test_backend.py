@@ -1587,6 +1587,78 @@ def test_descargar_recibo_pago_pdf():
     assert client.get(f"/pagos/{id_pago}/recibo", headers=headers_otro).status_code == 403
 
 
+def test_descargar_pdf_rutina():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_rut = client.post(
+        "/rutinas/",
+        json={
+            "id_cliente": 1,
+            "nombre": "Rutina Test",
+            "objetivo": "Fuerza",
+            "nivel": "Principiante",
+            "dias_semana": 3,
+        },
+        headers=headers_admin,
+    )
+    id_rut = res_rut.json()["id_rutina"]
+
+    res_pdf = client.get(f"/rutinas/{id_rut}/pdf", headers=headers_admin)
+    assert res_pdf.status_code == 200
+    assert res_pdf.headers["content-type"] == "application/pdf"
+    assert res_pdf.content.startswith(b"%PDF")
+
+    # El cliente dueño de la rutina puede descargar su propio PDF
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(f"/rutinas/{id_rut}/pdf", headers=headers_cliente).status_code == 200
+
+    # No el de otro cliente
+    res_otro_cliente = client.post(
+        "/clientes/",
+        json={
+            "dni": "55667788", "nombres": "Otra", "apellidos": "Persona",
+            "correo": "otra.persona@gleyforgym.com", "password": "12345678",
+        },
+        headers=headers_admin,
+    )
+    id_usuario_otro = res_otro_cliente.json()["id_usuario"]
+    headers_otro = get_auth_headers(rol="CLIENTE", id_usuario=id_usuario_otro)
+    assert client.get(f"/rutinas/{id_rut}/pdf", headers=headers_otro).status_code == 403
+
+    assert client.get("/rutinas/999999/pdf", headers=headers_admin).status_code == 404
+
+
+def test_descargar_pdf_plan_nutricional():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_plan = client.post(
+        "/nutricion/",
+        json={
+            "id_cliente": 1,
+            "objetivo": "Definicion",
+            "calorias_diarias": 2000,
+            "proteinas": 120,
+            "carbohidratos": 250,
+            "grasas": 60,
+        },
+        headers=headers_admin,
+    )
+    id_plan = res_plan.json()["id_plan"]
+
+    res_pdf = client.get(f"/nutricion/{id_plan}/pdf", headers=headers_admin)
+    assert res_pdf.status_code == 200
+    assert res_pdf.headers["content-type"] == "application/pdf"
+    assert res_pdf.content.startswith(b"%PDF")
+
+    # El cliente dueño del plan puede descargar su propio PDF
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(f"/nutricion/{id_plan}/pdf", headers=headers_cliente).status_code == 200
+
+    assert client.get("/nutricion/999999/pdf", headers=headers_admin).status_code == 404
+
+
 def test_cambiar_mi_password():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")

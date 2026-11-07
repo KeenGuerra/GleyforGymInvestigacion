@@ -45,6 +45,40 @@ describe("DashboardAdmin Page Component", () => {
     });
   });
 
+  it("shows a membership expiring soon in the alert card", async () => {
+    const hoy = new Date();
+    const enTresDias = new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) {
+        return Promise.resolve({ data: [{ id_cliente: 1, nombres: "Juan", apellidos: "Perez", estado: "ACTIVO" }] });
+      }
+      if (url.includes("/cliente-membresias/")) {
+        return Promise.resolve({
+          data: [{ id_cliente_membresia: 1, id_cliente: 1, estado: "ACTIVA", fecha_fin: enTresDias }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<DashboardAdmin />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Membresías por vencer")).toBeDefined();
+      expect(screen.getByText(/Juan Perez — 3 día\(s\)/)).toBeDefined();
+    });
+  });
+
+  it("shows the empty message when no membership is expiring soon", async () => {
+    render(<DashboardAdmin />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sin membresías por vencer esta semana.")).toBeDefined();
+    });
+  });
+
   it("renders the KPI chart panel when /reportes/kpis returns data", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/reportes/kpis")) {

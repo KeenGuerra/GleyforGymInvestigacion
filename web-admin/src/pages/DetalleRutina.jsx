@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/api";
+import { descargarBlob } from "../utils/descargarArchivo";
 
 function DetalleRutina() {
   const { id } = useParams();
@@ -9,6 +10,22 @@ function DetalleRutina() {
   const [rutina, setRutina] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [descargando, setDescargando] = useState(false);
+  const [errorDescarga, setErrorDescarga] = useState("");
+
+  const descargarPdf = async () => {
+    try {
+      setDescargando(true);
+      setErrorDescarga("");
+      const res = await api.get(`/rutinas/${id}/pdf`, { responseType: "blob" });
+      descargarBlob(res.data, `rutina-${id}.pdf`);
+    } catch (error) {
+      console.error(error);
+      setErrorDescarga("No se pudo descargar el PDF de la rutina");
+    } finally {
+      setDescargando(false);
+    }
+  };
 
   useEffect(() => {
     const cargarRutina = async () => {
@@ -42,10 +59,17 @@ function DetalleRutina() {
           <p>{rutina.descripcion || "Sin descripción registrada."}</p>
         </div>
 
-        <button className="btn-secondary" onClick={() => navigate(-1)}>
-          Volver
-        </button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button className="btn-secondary" disabled={descargando} onClick={descargarPdf}>
+            {descargando ? "Generando..." : "Descargar PDF"}
+          </button>
+          <button className="btn-secondary" onClick={() => navigate(-1)}>
+            Volver
+          </button>
+        </div>
       </section>
+
+      {errorDescarga && <p className="error-message">{errorDescarga}</p>}
 
       <section className="card meta-card">
         <span className="badge">{rutina.objetivo || "-"}</span>
