@@ -13,12 +13,15 @@ from app.constants import (
     MSG_CLIENTE_NO_ENCONTRADO,
     MSG_CLIENTE_INACTIVO,
     MSG_MEMBRESIA_NO_ENCONTRADA,
+    MSG_MEMBRESIA_YA_ACTIVA,
+    MSG_PERFIL_CLIENTE_REQUERIDO,
     ESTADO_ACTIVO,
     ESTADO_TERMINADA,
     ESTADO_CANCELADA,
     MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA,
     ESTADO_ACTIVA,
-    ESTADO_PAUSADA
+    ESTADO_PAUSADA,
+    ESTADO_PENDIENTE,
 )
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
@@ -93,6 +96,86 @@ def asignar_membresia(
     )
 
     return nueva
+
+
+@router.post(
+    "/comprar",
+    response_model=schemas.PagoResponse,
+    responses={
+        400: {"description": "El cliente no está activo o la membresía no está activa"},
+        401: {"description": "Token inválido o expirado"},
+        403: {"description": "La cuenta no tiene un perfil de socio"},
+        404: {"description": "Membresía no encontrada"},
+        409: {"description": "Ya existe una membresía activa o un pago pendiente"},
+    }
+)
+def comprar_membresia(
+    data: schemas.ClienteMembresiaComprarCreate,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    """Compra de membresía por autoservicio: crea una ClienteMembresia y un
+    Pago en PENDIENTE; el webhook de pagos los activa cuando el gateway
+    confirma el pago (ver aplicar_confirmacion_pago en webhooks.py)."""
+    cliente = db.query(models.Cliente).filter(
+        models.Cliente.id_usuario == usuario_actual.get("id_usuario")
+    ).first()
+
+    if not cliente:
+        raise HTTPException(status_code=403, detail=MSG_PERFIL_CLIENTE_REQUERIDO)
+
+    if cliente.estado != ESTADO_ACTIVO:
+        raise HTTPException(status_code=400, detail=MSG_CLIENTE_INACTIVO)
+
+    membresia = db.query(models.Membresia).filter(
+        models.Membresia.id_membresia == data.id_membresia
+    ).first()
+
+    if not membresia:
+        raise HTTPException(status_code=404, detail=MSG_MEMBRESIA_NO_ENCONTRADA)
+
+    if membresia.estado != ESTADO_ACTIVO:
+        raise HTTPException(status_code=400, detail="La membresía no está activa")
+
+    existente = db.query(models.ClienteMembresia).filter(
+        models.ClienteMembresia.id_cliente == cliente.id_cliente,
+        models.ClienteMembresia.estado.in_((ESTADO_ACTIVA, ESTADO_PAUSADA, ESTADO_PENDIENTE)),
+    ).first()
+
+    if existente:
+        raise HTTPException(status_code=409, detail=MSG_MEMBRESIA_YA_ACTIVA)
+
+    hoy = date.today()
+
+    nueva_cm = models.ClienteMembresia(
+        id_cliente=cliente.id_cliente,
+        id_membresia=membresia.id_membresia,
+        fecha_inicio=hoy,
+        fecha_fin=hoy,
+        estado=ESTADO_PENDIENTE,
+        precio_asignado=membresia.precio,
+    )
+    db.add(nueva_cm)
+    db.flush()
+
+    nuevo_pago = models.Pago(
+        id_cliente=cliente.id_cliente,
+        id_cliente_membresia=nueva_cm.id_cliente_membresia,
+        monto=membresia.precio,
+        metodo_pago="TARJETA",
+        fecha_pago=hoy,
+        estado=ESTADO_PENDIENTE,
+    )
+    db.add(nuevo_pago)
+    db.commit()
+    db.refresh(nuevo_pago)
+
+    registrar_auditoria(
+        db, usuario_actual, "SOLICITAR_COMPRA", "ClienteMembresia", nueva_cm.id_cliente_membresia,
+        f"membresia={membresia.id_membresia}, pago={nuevo_pago.id_pago}",
+    )
+
+    return nuevo_pago
 
 
 @router.get(

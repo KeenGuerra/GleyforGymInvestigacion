@@ -55,6 +55,8 @@ MSG_PROGRESO_NO_ENCONTRADO = "Progreso no encontrado"
 MSG_CLIENTE_NO_ENCONTRADO_USUARIO = "Cliente no encontrado para este usuario"
 MSG_ENTRENADOR_NO_ENCONTRADO = "Entrenador no encontrado"
 MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA = "Membresía del cliente no encontrada"
+MSG_MEMBRESIA_YA_ACTIVA = "Ya tienes una membresía activa o un pago pendiente"
+MSG_PERFIL_CLIENTE_REQUERIDO = "Necesitas un perfil de socio para comprar una membresía"
 
 # Estado comercial
 ESTADO_CONFIRMADA = "CONFIRMADA"

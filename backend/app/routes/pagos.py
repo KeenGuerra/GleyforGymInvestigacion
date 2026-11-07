@@ -127,6 +127,7 @@ def iniciar_checkout_pago(
     return {
         "id_pago": pago_db.id_pago,
         "url_checkout": sesion["url_checkout"],
+        "qr_yape": sesion.get("qr_yape"),
         "id_transaccion_externa": sesion["id_transaccion_externa"],
     }
 

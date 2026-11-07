@@ -13,7 +13,7 @@ EstadoUsuario = Literal["ACTIVO", "INACTIVO"]
 
 EstadoGeneral = Literal["ACTIVO", "INACTIVO"]
 EstadoRutina = Literal["ACTIVA", "INACTIVA"]
-EstadoClienteMembresia = Literal["ACTIVA", "PAUSADA", "TERMINADA", "CANCELADA"]
+EstadoClienteMembresia = Literal["ACTIVA", "PAUSADA", "TERMINADA", "CANCELADA", "PENDIENTE"]
 EstadoRevision = Literal["pendiente", "aprobada", "aprobada_con_cambios", "rechazada"]
 
 MetodoPago = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA"]
@@ -223,6 +223,12 @@ class ClienteMembresiaCreate(BaseModel):
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
     estado: EstadoClienteMembresia = "ACTIVA"
+
+
+class ClienteMembresiaComprarCreate(BaseModel):
+    """Compra de membresía por el propio cliente (id_cliente se deriva del
+    token, igual que VentaSolicitarCreate frente a VentaCreate)."""
+    id_membresia: int
 
 
 class ClienteMembresiaUpdate(BaseModel):

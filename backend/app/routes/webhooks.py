@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
+from datetime import date, timedelta
 import logging
 import secrets
 
@@ -54,6 +55,20 @@ def _extraer_id_transaccion(payload: dict) -> str | None:
         return str(payload["id"])
 
     return None
+
+
+def aplicar_confirmacion_pago(db: Session, pago: models.Pago) -> None:
+    """Activa la ClienteMembresia PENDIENTE ligada a este pago (compra de
+    membresía por autoservicio, ver POST /cliente-membresias/comprar). Si el
+    pago no venía de ese flujo (ej. fue creado ya resuelto por el staff) no
+    hay nada que activar."""
+    cliente_membresia = pago.cliente_membresia
+    if cliente_membresia and cliente_membresia.estado == "PENDIENTE":
+        hoy = date.today()
+        cliente_membresia.fecha_inicio = hoy
+        cliente_membresia.fecha_fin = hoy + timedelta(days=cliente_membresia.membresia.duracion_dias)
+        cliente_membresia.estado = "ACTIVA"
+    db.commit()
 
 
 @router.post("/pagos")
@@ -131,7 +146,13 @@ async def webhook_pagos(
     ).first()
     if pago:
         pago.estado = nuevo_estado
-        db.commit()
+        if nuevo_estado == "PAGADO":
+            aplicar_confirmacion_pago(db, pago)
+        elif nuevo_estado == "FALLIDO" and pago.cliente_membresia and pago.cliente_membresia.estado == "PENDIENTE":
+            pago.cliente_membresia.estado = "CANCELADA"
+            db.commit()
+        else:
+            db.commit()
         registrar_auditoria(db, None, "WEBHOOK_PAGO", "Pago", pago.id_pago, detalle_auditoria)
         return {"mensaje": f"Pago actualizado a {nuevo_estado}", "id_pago": pago.id_pago}
 

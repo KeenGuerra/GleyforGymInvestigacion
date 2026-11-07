@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { useClienteActual } from "../hooks/useClienteActual";
+import CheckoutModal from "../components/CheckoutModal";
 
 function MiMembresia() {
   const { cliente, error: errorCliente } = useClienteActual();
   const [membresias, setMembresias] = useState([]);
+  const [pagos, setPagos] = useState([]);
+  const [planes, setPlanes] = useState([]);
   const [error, setError] = useState("");
+  const [comprandoId, setComprandoId] = useState(null);
+  const [pagandoId, setPagandoId] = useState(null);
+  const [checkoutInfo, setCheckoutInfo] = useState(null);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -37,42 +43,81 @@ function MiMembresia() {
     return "Días restantes";
   };
 
-  useEffect(() => {
+  const cargarMembresia = async () => {
     if (!cliente) return;
 
-    const cargarMembresia = async () => {
-      try {
-        setError("");
+    try {
+      setError("");
 
-        const [clienteMembresiasRes, planesRes] = await Promise.all([
-          api.get(`/cliente-membresias/cliente/${cliente.id_cliente}`),
-          api.get("/membresias/"),
-        ]);
+      const [clienteMembresiasRes, planesRes, pagosRes] = await Promise.all([
+        api.get(`/cliente-membresias/cliente/${cliente.id_cliente}`),
+        api.get("/membresias/"),
+        api.get(`/pagos/cliente/${cliente.id_cliente}`),
+      ]);
 
-        const planes = planesRes.data;
+      const planesData = planesRes.data;
 
-        const datosCompletos = clienteMembresiasRes.data.map((item) => {
-          const plan = planes.find((p) => p.id_membresia === item.id_membresia);
+      const datosCompletos = clienteMembresiasRes.data.map((item) => {
+        const plan = planesData.find((p) => p.id_membresia === item.id_membresia);
 
-          return {
-            ...item,
-            plan: plan || null,
-          };
-        });
+        return {
+          ...item,
+          plan: plan || null,
+        };
+      });
 
-        setMembresias(datosCompletos);
-      } catch (error) {
-        console.error(error);
-        setError("No se pudo cargar tu membresía.");
-      }
-    };
+      setMembresias(datosCompletos);
+      setPlanes(planesData);
+      setPagos(pagosRes.data);
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo cargar tu membresía.");
+    }
+  };
 
+  useEffect(() => {
     cargarMembresia();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente]);
 
   const membresiaActiva =
     membresias.find((m) => m.estado === "ACTIVA") ||
     membresias.find((m) => m.estado === "PAUSADA");
+
+  const membresiaPendiente = membresias.find((m) => m.estado === "PENDIENTE");
+  const pagoPendiente = membresiaPendiente
+    ? pagos.find(
+        (p) => p.estado === "PENDIENTE" && p.id_cliente_membresia === membresiaPendiente.id_cliente_membresia
+      )
+    : null;
+  const puedeComprar = !membresiaActiva && !membresiaPendiente;
+  const planesDisponibles = planes.filter((p) => p.estado === "ACTIVO");
+
+  const comprarPlan = async (id_membresia) => {
+    try {
+      setComprandoId(id_membresia);
+      setError("");
+      await api.post("/cliente-membresias/comprar", { id_membresia });
+      await cargarMembresia();
+    } catch (err) {
+      setError(err.response?.data?.detail || "No se pudo iniciar la compra de la membresía.");
+    } finally {
+      setComprandoId(null);
+    }
+  };
+
+  const pagarPendiente = async (id_pago) => {
+    try {
+      setPagandoId(id_pago);
+      setError("");
+      const res = await api.post(`/pagos/${id_pago}/checkout`);
+      setCheckoutInfo(res.data);
+    } catch (err) {
+      setError(err.response?.data?.detail || "No se pudo iniciar el pago.");
+    } finally {
+      setPagandoId(null);
+    }
+  };
 
   return (
     <div className="page-container">
@@ -88,12 +133,54 @@ function MiMembresia() {
 
       {(errorCliente || error) && <p className="error-message">{errorCliente || error}</p>}
 
-      {membresias.length === 0 ? (
-        <section className="card empty-state">
-          <h3>No tienes membresías registradas</h3>
-          <p>Cuando se te asigne una membresía, aparecerá aquí.</p>
+      {membresiaPendiente && pagoPendiente && (
+        <section className="card promo-card">
+          <span className="badge">PAGO PENDIENTE</span>
+          <h2>{membresiaPendiente.plan?.nombre || `Plan #${membresiaPendiente.id_membresia}`}</h2>
+          <p>Completa el pago para activar tu membresía.</p>
+          <div className="price-box">
+            <strong>S/ {obtenerPrecio(membresiaPendiente)}</strong>
+          </div>
+          <button
+            className="btn-primary"
+            disabled={pagandoId === pagoPendiente.id_pago}
+            onClick={() => pagarPendiente(pagoPendiente.id_pago)}
+          >
+            {pagandoId === pagoPendiente.id_pago ? "Generando pago..." : "Completar pago"}
+          </button>
         </section>
-      ) : (
+      )}
+
+      {puedeComprar && (
+        <section>
+          <h3>Elige un plan</h3>
+          {planesDisponibles.length === 0 ? (
+            <p className="empty-message">No hay planes disponibles por ahora.</p>
+          ) : (
+            <section className="cards-grid">
+              {planesDisponibles.map((p) => (
+                <article className="card item-card" key={p.id_membresia}>
+                  <h3>{p.nombre}</h3>
+                  <p>{p.descripcion || "Sin descripción"}</p>
+                  <div className="price-box">
+                    <strong>S/ {Number(p.precio).toFixed(2)}</strong>
+                    <span>{p.duracion_dias} días</span>
+                  </div>
+                  <button
+                    className="btn-primary"
+                    disabled={comprandoId === p.id_membresia}
+                    onClick={() => comprarPlan(p.id_membresia)}
+                  >
+                    {comprandoId === p.id_membresia ? "Procesando..." : "Comprar"}
+                  </button>
+                </article>
+              ))}
+            </section>
+          )}
+        </section>
+      )}
+
+      {membresias.length === 0 ? null : (
         <>
           {membresiaActiva && (
             <section className="card promo-card">
@@ -186,6 +273,8 @@ function MiMembresia() {
           </section>
         </>
       )}
+
+      <CheckoutModal info={checkoutInfo} onClose={() => setCheckoutInfo(null)} />
     </div>
   );
 }
