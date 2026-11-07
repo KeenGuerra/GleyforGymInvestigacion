@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
-import logo from "../assets/logo-gleyforgym.jpeg";
+import logo from "../assets/logo-gleyforgym.png";
 
 function Login() {
   const navigate = useNavigate();

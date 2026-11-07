@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import logoGleyforGym from "../assets/logo-gleyforgym.jpeg";
+import logoGleyforGym from "../assets/logo-gleyforgym.png";
 
 export default function Navbar({ cartCount = 0, onCartClick }) {
   const navigate = useNavigate();
