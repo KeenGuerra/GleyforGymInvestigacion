@@ -8,7 +8,7 @@ def test_enviar_correo_sin_credenciales_solo_loguea(monkeypatch):
     monkeypatch.setattr("app.config.GMAIL_USER", None)
     monkeypatch.setattr("app.config.GMAIL_APP_PASSWORD", None)
 
-    with patch("app.correo.smtplib.SMTP_SSL") as mock_smtp:
+    with patch("app.correo.smtplib.SMTP") as mock_smtp:
         enviar_correo("destino@example.com", "Asunto", "<p>Cuerpo</p>")
 
     mock_smtp.assert_not_called()
@@ -19,12 +19,13 @@ def test_enviar_correo_con_credenciales_envia_por_smtp(monkeypatch):
     monkeypatch.setattr("app.config.GMAIL_APP_PASSWORD", "clave-app")
 
     servidor_mock = MagicMock()
-    with patch("app.correo.smtplib.SMTP_SSL") as mock_smtp:
+    with patch("app.correo.smtplib.SMTP") as mock_smtp:
         mock_smtp.return_value.__enter__.return_value = servidor_mock
 
         enviar_correo("destino@example.com", "Asunto", "<p>Cuerpo</p>")
 
-    mock_smtp.assert_called_once_with("smtp.gmail.com", 465, timeout=SMTP_TIMEOUT_SEGUNDOS)
+    mock_smtp.assert_called_once_with("smtp.gmail.com", 587, timeout=SMTP_TIMEOUT_SEGUNDOS)
+    servidor_mock.starttls.assert_called_once()
     servidor_mock.login.assert_called_once_with("remitente@gmail.com", "clave-app")
     servidor_mock.sendmail.assert_called_once()
     destinatarios = servidor_mock.sendmail.call_args.args[1]
@@ -39,7 +40,7 @@ def test_enviar_correo_no_propaga_error_si_smtp_falla_o_se_cuelga(monkeypatch):
     monkeypatch.setattr("app.config.GMAIL_USER", "remitente@gmail.com")
     monkeypatch.setattr("app.config.GMAIL_APP_PASSWORD", "clave-app")
 
-    with patch("app.correo.smtplib.SMTP_SSL") as mock_smtp:
+    with patch("app.correo.smtplib.SMTP") as mock_smtp:
         mock_smtp.side_effect = TimeoutError("timed out")
 
         enviar_correo("destino@example.com", "Asunto", "<p>Cuerpo</p>")  # no debe lanzar

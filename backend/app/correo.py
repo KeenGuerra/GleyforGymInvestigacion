@@ -37,7 +37,11 @@ def enviar_correo(destinatario: str, asunto: str, cuerpo_html: str) -> None:
     mensaje["To"] = destinatario
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=SMTP_TIMEOUT_SEGUNDOS) as servidor:
+        # Puerto 587 con STARTTLS en vez de 465 con SSL directo: algunos
+        # proveedores de hosting (Render incluido, confirmado en producción)
+        # no dejan completar la conexión en el 465.
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=SMTP_TIMEOUT_SEGUNDOS) as servidor:
+            servidor.starttls()
             servidor.login(config.GMAIL_USER, config.GMAIL_APP_PASSWORD)
             servidor.sendmail(config.GMAIL_USER, [destinatario], mensaje.as_string())
         logger.info("Correo enviado a %s: %s", destinatario, asunto)
