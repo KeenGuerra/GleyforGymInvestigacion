@@ -46,11 +46,13 @@ backend/app/pagos_gateway/__init__.py → singleton `gateway`, punto único de c
 
 Pruebas agregadas en `Pagos.test.jsx` y `Tienda.test.jsx` para ambos flujos (éxito y error). Suite de frontend: 42 archivos / 220 pruebas.
 
+**Avance (2026-11, continuación 2) — los puntos 2 y 3 de abajo ya están resueltos**: `pagos_gateway/__init__.py` elige automáticamente `CulqiGateway` si `CULQI_SECRET_KEY` está configurada, o `MockGateway` si no (CI y cualquier máquina sin esa variable siguen sin cambios). `routes/webhooks.py` ya no confía en el campo `resultado` del payload cuando el gateway activo es real: solo lo usa para extraer el ID de la transacción (probando varias formas razonables — `id_transaccion_externa`, `data.object.id`, `data.id`, `object.id`, `id`, ya que Culqi no documenta públicamente el formato exacto de su webhook) y siempre revalida el estado llamando a `gateway.consultar_estado()` contra la API de Culqi antes de aplicar cualquier cambio. El secreto del webhook (`WEBHOOK_SECRET`) se acepta también por query string (`?secret=...`), porque el panel de Culqi no permite configurar headers personalizados en la URL de destino.
+
+En autorrevisión antes de la primera prueba real se corrigieron dos bugs: `CulqiGateway.consultar_estado()` no manejaba un 404 de Culqi (orden no encontrada) y `_extraer_id_transaccion()` priorizaba el `id` de primer nivel del payload antes que las rutas anidadas, al revés de la convención común de webhooks (estilo Stripe) donde el nivel superior suele ser el ID del *evento*, no del recurso.
+
 Falta:
 
-1. Completar un pago de prueba real (QR de Yape sandbox o PagoEfectivo) y confirmar el webhook/estado "pagado".
-2. Reemplazar `gateway = MockGateway()` por `gateway = CulqiGateway()` en `pagos_gateway/__init__.py:7` una vez confirmado el punto 1.
-3. Adaptar `routes/webhooks.py`: hoy asume el formato propio de `MockGateway` (`id_transaccion_externa` + `resultado`) y confía en ese campo sin verificarlo contra el proveedor. El webhook real de Culqi llega con su propio formato de evento — hay que leerlo y, por seguridad, revalidar el estado llamando a `gateway.consultar_estado()` en vez de confiar directamente en el payload entrante (si no, cualquiera podría llamar a esa URL y falsificar un pago).
+1. Completar un pago de prueba real de punta a punta (QR de Yape sandbox, número de prueba `900 000 001` + cualquier código de 6 dígitos, o PagoEfectivo) contra el backend desplegado, y confirmar que el webhook real de Culqi llega con un formato que `_extraer_id_transaccion()` reconoce. **Es lo único de este punto sin confirmar todavía** — todo lo probado hasta ahora fue con el webhook simulado (payload armado a mano), no con un pago real aprobado por Culqi.
 
 Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
 
@@ -65,6 +67,30 @@ Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yap
 ## P-04 Cobertura de tests del módulo de Comercio
 
 ~~Resuelto (2026-11)~~: backend y frontend tienen ahora pruebas dedicadas. Backend: `backend/tests/test_comercio.py` (10 pruebas) eleva `categorias.py` 37%→88%, `proveedores.py` 43%→86%, `compras.py` 20%→83%, `ventas.py` 17%→69%, `inventario.py` 26%→56%, `productos.py` 23%→48%. Frontend: un archivo `*.test.jsx` por página (`Categorias`, `Productos`, `Proveedores`, `Compras`, `Inventario`, `Ventas`, `Tienda`) eleva esos siete archivos de un rango de 1.3%-2.8% a 87.9%-100%, y la cobertura total de frontend de 78.21% a 94.33%.
+
+---
+
+## P-19 Compra de membresía por autoservicio
+
+~~Resuelto (2026-11)~~: antes solo ADMIN/ENTRENADOR podían asignar una membresía (`POST /cliente-membresias/`). Se agregó `POST /cliente-membresias/comprar` para que el propio socio compre un plan, siguiendo el mismo patrón solicitar → pagar → confirmar por webhook que ya usan las ventas de la tienda (ver P-02). Al comprar se crean una `ClienteMembresia` y un `Pago` en estado `PENDIENTE`; el webhook activa la membresía (con fechas reales, `fecha_inicio`/`fecha_fin` recalculadas al confirmarse) cuando el pago queda `PAGADO`, o la deja `CANCELADA` si queda `FALLIDO` (para poder reintentar). Se bloquea con 409 comprar un nuevo plan mientras ya hay uno `ACTIVA`/`PAUSADA`/`PENDIENTE`.
+
+En el frontend, `MiMembresia.jsx` ahora muestra los planes disponibles con botón "Comprar" cuando el socio no tiene membresía, y "Completar pago" (reutilizando `CheckoutModal.jsx` ya existente) cuando hay un pago pendiente. Backend: 142→149 pruebas (7 nuevas en `test_compra_membresia.py`). Frontend: 48→50 archivos / 277→288 pruebas.
+
+Sigue pendiente de la misma confirmación que P-02: un pago real de punta a punta todavía no se ha completado para este flujo.
+
+---
+
+## P-20 Bug: error de login silencioso (la sesión se cerraba ante cualquier 401)
+
+~~Resuelto (2026-11)~~: el interceptor de respuesta de axios (`web-admin/src/api/api.js`) trataba cualquier 401 como "la sesión expiró" y hacía `localStorage.clear()` + `location.href = "/login"` (recarga completa de la página) — incluido el 401 que devuelve `POST /usuarios/login` cuando la contraseña es incorrecta. Eso borraba el mensaje de error que `Login.jsx` sí llegaba a poner (`setError("Correo o contraseña incorrectos")`) antes de que se viera, porque toda la página se remontaba. Por eso el síntoma reportado era "no dice nada, solo recarga".
+
+Ahora el interceptor solo cierra sesión si **ya había** un token guardado antes de la petición; un 401 de un endpoint público (login, etc.) ya no dispara nada y cada pantalla muestra su propio error, como estaba pensado. Se revisaron además `Registro.jsx` y `ResetPassword.jsx` (no tenían este bug, ya validan y muestran errores correctamente) y se encontró el mismo patrón de fondo (catch que solo hacía `console.error`, sin avisar al usuario) en los tres dashboards (`DashboardAdmin.jsx`, `DashboardCliente.jsx`, `DashboardEntrenador.jsx`) — corregido en la misma pasada (ver P-21).
+
+---
+
+## P-21 Bootstrap para alertas/toasts
+
+~~Resuelto (2026-11)~~: se agregó Bootstrap (`bootstrap` + `sass` como dependencias) a pedido, pero **solo** los componentes de alerta/toast, importados vía Sass en `web-admin/src/styles/bootstrap-custom.scss` — deliberadamente sin `reboot` (resetea tipografía/body global) ni `grid`/`buttons`/`card`/`badge`. La app ya tiene su propio tema (`index.css`, ~2185 líneas) con clases como `.btn-primary`/`.card`/`.badge`, los mismos nombres que usa Bootstrap por defecto; importarlo completo habría roto esa UI existente. Nuevo hook `useToast.js` + componente `ToastFeedback.jsx` (auto-cierre manejado por `setTimeout` en React, sin depender del runtime JS de Bootstrap), usados en los tres dashboards para avisar cuando falla la carga inicial (ver P-20).
 
 ---
 
