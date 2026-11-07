@@ -9,6 +9,7 @@ function Ejercicios() {
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const fileRef = useRef(null);
 
@@ -57,8 +58,26 @@ function Ejercicios() {
     setVideo(null);
     setError("");
     setMostrarFormulario(false);
+    setEditandoId(null);
 
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const iniciarEdicion = (ejercicio) => {
+    setForm({
+      nombre: ejercicio.nombre || "",
+      grupo_muscular: ejercicio.grupo_muscular || "",
+      nivel: ejercicio.nivel || "",
+      objetivo: ejercicio.objetivo || "",
+      descripcion: ejercicio.descripcion || "",
+      instrucciones: ejercicio.instrucciones || "",
+      estado: ejercicio.estado || "ACTIVO",
+      restricciones: ejercicio.restricciones || "",
+    });
+    setVideo(null);
+    setEditandoId(ejercicio.id_ejercicio);
+    setError("");
+    setMostrarFormulario(true);
   };
 
   const validar = () => {
@@ -81,17 +100,30 @@ function Ejercicios() {
     try {
       setCargando(true);
 
-      const data = new FormData();
+      if (editandoId) {
+        await api.put(`/ejercicios/${editandoId}`, {
+          nombre: form.nombre,
+          grupo_muscular: form.grupo_muscular,
+          nivel: form.nivel,
+          objetivo: form.objetivo || null,
+          descripcion: form.descripcion || null,
+          instrucciones: form.instrucciones || null,
+          estado: form.estado,
+          restricciones: form.restricciones || null,
+        });
+      } else {
+        const data = new FormData();
 
-      Object.entries(form).forEach(([key, value]) => {
-        data.append(key, value || "");
-      });
+        Object.entries(form).forEach(([key, value]) => {
+          data.append(key, value || "");
+        });
 
-      if (video) data.append("video", video);
+        if (video) data.append("video", video);
 
-      await api.post("/ejercicios/", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+        await api.post("/ejercicios/", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
 
       limpiarFormulario();
       await cargar();
@@ -144,6 +176,7 @@ function Ejercicios() {
           onClick={() => {
             setMostrarFormulario(true);
             setForm(formInicial);
+            setEditandoId(null);
             setError("");
           }}
         >
@@ -172,8 +205,12 @@ function Ejercicios() {
         <form onSubmit={guardar} className="form-card">
           <div className="card-header">
             <div>
-              <h2>Registrar ejercicio</h2>
-              <p>Agrega nombre, grupo muscular, nivel, objetivo y video.</p>
+              <h2>{editandoId ? "Editar ejercicio" : "Registrar ejercicio"}</h2>
+              <p>
+                {editandoId
+                  ? "Actualiza los datos de este ejercicio del catálogo."
+                  : "Agrega nombre, grupo muscular, nivel, objetivo y video."}
+              </p>
             </div>
           </div>
 
@@ -223,16 +260,25 @@ function Ejercicios() {
               </select>
             </div>
 
-            <div className="form-field">
-              <label htmlFor="video">Video</label>
-              <input
-                id="video"
-                ref={fileRef}
-                type="file"
-                accept="video/*"
-                onChange={(e) => setVideo(e.target.files[0] || null)}
-              />
-            </div>
+            {editandoId ? (
+              <div className="form-field field-large">
+                <p className="muted-text" style={{ margin: 0 }}>
+                  El video no se puede cambiar desde aquí. Para reemplazarlo, desactiva este
+                  ejercicio y registra uno nuevo con el video actualizado.
+                </p>
+              </div>
+            ) : (
+              <div className="form-field">
+                <label htmlFor="video">Video</label>
+                <input
+                  id="video"
+                  ref={fileRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => setVideo(e.target.files[0] || null)}
+                />
+              </div>
+            )}
 
             <div className="form-field field-large">
               <label htmlFor="descripcion">Descripción</label>
@@ -263,7 +309,7 @@ function Ejercicios() {
 
           <div className="form-actions">
             <button type="submit" className="btn-primary" disabled={cargando}>
-              {cargando ? "Guardando..." : "Guardar ejercicio"}
+              {cargando ? "Guardando..." : editandoId ? "Guardar cambios" : "Guardar ejercicio"}
             </button>
 
             <button type="button" className="btn-secondary" onClick={limpiarFormulario}>
@@ -330,12 +376,18 @@ function Ejercicios() {
                   </p>
                 )}
 
-                <button
-                  className="btn-danger"
-                  onClick={() => desactivar(e.id_ejercicio)}
-                >
-                  Desactivar
-                </button>
+                <div className="card-actions">
+                  <button className="btn-secondary" onClick={() => iniciarEdicion(e)}>
+                    Editar
+                  </button>
+
+                  <button
+                    className="btn-danger"
+                    onClick={() => desactivar(e.id_ejercicio)}
+                  >
+                    Desactivar
+                  </button>
+                </div>
               </div>
             ))}
           </div>

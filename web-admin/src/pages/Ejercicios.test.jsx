@@ -8,6 +8,7 @@ vi.mock("../api/api", () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -196,6 +197,44 @@ describe("Ejercicios Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("El nombre de ejercicio ya existe")).toBeDefined();
     });
+  });
+
+  it("opens the edit form prefilled with the exercise data and hides the video field", async () => {
+    render(<Ejercicios />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Editar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Editar"));
+
+    expect(screen.getByRole("heading", { name: "Editar ejercicio" })).toBeDefined();
+    expect(screen.getByLabelText("Nombre").value).toBe("Sentadilla");
+    expect(screen.queryByLabelText("Video")).toBeNull();
+    expect(
+      screen.getByText(/El video no se puede cambiar desde aquí/)
+    ).toBeDefined();
+  });
+
+  it("submits edits via PUT with the updated fields and without the video", async () => {
+    api.put.mockResolvedValue({ data: {} });
+    render(<Ejercicios />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Editar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Editar"));
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Sentadilla profunda" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/ejercicios/1", expect.objectContaining({
+        nombre: "Sentadilla profunda",
+        grupo_muscular: "Piernas",
+      }));
+    });
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it("shows error if exercise deactivation fails", async () => {

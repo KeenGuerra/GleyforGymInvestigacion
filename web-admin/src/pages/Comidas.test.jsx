@@ -79,4 +79,39 @@ describe("Comidas Page Component", () => {
       expect(api.post).toHaveBeenCalled();
     });
   });
+
+  it("opens the edit form prefilled with the meal data", async () => {
+    render(<Comidas />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Editar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Editar"));
+
+    expect(screen.getByText("Editar comida", { selector: "h2" })).toBeDefined();
+    expect(screen.getByLabelText("Nombre").value).toBe("Ensalada César");
+    expect(screen.getByLabelText("Calorías").value).toBe("350");
+  });
+
+  it("submits edits via PUT with the updated fields", async () => {
+    api.put.mockResolvedValue({ data: {} });
+    render(<Comidas />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Editar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Editar"));
+    fireEvent.change(screen.getByLabelText("Calorías"), { target: { value: "380" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/comidas/1", expect.objectContaining({
+        nombre: "Ensalada César",
+        calorias: 380,
+      }));
+    });
+    expect(api.post).not.toHaveBeenCalled();
+  });
 });

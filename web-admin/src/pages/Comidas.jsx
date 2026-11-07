@@ -8,6 +8,7 @@ function Comidas() {
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const formInicial = {
     nombre: "",
@@ -58,6 +59,25 @@ function Comidas() {
     setForm(formInicial);
     setError("");
     setMostrarFormulario(false);
+    setEditandoId(null);
+  };
+
+  const iniciarEdicion = (comida) => {
+    setForm({
+      nombre: comida.nombre || "",
+      tipo_comida: comida.tipo_comida || "",
+      descripcion: comida.descripcion || "",
+      calorias: comida.calorias ?? "",
+      proteinas: comida.proteinas ?? "",
+      carbohidratos: comida.carbohidratos ?? "",
+      grasas: comida.grasas ?? "",
+      objetivo: comida.objetivo || "",
+      estado: comida.estado || "ACTIVO",
+      restricciones: comida.restricciones || "",
+    });
+    setEditandoId(comida.id_comida_catalogo);
+    setError("");
+    setMostrarFormulario(true);
   };
 
   const validar = () => {
@@ -100,7 +120,11 @@ function Comidas() {
         restricciones: form.restricciones || null,
       };
 
-      await api.post("/comidas/", data);
+      if (editandoId) {
+        await api.put(`/comidas/${editandoId}`, data);
+      } else {
+        await api.post("/comidas/", data);
+      }
 
       limpiar();
       await cargarComidas();
@@ -150,6 +174,7 @@ function Comidas() {
           onClick={() => {
             setMostrarFormulario(true);
             setForm(formInicial);
+            setEditandoId(null);
             setError("");
           }}
         >
@@ -178,8 +203,12 @@ function Comidas() {
         <form onSubmit={guardar} className="form-card">
           <div className="card-header">
             <div>
-              <h2>Registrar comida</h2>
-              <p>Agrega alimentos con sus macros, objetivo y tipo de comida.</p>
+              <h2>{editandoId ? "Editar comida" : "Registrar comida"}</h2>
+              <p>
+                {editandoId
+                  ? "Actualiza los datos de esta comida del catálogo."
+                  : "Agrega alimentos con sus macros, objetivo y tipo de comida."}
+              </p>
             </div>
           </div>
 
@@ -306,7 +335,7 @@ function Comidas() {
 
           <div className="form-actions">
             <button type="submit" className="btn-primary" disabled={cargando}>
-              {cargando ? "Guardando..." : "Guardar comida"}
+              {cargando ? "Guardando..." : editandoId ? "Guardar cambios" : "Guardar comida"}
             </button>
 
             <button type="button" className="btn-secondary" onClick={limpiar}>
@@ -372,12 +401,18 @@ function Comidas() {
 
                 {c.descripcion && <p className="item-description">{c.descripcion}</p>}
 
-                <button
-                  className="btn-danger"
-                  onClick={() => desactivar(c.id_comida_catalogo)}
-                >
-                  Desactivar
-                </button>
+                <div className="card-actions">
+                  <button className="btn-secondary" onClick={() => iniciarEdicion(c)}>
+                    Editar
+                  </button>
+
+                  <button
+                    className="btn-danger"
+                    onClick={() => desactivar(c.id_comida_catalogo)}
+                  >
+                    Desactivar
+                  </button>
+                </div>
               </div>
             ))}
           </div>
