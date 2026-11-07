@@ -14,6 +14,7 @@ function Reportes() {
   const [asistencias, setAsistencias] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [exportandoTesis, setExportandoTesis] = useState("");
 
   const generarReporte = async () => {
     if (!desde || !hasta) {
@@ -64,6 +65,77 @@ function Reportes() {
       ],
       asistencias?.por_dia || []
     );
+  };
+
+  const exportarF07Kcal = async () => {
+    try {
+      setExportandoTesis("F-07");
+      setError("");
+      const res = await api.get("/reportes/ia/kcal");
+      exportarCsv(
+        "F-07-kcal-plan-vs-objetivo.csv",
+        [
+          { etiqueta: "Código cliente", valor: "codigo_cliente" },
+          { etiqueta: "Kcal plan", valor: "kcal_plan" },
+          { etiqueta: "Kcal objetivo", valor: "kcal_objetivo" },
+          { etiqueta: "Desviación %", valor: "desviacion_pct" },
+        ],
+        res.data
+      );
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo exportar F-07");
+    } finally {
+      setExportandoTesis("");
+    }
+  };
+
+  const exportarF08Decisiones = async () => {
+    try {
+      setExportandoTesis("F-08");
+      setError("");
+      const res = await api.get("/reportes/ia/decisiones");
+      exportarCsv(
+        "F-08-decisiones-revision.csv",
+        [
+          { etiqueta: "Código cliente", valor: "codigo_cliente" },
+          { etiqueta: "Código rutina", valor: "codigo_rutina" },
+          { etiqueta: "Decisión", valor: "decision" },
+          { etiqueta: "Cambios realizados", valor: "cambios_realizados" },
+          { etiqueta: "Fecha", valor: "fecha" },
+        ],
+        res.data
+      );
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo exportar F-08");
+    } finally {
+      setExportandoTesis("");
+    }
+  };
+
+  const exportarF09Restricciones = async () => {
+    try {
+      setExportandoTesis("F-09");
+      setError("");
+      const res = await api.get("/reportes/ia/restricciones");
+      exportarCsv(
+        "F-09-verificacion-restricciones.csv",
+        [
+          { etiqueta: "Código cliente", valor: "codigo_cliente" },
+          { etiqueta: "Tipo", valor: "tipo" },
+          { etiqueta: "Objetivo", valor: "objetivo" },
+          { etiqueta: "Restricciones registradas", valor: "restricciones_registradas" },
+          { etiqueta: "¿Viola restricción?", valor: (fila) => (fila.viola_restriccion ? "Sí" : "No") },
+        ],
+        res.data
+      );
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo exportar F-09");
+    } finally {
+      setExportandoTesis("");
+    }
   };
 
   return (
@@ -183,6 +255,27 @@ function Reportes() {
           )}
         </section>
       )}
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Exportaciones para tesis</h2>
+            <p>Clientes anonimizados (código C-00X), sin nombres ni DNI.</p>
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button className="btn-secondary" disabled={exportandoTesis === "F-07"} onClick={exportarF07Kcal}>
+            {exportandoTesis === "F-07" ? "Exportando..." : "F-07: kcal plan vs. objetivo"}
+          </button>
+          <button className="btn-secondary" disabled={exportandoTesis === "F-08"} onClick={exportarF08Decisiones}>
+            {exportandoTesis === "F-08" ? "Exportando..." : "F-08: decisiones de revisión"}
+          </button>
+          <button className="btn-secondary" disabled={exportandoTesis === "F-09"} onClick={exportarF09Restricciones}>
+            {exportandoTesis === "F-09" ? "Exportando..." : "F-09: verificación de restricciones"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

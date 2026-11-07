@@ -138,4 +138,64 @@ describe("Reportes Page Component", () => {
 
     vi.restoreAllMocks();
   });
+
+  it("exports F-07, F-08 and F-09 for the thesis", async () => {
+    URL.createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
+    URL.revokeObjectURL = vi.fn();
+    const clickSpy = vi.fn();
+    const crearElementoOriginal = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      const el = crearElementoOriginal(tag);
+      el.click = clickSpy;
+      return el;
+    });
+
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/ia/kcal") {
+        return Promise.resolve({
+          data: [{ codigo_cliente: "C-001", kcal_plan: 2100, kcal_objetivo: 2200, desviacion_pct: -4.5 }],
+        });
+      }
+      if (url === "/reportes/ia/decisiones") {
+        return Promise.resolve({
+          data: [{ codigo_cliente: "C-001", codigo_rutina: "R-001", decision: "aprobada", cambios_realizados: null, fecha: "2026-11-01" }],
+        });
+      }
+      if (url === "/reportes/ia/restricciones") {
+        return Promise.resolve({
+          data: [{ codigo_cliente: "C-001", tipo: "rutina", objetivo: "Bajar de peso", restricciones_registradas: "RODILLA", viola_restriccion: false }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+
+    fireEvent.click(screen.getByText("F-07: kcal plan vs. objetivo"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/reportes/ia/kcal"));
+
+    fireEvent.click(screen.getByText("F-08: decisiones de revisión"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/reportes/ia/decisiones"));
+
+    fireEvent.click(screen.getByText("F-09: verificación de restricciones"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/reportes/ia/restricciones"));
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(3));
+
+    vi.restoreAllMocks();
+  });
+
+  it("shows an error when a thesis export fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/ia/kcal") return Promise.reject(new Error("fail"));
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("F-07: kcal plan vs. objetivo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo exportar F-07")).toBeDefined();
+    });
+  });
 });
