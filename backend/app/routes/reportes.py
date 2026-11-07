@@ -11,6 +11,7 @@ from app.database import get_db
 from app import models
 from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import ESTADO_REVISION_PENDIENTE
+from app.ia.anonimizacion import codigo_cliente as _codigo_cliente
 
 router = APIRouter(
     dependencies=[Depends(obtener_usuario_actual), Depends(requerir_roles("ADMIN", "ENTRENADOR"))]
@@ -145,10 +146,6 @@ def obtener_reporte_asistencias(
 # =========================
 # EXPORTACIONES PARA LA TESIS (clientes anonimizados como C-00X)
 # =========================
-
-def _codigo_cliente(id_cliente: int) -> str:
-    return f"C-{id_cliente:03d}"
-
 
 def _codigos(texto: str | None) -> set[str]:
     return {c.strip() for c in (texto or "").split(",") if c.strip()}
