@@ -124,6 +124,54 @@ def _seleccionar_por_puntaje(ejercicios_disponibles, nivel, ejercicios_rutina_an
     return seleccionados
 
 
+def _restricciones_de(ejercicio) -> set[str]:
+    return {c.strip() for c in (ejercicio.restricciones or "").split(",") if c.strip()}
+
+
+def obtener_ejercicios_elegibles(
+    db: Session, grupo: str, nivel: str | None, codigos_restriccion_fisica: set[str],
+    excluidos_ids: frozenset = frozenset(),
+):
+    """Ejercicios ACTIVOS del grupo muscular dado, aptos para el nivel del
+    cliente y sin ninguna restricción física que los excluya. No decide
+    cuántos ni cuáles elegir — eso lo hace quien llame (reglas o Claude)."""
+    ejercicios = db.query(models.Ejercicio).filter(
+        models.Ejercicio.estado == "ACTIVO",
+        models.Ejercicio.grupo_muscular.ilike(f"%{grupo}%"),
+    ).all()
+
+    return [
+        e for e in ejercicios
+        if e.id_ejercicio not in excluidos_ids
+        and nivel_ejercicio_apto(e.nivel, nivel)
+        and not (codigos_restriccion_fisica & _restricciones_de(e))
+    ]
+
+
+def obtener_candidatos_por_dia(db: Session, cliente: models.Cliente) -> dict[str, list]:
+    """Candidatos elegibles por día (nivel + restricciones ya filtrados por
+    el motor de reglas), sin seleccionar — insumo para la integración con
+    Claude. No aplica la deduplicación incremental que sí hace
+    generar_rutina_inteligente() dentro de un mismo día (eso es parte de la
+    selección por puntaje, no de la elegibilidad)."""
+    nivel = cliente.nivel or "Principiante"
+    grupos_excluidos = obtener_grupos_excluidos(cliente.restricciones_medicas)
+    codigos_restriccion_fisica = obtener_codigos_restriccion_fisica(cliente.restricciones_medicas)
+    dias_semana = obtener_dias_semana(nivel, None)
+    division = obtener_division(dias_semana)
+
+    candidatos_por_dia: dict[str, list] = {}
+    for dia, grupos in division.items():
+        lista_dia = []
+        for grupo in grupos:
+            if grupo in grupos_excluidos:
+                continue
+            lista_dia.extend(obtener_ejercicios_elegibles(db, grupo, nivel, codigos_restriccion_fisica))
+        candidatos_por_dia[dia] = lista_dia
+
+    return candidatos_por_dia
+
+
 def obtener_division(dias_semana: int):
     if dias_semana >= 5:
         return {
@@ -183,20 +231,9 @@ def generar_rutina_inteligente(db: Session, cliente: models.Cliente):
                 grupos_del_dia_sin_opciones.append(grupo)
                 continue
 
-            ejercicios = db.query(models.Ejercicio).filter(
-                models.Ejercicio.estado == "ACTIVO",
-                models.Ejercicio.grupo_muscular.ilike(f"%{grupo}%"),
-            ).all()
-
-            def _restricciones_de(ejercicio):
-                return {c.strip() for c in (ejercicio.restricciones or "").split(",") if c.strip()}
-
-            ejercicios_disponibles = [
-                e for e in ejercicios
-                if e.id_ejercicio not in ejercicios_usados
-                and nivel_ejercicio_apto(e.nivel, nivel)
-                and not (codigos_restriccion_fisica & _restricciones_de(e))
-            ]
+            ejercicios_disponibles = obtener_ejercicios_elegibles(
+                db, grupo, nivel, codigos_restriccion_fisica, frozenset(ejercicios_usados)
+            )
 
             if not ejercicios_disponibles:
                 grupos_del_dia_sin_opciones.append(grupo)

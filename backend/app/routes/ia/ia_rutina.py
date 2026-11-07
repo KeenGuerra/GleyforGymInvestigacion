@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models
-from app.ia.rutina.recomendador_rutinas import generar_rutina_inteligente
+from app.ia.orquestador import generar_rutina_hibrida
 from app.security import obtener_usuario_actual, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
 from app.constants import MSG_CLIENTE_NO_ENCONTRADO, ESTADO_REVISION_PENDIENTE
@@ -36,7 +36,7 @@ def generar_rutina_ia(
     if not cliente:
         raise HTTPException(status_code=404, detail=MSG_CLIENTE_NO_ENCONTRADO)
 
-    resultado_ia = generar_rutina_inteligente(db, cliente)
+    resultado_ia = generar_rutina_hibrida(db, cliente)
 
     if not resultado_ia["ejercicios"]:
         raise HTTPException(
@@ -54,6 +54,10 @@ def generar_rutina_ia(
         generada_por_ia=True,
         estado="ACTIVA",
         estado_revision=ESTADO_REVISION_PENDIENTE,
+        origen_ia=resultado_ia["origen_ia"],
+        modelo_ia=resultado_ia["modelo_ia"],
+        tiempo_respuesta_ms=resultado_ia["tiempo_respuesta_ms"],
+        justificacion_ia=resultado_ia["justificacion_ia"],
     )
 
     db.add(nueva_rutina)
@@ -93,4 +97,5 @@ def generar_rutina_ia(
         "total_ejercicios": len(resultado_ia["ejercicios"]),
         "avisos": resultado_ia.get("avisos", []),
         "estado_revision": nueva_rutina.estado_revision,
+        "origen_ia": nueva_rutina.origen_ia,
     }

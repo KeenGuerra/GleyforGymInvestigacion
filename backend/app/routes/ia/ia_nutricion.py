@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.database import get_db
 from app import models
-from app.ia.nutricion.recomendador_nutricion import seleccionar_comidas_para_plan
+from app.ia.orquestador import generar_plan_hibrido
 from app.security import obtener_usuario_actual, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
 from app.constants import MSG_CLIENTE_NO_ENCONTRADO, ESTADO_ACTIVO, ESTADO_REVISION_PENDIENTE
@@ -52,7 +52,7 @@ def generar_nutricion_ia(
         models.Progreso.id_cliente == id_cliente
     ).order_by(models.Progreso.fecha_registro.desc()).limit(PROGRESOS_CONSULTADOS).all()
 
-    plan_generado = seleccionar_comidas_para_plan(cliente, comidas, progresos)
+    plan_generado = generar_plan_hibrido(db, cliente, comidas, progresos)
 
     if len(plan_generado["comidas"]) == 0:
         raise HTTPException(
@@ -79,6 +79,10 @@ def generar_nutricion_ia(
         peso_usado=plan_generado["peso_usado"],
         ajuste_tendencia_kcal=plan_generado["ajuste_tendencia_kcal"],
         justificacion_ajuste=plan_generado["justificacion_ajuste"],
+        origen_ia=plan_generado["origen_ia"],
+        modelo_ia=plan_generado["modelo_ia"],
+        tiempo_respuesta_ms=plan_generado["tiempo_respuesta_ms"],
+        justificacion_ia=plan_generado["justificacion_ia"],
     )
 
     db.add(nuevo_plan)
@@ -118,4 +122,5 @@ def generar_nutricion_ia(
         "total_comidas": len(plan_generado["comidas"]),
         "avisos": plan_generado.get("avisos", []),
         "estado_revision": nuevo_plan.estado_revision,
+        "origen_ia": nuevo_plan.origen_ia,
     }

@@ -36,7 +36,11 @@ def _excluye_restricciones(comida, codigos_restriccion: set) -> bool:
     return not (etiquetas & codigos_restriccion)
 
 
-def seleccionar_comidas_para_plan(cliente, comidas, progresos=None):
+def obtener_comidas_candidatas(cliente, comidas) -> list:
+    """Alimentos elegibles para este cliente (activos, sin violar ninguna
+    restricción alimentaria, y que matchean su objetivo — o el catálogo
+    activo completo si hay muy pocos para ese objetivo). No decide cuáles ni
+    cuántos asignar — eso lo hace quien llame (reglas o Claude)."""
     objetivo = (cliente.objetivo or "").upper()
 
     codigos_restriccion = {
@@ -57,6 +61,11 @@ def seleccionar_comidas_para_plan(cliente, comidas, progresos=None):
     if len(comidas_filtradas) < 3:
         comidas_filtradas = comidas_activas
 
+    return comidas_filtradas
+
+
+def seleccionar_comidas_para_plan(cliente, comidas, progresos=None):
+    comidas_filtradas = obtener_comidas_candidatas(cliente, comidas)
     macros_objetivo = calcular_macros(cliente, progresos)
     calorias_objetivo = macros_objetivo["calorias"]
 
