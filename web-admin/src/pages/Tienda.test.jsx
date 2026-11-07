@@ -46,7 +46,7 @@ describe("Tienda Page Component", () => {
       expect(screen.getByText("Proteína Whey")).toBeDefined();
       expect(screen.getByText("Creatina")).toBeDefined();
     });
-    expect(screen.getByText(/Inicia sesión/)).toBeDefined();
+    expect(screen.getAllByText(/Inicia sesión/).length).toBeGreaterThan(0);
   });
 
   it("filters products based on search term", async () => {
@@ -72,7 +72,7 @@ describe("Tienda Page Component", () => {
     renderTienda();
     await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
 
-    fireEvent.click(screen.getByText("Iniciar sesión para comprar"));
+    fireEvent.click(screen.getAllByText("Inicia sesión o regístrate")[0]);
 
     await waitFor(() => {
       expect(screen.queryByText("Carrito está vacío")).toBeNull();

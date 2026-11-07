@@ -8,6 +8,9 @@ export default function Layout() {
   const navigate = useNavigate();
   const rol = localStorage.getItem("rol");
   const correo = localStorage.getItem("correo");
+  // Ver Dashboard.jsx: "false" = cuenta de autoregistro público sin perfil
+  // de socio (POST /usuarios/registro), no tiene Mi rutina/Mi nutrición/etc.
+  const tieneCliente = localStorage.getItem("tiene_cliente") !== "false";
   const [menuOpen, setMenuOpen] = useState(false);
 
   let inicial = "C";
@@ -17,7 +20,7 @@ export default function Layout() {
     inicial = "E";
   }
 
-  let tituloPanel = "Panel cliente";
+  let tituloPanel = tieneCliente ? "Panel cliente" : "Panel de compras";
   if (rol === "ADMIN") {
     tituloPanel = "Panel administrativo";
   } else if (rol === "ENTRENADOR") {
@@ -120,7 +123,7 @@ export default function Layout() {
               </>
             )}
 
-            {rol === "CLIENTE" && (
+            {rol === "CLIENTE" && tieneCliente && (
               <>
                 <p className="menu-label">Mi cuenta</p>
                 <NavLink to="/mi-perfil">Mi perfil</NavLink>
@@ -129,6 +132,13 @@ export default function Layout() {
                 <NavLink to="/mi-progreso">Mi progreso</NavLink>
                 <NavLink to="/mi-membresia">Mi membresía</NavLink>
                 <NavLink to="/mis-pagos">Mis pagos</NavLink>
+              </>
+            )}
+
+            {rol === "CLIENTE" && !tieneCliente && (
+              <>
+                <p className="menu-label">Mi cuenta</p>
+                <NavLink to="/tienda">Tienda</NavLink>
               </>
             )}
           </nav>

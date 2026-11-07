@@ -118,4 +118,15 @@ describe("Login Page Component", () => {
     fireEvent.click(screen.getByText("Volver a iniciar sesión"));
     expect(screen.getByText("Acceder al sistema", { selector: "button" })).toBeDefined();
   });
+
+  it("navigates to the public registration page", () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText("Crea una cuenta"));
+    expect(mockNavigate).toHaveBeenCalledWith("/registro");
+  });
 });

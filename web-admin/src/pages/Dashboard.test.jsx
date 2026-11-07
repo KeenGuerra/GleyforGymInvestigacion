@@ -14,6 +14,9 @@ vi.mock("./DashboardEntrenador", () => ({
 vi.mock("./DashboardCliente", () => ({
   default: () => <div>Cliente Dashboard Content</div>,
 }));
+vi.mock("./DashboardComprador", () => ({
+  default: () => <div>Comprador Dashboard Content</div>,
+}));
 
 describe("Dashboard Page Routing Component", () => {
   beforeEach(() => {
@@ -36,6 +39,13 @@ describe("Dashboard Page Routing Component", () => {
     localStorage.setItem("rol", "CLIENTE");
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     expect(screen.getByText("Cliente Dashboard Content")).toBeDefined();
+  });
+
+  it("renders Comprador Dashboard when role is CLIENTE without a Cliente profile", () => {
+    localStorage.setItem("rol", "CLIENTE");
+    localStorage.setItem("tiene_cliente", "false");
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(screen.getByText("Comprador Dashboard Content")).toBeDefined();
   });
 
   it("renders error state when role is unknown or missing", () => {

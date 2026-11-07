@@ -30,6 +30,7 @@ function Login() {
       localStorage.setItem("rol", res.data.usuario.rol);
       localStorage.setItem("id_usuario", res.data.usuario.id_usuario);
       localStorage.setItem("correo", res.data.usuario.correo);
+      localStorage.setItem("tiene_cliente", String(res.data.usuario.tiene_cliente));
 
       navigate("/dashboard");
     } catch (error) {
@@ -149,7 +150,11 @@ function Login() {
               </button>
 
               <p className="muted-text">
-                Acceso exclusivo para usuarios registrados por el gimnasio.
+                Acceso exclusivo para usuarios registrados por el gimnasio.{" "}
+                ¿Solo quieres comprar en la tienda?{" "}
+                <button type="button" className="link-button" onClick={() => navigate("/registro")}>
+                  Crea una cuenta
+                </button>
               </p>
             </form>
           ) : (

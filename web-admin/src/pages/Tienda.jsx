@@ -162,7 +162,10 @@ function Tienda() {
 
         {!isLoggedIn && (
           <p style={{ textAlign: "center", color: "var(--muted)", marginBottom: "2rem", fontSize: "15px" }}>
-            <a href="/login" style={{ color: "var(--orange)", textDecoration: "none", fontWeight: 600 }}>Inicia sesión</a> para agregar productos al carrito.
+            <button type="button" className="link-button" onClick={() => navigate("/login")}>Inicia sesión</button>
+            {" "}o{" "}
+            <button type="button" className="link-button" onClick={() => navigate("/registro")}>crea una cuenta</button>
+            {" "}para agregar productos al carrito.
           </p>
         )}
 
@@ -195,7 +198,7 @@ function Tienda() {
                       disabled={(p.stock_actual || 0) <= 0}
                       onClick={() => agregarAlCarrito(p)}
                     >
-                      {(p.stock_actual || 0) <= 0 ? "Sin stock" : isLoggedIn ? "+ Agregar" : "Iniciar sesión para comprar"}
+                      {(p.stock_actual || 0) <= 0 ? "Sin stock" : isLoggedIn ? "+ Agregar" : "Inicia sesión o regístrate"}
                     </button>
                   </div>
                 </div>

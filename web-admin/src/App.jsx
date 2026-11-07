@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Inicio from "./pages/Inicio";
 import Login from "./pages/Login";
+import Registro from "./pages/Registro";
 import ResetPassword from "./pages/ResetPassword";
 import VerificarCorreo from "./pages/VerificarCorreo";
 import Layout from "./components/Layout";
@@ -50,6 +51,7 @@ export default function App() {
         {/* RUTAS PÚBLICAS */}
         <Route path="/" element={<Inicio />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/registro" element={<Registro />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verificar-correo" element={<VerificarCorreo />} />
         <Route path="/tienda" element={<Tienda />} />
