@@ -43,4 +43,14 @@ describe("DashboardEntrenador Page Component", () => {
       expect(screen.getByText("AVANZADO")).toBeDefined();
     });
   });
+
+  it("shows a toast when loading the dashboard fails", async () => {
+    api.get.mockRejectedValue(new Error("network error"));
+
+    render(<DashboardEntrenador />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo cargar el dashboard.")).toBeDefined();
+    });
+  });
 });

@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
+import { useToast } from "../hooks/useToast";
+import ToastFeedback from "../components/ToastFeedback";
 
 function DashboardEntrenador() {
+  const { toast, mostrarError, cerrarToast } = useToast();
   const [clientes, setClientes] = useState([]);
   const [rutinas, setRutinas] = useState([]);
   const [progreso, setProgreso] = useState([]);
   const [asistencias, setAsistencias] = useState([]);
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     try {
       const [clientesRes, rutinasRes, progresoRes, asistenciasRes] =
         await Promise.all([
@@ -23,12 +26,13 @@ function DashboardEntrenador() {
       setAsistencias(asistenciasRes.data);
     } catch (error) {
       console.error("Error cargando dashboard entrenador:", error);
+      mostrarError("No se pudo cargar el dashboard.");
     }
-  };
+  }, [mostrarError]);
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [cargarDatos]);
 
   return (
     <div className="page-container">
@@ -106,6 +110,8 @@ function DashboardEntrenador() {
           </div>
         )}
       </section>
+
+      <ToastFeedback toast={toast} onClose={cerrarToast} />
     </div>
   );
 }

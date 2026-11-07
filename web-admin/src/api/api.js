@@ -25,10 +25,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Solo un 401 (token ausente/invalido/expirado) implica que la sesion ya
-    // no sirve. Un 403 es "no tienes permiso para esto" con una sesion
-    // valida: no debe cerrar sesion, cada pantalla ya muestra ese error.
-    if (error.response?.status === 401) {
+    // Un 401 solo implica sesion invalida si YA habia una sesion (token
+    // guardado antes de esta peticion). Si no habia token, es un 401
+    // "normal" de un endpoint publico (ej. contraseña incorrecta en
+    // /usuarios/login) y la pantalla ya muestra su propio error — no hay
+    // nada que cerrar ni por qué recargar la página. Un 403 es "no tienes
+    // permiso para esto" con una sesion valida: no debe cerrar sesion,
+    // cada pantalla ya muestra ese error.
+    const habiaSesion = !!localStorage.getItem("token");
+    if (error.response?.status === 401 && habiaSesion) {
       cerrarSesion();
     }
 

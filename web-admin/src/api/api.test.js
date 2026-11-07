@@ -68,6 +68,41 @@ describe("Configuración de API Axios", () => {
     vi.unstubAllGlobals();
   });
 
+  it("NO debe limpiar localStorage ni redirigir en caso de 401 sin sesión previa (ej. contraseña incorrecta en login)", async () => {
+    let cleared = false;
+    let redirected = false;
+
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      clear: () => { cleared = true; }
+    });
+
+    vi.stubGlobal('location', {
+      _href: '',
+      get href() { return this._href; },
+      set href(val) {
+        this._href = val;
+        redirected = true;
+      }
+    });
+
+    const errorInterceptor = api.interceptors.response.handlers[0].rejected;
+    const mockError = {
+      response: { status: 401, data: { detail: "Credenciales incorrectas" } }
+    };
+
+    try {
+      await errorInterceptor(mockError);
+    } catch {
+      // Ignorar el rechazo de la promesa; Login.jsx muestra su propio error
+    }
+
+    expect(cleared).toBe(false);
+    expect(redirected).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
   it("NO debe limpiar localStorage ni redirigir en caso de 403 (sesión válida, acción prohibida)", async () => {
     let cleared = false;
     let redirected = false;

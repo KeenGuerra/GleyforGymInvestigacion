@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer,
@@ -11,9 +11,12 @@ import {
 } from "recharts";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
+import { useToast } from "../hooks/useToast";
+import ToastFeedback from "../components/ToastFeedback";
 
 function DashboardAdmin() {
   const navigate = useNavigate();
+  const { toast, mostrarError, cerrarToast } = useToast();
 
   const [clientes, setClientes] = useState([]);
   const [membresiasCliente, setMembresiasCliente] = useState([]);
@@ -21,7 +24,7 @@ function DashboardAdmin() {
   const [asistencias, setAsistencias] = useState([]);
   const [kpis, setKpis] = useState(null);
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     try {
       const [resClientes, resClienteMembresias, resPagos, resAsistencias, resKpis] =
         await Promise.all([
@@ -39,12 +42,13 @@ function DashboardAdmin() {
       setKpis(Array.isArray(resKpis.data) ? null : resKpis.data);
     } catch (error) {
       console.error("Error al cargar dashboard:", error);
+      mostrarError("No se pudo cargar el dashboard.");
     }
-  };
+  }, [mostrarError]);
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [cargarDatos]);
 
   const hoy = new Date().toISOString().slice(0, 10);
 
@@ -349,6 +353,8 @@ function DashboardAdmin() {
           </div>
         </aside>
       </section>
+
+      <ToastFeedback toast={toast} onClose={cerrarToast} />
     </div>
   );
 }

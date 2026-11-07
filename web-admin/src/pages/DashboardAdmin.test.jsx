@@ -102,4 +102,14 @@ describe("DashboardAdmin Page Component", () => {
       expect(screen.getByText("18.4% grasa")).toBeDefined();
     });
   });
+
+  it("shows a toast when loading the dashboard fails", async () => {
+    api.get.mockRejectedValue(new Error("network error"));
+
+    render(<DashboardAdmin />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo cargar el dashboard.")).toBeDefined();
+    });
+  });
 });

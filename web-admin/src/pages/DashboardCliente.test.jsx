@@ -59,4 +59,14 @@ describe("DashboardCliente Page Component", () => {
       expect(screen.getByText("PRINCIPIANTE")).toBeDefined();
     });
   });
+
+  it("shows a toast when loading the dashboard fails", async () => {
+    api.get.mockRejectedValue(new Error("network error"));
+
+    render(<DashboardCliente />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo cargar tu dashboard.")).toBeDefined();
+    });
+  });
 });

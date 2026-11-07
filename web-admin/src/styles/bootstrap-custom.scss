@@ -1,0 +1,21 @@
+// Bootstrap, pero SOLO para alertas y toasts (feedback visual). Deliberadamente
+// no se importa `reboot` (resetea body/tipografía global) ni `grid`/`buttons`/
+// `card`/`badge`: esta app ya tiene su propio tema (ver ../index.css) con
+// clases como .btn-primary/.card/.badge, y Bootstrap usa esos mismos nombres
+// por defecto — importarlo completo rompería casi toda la UI existente.
+$danger: #dc2626;
+$success: #15803d;
+$warning: #b45309;
+$border-radius: 14px;
+$border-radius-lg: 14px;
+
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/transitions";
+@import "bootstrap/scss/close";
+@import "bootstrap/scss/alert";
+@import "bootstrap/scss/toasts";

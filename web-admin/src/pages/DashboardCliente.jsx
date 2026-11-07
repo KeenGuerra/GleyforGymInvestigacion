@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
+import { useToast } from "../hooks/useToast";
+import ToastFeedback from "../components/ToastFeedback";
 
 function DashboardCliente() {
+  const { toast, mostrarError, cerrarToast } = useToast();
   const [cliente, setCliente] = useState(null);
   const [rutinas, setRutinas] = useState([]);
   const [planes, setPlanes] = useState([]);
   const [pagos, setPagos] = useState([]);
   const [progreso, setProgreso] = useState([]);
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     try {
       const idUsuario = localStorage.getItem("id_usuario");
 
@@ -33,12 +36,13 @@ function DashboardCliente() {
       setProgreso(progresoRes.data);
     } catch (error) {
       console.error("Error cargando dashboard cliente:", error);
+      mostrarError("No se pudo cargar tu dashboard.");
     }
-  };
+  }, [mostrarError]);
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [cargarDatos]);
 
   return (
     <div className="page-container">
@@ -120,6 +124,8 @@ function DashboardCliente() {
           <p className="empty-message">Cargando información del cliente...</p>
         )}
       </section>
+
+      <ToastFeedback toast={toast} onClose={cerrarToast} />
     </div>
   );
 }
