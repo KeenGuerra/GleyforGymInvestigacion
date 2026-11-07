@@ -17,8 +17,11 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
 from app.security import crear_token, encriptar_password
-from app import rate_limit
+from app import config, rate_limit
+from app.routes import usuarios
 import app.models as models
+
+HEADERS_WEBHOOK = {"X-Webhook-Secret": config.WEBHOOK_SECRET}
 
 # Use a local SQLite database for unit tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_gym.db"
@@ -303,7 +306,7 @@ def test_registro_publico_rate_limit_por_ip():
     populate_db_for_coverage()
     rate_limit._intentos_fallidos.clear()
     try:
-        for i in range(5):
+        for i in range(usuarios.MAX_REGISTROS_POR_IP):
             res = client.post(
                 "/usuarios/registro",
                 json={"correo": f"comprador.ratelimit.{i}@example.com", "password": "clave123"},
@@ -2230,6 +2233,7 @@ def test_checkout_y_webhook_de_pago_exitoso():
     res_webhook = client.post(
         "/webhooks/pagos",
         json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+        headers=HEADERS_WEBHOOK,
     )
     assert res_webhook.status_code == 200
 
@@ -2263,6 +2267,7 @@ def test_checkout_y_webhook_de_pago_fallido():
     res_webhook = client.post(
         "/webhooks/pagos",
         json={"id_transaccion_externa": id_transaccion, "resultado": "FALLIDO"},
+        headers=HEADERS_WEBHOOK,
     )
     assert res_webhook.status_code == 200
 
@@ -2275,8 +2280,50 @@ def test_checkout_y_webhook_de_pago_fallido():
     res_desconocida = client.post(
         "/webhooks/pagos",
         json={"id_transaccion_externa": "no-existe", "resultado": "EXITOSO"},
+        headers=HEADERS_WEBHOOK,
     )
     assert res_desconocida.status_code == 404
+
+
+def test_webhook_pagos_rechaza_secreto_invalido_o_ausente():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    res_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "TARJETA", "fecha_pago": "2026-06-01", "estado": "PENDIENTE",
+        },
+        headers=headers_admin,
+    )
+    id_pago = res_pago.json()["id_pago"]
+    id_transaccion = client.post(f"/pagos/{id_pago}/checkout", headers=headers_admin).json()["id_transaccion_externa"]
+
+    # Sin el header del secreto
+    res_sin_header = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+    )
+    assert res_sin_header.status_code == 401
+
+    # Con un secreto incorrecto (ej. alguien que solo conoce el id_transaccion_externa)
+    res_secreto_malo = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+        headers={"X-Webhook-Secret": "secreto-inventado"},
+    )
+    assert res_secreto_malo.status_code == 401
+
+    db = TestingSessionLocal()
+    pago_final = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+    assert pago_final.estado == "PENDIENTE"
+    db.close()
 
 
 def test_auditoria_registra_operaciones_criticas():

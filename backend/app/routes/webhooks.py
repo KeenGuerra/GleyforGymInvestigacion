@@ -1,19 +1,25 @@
 # pyrefly: ignore [missing-import]
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated, Literal
+import secrets
 
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 
 from app.database import get_db
-from app import models
+from app import config, models
 from app.pagos_gateway import gateway
 from app.auditoria import registrar as registrar_auditoria
 from app.routes.ventas import aplicar_confirmacion_venta
 
 router = APIRouter()
+
+
+def _verificar_secreto_webhook(x_webhook_secret: str | None) -> None:
+    if not secrets.compare_digest(x_webhook_secret or "", config.WEBHOOK_SECRET):
+        raise HTTPException(status_code=401, detail="Secreto de webhook inválido")
 
 
 class WebhookPagoPayload(BaseModel):
@@ -22,21 +28,28 @@ class WebhookPagoPayload(BaseModel):
 
 
 @router.post("/pagos")
-def webhook_pagos(payload: WebhookPagoPayload, db: Annotated[Session, Depends(get_db)]):
+def webhook_pagos(
+    payload: WebhookPagoPayload,
+    db: Annotated[Session, Depends(get_db)],
+    x_webhook_secret: Annotated[str | None, Header(alias="X-Webhook-Secret")] = None,
+):
     """
     Recibe la confirmación asíncrona de la pasarela de pago (hoy simulada por
-    MockGateway; con una pasarela real este endpoint debe además verificar la
-    firma/secreto del proveedor antes de confiar en el payload — no se hace
-    aquí porque no hay pasarela real conectada todavía).
+    MockGateway). Protegido por un secreto compartido (header
+    X-Webhook-Secret, ver WEBHOOK_SECRET en config.py) para que no cualquiera
+    que conozca un id_transaccion_externa pueda falsificar un pago.
 
     NOTA al activar CulqiGateway (ver app/pagos_gateway/culqi.py): este
     endpoint y su `WebhookPagoPayload` asumen el formato propio de
     MockGateway (id_transaccion_externa + resultado). El webhook real de
-    Culqi llega con su propio formato de evento, y no debe confiarse en el
-    campo "resultado" del payload entrante sin antes revalidar el estado
-    llamando a `gateway.consultar_estado(id_transaccion_externa)` — de lo
-    contrario cualquiera podría llamar a esta URL y falsificar un pago.
+    Culqi llega con su propio formato de evento y su propia firma — al
+    migrar, reemplazar (o complementar) esta verificación de secreto por la
+    verificación de firma de Culqi, y revalidar el estado llamando a
+    `gateway.consultar_estado(id_transaccion_externa)` en vez de confiar
+    únicamente en el campo "resultado" del payload entrante.
     """
+    _verificar_secreto_webhook(x_webhook_secret)
+
     resultado_mock = gateway.resolver_transaccion(
         payload.id_transaccion_externa, exito=(payload.resultado == "EXITOSO")
     )

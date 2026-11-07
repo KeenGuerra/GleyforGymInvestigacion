@@ -20,6 +20,16 @@ if not SECRET_KEY:
         "en producción) antes de iniciar la aplicación."
     )
 
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
+
+if not WEBHOOK_SECRET:
+    raise RuntimeError(
+        "WEBHOOK_SECRET no está configurado. Define esta variable de entorno "
+        "(en backend/.env para desarrollo local, o en la configuración del servicio "
+        "en producción) antes de iniciar la aplicación — protege POST /webhooks/pagos "
+        "contra llamadas falsificadas por cualquiera que conozca un id_transaccion_externa."
+    )
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")

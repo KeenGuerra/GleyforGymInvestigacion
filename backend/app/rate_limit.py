@@ -23,11 +23,11 @@ def _limpiar_antiguos(clave: str, ahora: float) -> None:
     ]
 
 
-def excedio_intentos(clave: str) -> bool:
+def excedio_intentos(clave: str, maximo: int = MAX_INTENTOS) -> bool:
     ahora = time.time()
     with _lock:
         _limpiar_antiguos(clave, ahora)
-        return len(_intentos_fallidos[clave]) >= MAX_INTENTOS
+        return len(_intentos_fallidos[clave]) >= maximo
 
 
 def registrar_intento_fallido(clave: str) -> None:

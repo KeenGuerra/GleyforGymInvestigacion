@@ -453,6 +453,93 @@ def test_checkout_de_comprador_sin_membresia_sobre_su_propia_venta():
     assert res_ajeno.status_code == 403
 
 
+def test_venta_rechaza_stock_insuficiente_cuando_el_detalle_repite_el_producto():
+    """Si el detalle repite el mismo producto en dos lineas, el stock debe
+    validarse contra el total pedido (3+3=6), no linea por linea (3<=5 y
+    3<=5 pasarian individualmente y dejarian stock_actual negativo)."""
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers)
+    id_proveedor = crear_proveedor(headers)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 5, "precio_unitario": 30.0}]},
+        headers=headers,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers)
+
+    res_venta = client.post(
+        "/ventas/",
+        json={
+            "metodo_pago": "EFECTIVO",
+            "detalles": [
+                {"id_producto": id_producto, "cantidad": 3},
+                {"id_producto": id_producto, "cantidad": 3},
+            ],
+        },
+        headers=headers,
+    )
+    assert res_venta.status_code == 409
+
+    # El stock no debe haberse tocado: la venta se rechazo antes de aplicar nada.
+    assert client.get(f"/inventario/{id_producto}", headers=headers).json()["stock_actual"] == 5
+
+
+def test_confirmar_venta_con_stock_agotado_deja_stock_en_cero_y_registra_auditoria():
+    """Si el stock se agota entre solicitar y confirmar una venta (otra
+    venta de por medio), aplicar_confirmacion_venta() no debe dejar
+    stock_actual negativo: lo deja en 0 y registra una entrada de
+    auditoria para que el staff lo note."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 5, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=2, correo="cliente.stock@gleyforgym.com",
+                           password_hash=encriptar_password("cliente123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=1, id_usuario=2, dni="11223344", nombres="Luis", apellidos="Ramos", estado="ACTIVO"))
+    db.commit()
+    db.close()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 5}]},
+        headers=headers_cliente,
+    ).json()["id_venta"]
+
+    # Otra venta directa consume el stock antes de que la primera se confirme.
+    res_otra_venta = client.post(
+        "/ventas/",
+        json={"metodo_pago": "EFECTIVO", "detalles": [{"id_producto": id_producto, "cantidad": 5}]},
+        headers=headers_admin,
+    )
+    assert res_otra_venta.status_code == 200, res_otra_venta.text
+    assert client.get(f"/inventario/{id_producto}", headers=headers_admin).json()["stock_actual"] == 0
+
+    res_confirmar = client.post(f"/ventas/{id_venta}/confirmar", headers=headers_admin)
+    assert res_confirmar.status_code == 200
+    assert res_confirmar.json()["estado"] == "CONFIRMADA"
+
+    # No debe quedar negativo.
+    assert client.get(f"/inventario/{id_producto}", headers=headers_admin).json()["stock_actual"] == 0
+
+    db = TestingSessionLocal()
+    auditoria = db.query(models.RegistroAuditoria).filter(
+        models.RegistroAuditoria.accion == "STOCK_INSUFICIENTE_AL_CONFIRMAR"
+    ).first()
+    assert auditoria is not None
+    assert f"venta={id_venta}" in auditoria.detalle
+    db.close()
+
+
 # ── Ajuste manual de inventario ──────────────────────────────────────────────
 def test_ajuste_manual_de_inventario():
     populate_comercio()

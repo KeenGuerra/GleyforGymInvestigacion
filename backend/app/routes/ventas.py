@@ -39,6 +39,16 @@ def crear_venta(
     if not venta.detalles:
         raise HTTPException(status_code=400, detail=MSG_DETALLE_VACIO)
 
+    # Si el mismo producto aparece en varias líneas del detalle, la
+    # disponibilidad de stock se valida contra el total pedido de ese
+    # producto, no línea por línea (si no, dos líneas del mismo producto
+    # podrían pasar la validación individualmente y dejar stock negativo).
+    cantidad_pedida_por_producto: dict[int, int] = {}
+    for detalle in venta.detalles:
+        cantidad_pedida_por_producto[detalle.id_producto] = (
+            cantidad_pedida_por_producto.get(detalle.id_producto, 0) + detalle.cantidad
+        )
+
     subtotal_total = 0
     detalles_procesados = []
 
@@ -59,8 +69,9 @@ def crear_venta(
         ).first()
 
         stock_disponible = inventario.stock_actual if inventario else 0
+        cantidad_total_producto = cantidad_pedida_por_producto[detalle.id_producto]
 
-        if stock_disponible < detalle.cantidad:
+        if stock_disponible < cantidad_total_producto:
             raise HTTPException(
                 status_code=409,
                 detail=f"{MSG_STOCK_INSUFICIENTE}: {producto.nombre} (disponible: {stock_disponible})"
@@ -440,6 +451,15 @@ def solicitar_venta(
                 detail="Verifica tu correo antes de comprar. Revisa tu bandeja de entrada."
             )
 
+    # Mismo motivo que en crear_venta(): si el detalle repite un producto en
+    # varias líneas, el stock se valida contra el total pedido de ese
+    # producto, no línea por línea.
+    cantidad_pedida_por_producto: dict[int, int] = {}
+    for detalle in venta.detalles:
+        cantidad_pedida_por_producto[detalle.id_producto] = (
+            cantidad_pedida_por_producto.get(detalle.id_producto, 0) + detalle.cantidad
+        )
+
     subtotal_total = 0
     detalles_procesados = []
 
@@ -460,8 +480,9 @@ def solicitar_venta(
         ).first()
 
         stock_disponible = inventario.stock_actual if inventario else 0
+        cantidad_total_producto = cantidad_pedida_por_producto[detalle.id_producto]
 
-        if stock_disponible < detalle.cantidad:
+        if stock_disponible < cantidad_total_producto:
             raise HTTPException(
                 status_code=409,
                 detail=f"{MSG_STOCK_INSUFICIENTE}: {producto.nombre} (disponible: {stock_disponible})"
@@ -558,7 +579,25 @@ def aplicar_confirmacion_venta(db: Session, venta: models.Venta, id_usuario: int
         ).first()
 
         if inventario:
-            inventario.stock_actual -= detalle.cantidad
+            # El stock ya se validó al solicitar/crear la venta, pero pudo
+            # cambiar entre ese momento y la confirmación (otra venta
+            # confirmada de por medio) — se revalida aquí para no dejar
+            # stock_actual negativo. Si no alcanza, el pago ya puede estar
+            # hecho (confirmación vía webhook), así que no se rechaza la
+            # venta: se deja el stock en 0 y se deja rastro en auditoría
+            # para que el staff lo reponga/ajuste manualmente.
+            if inventario.stock_actual < detalle.cantidad:
+                registrar_auditoria(
+                    db,
+                    {"id_usuario": id_usuario} if id_usuario else None,
+                    "STOCK_INSUFICIENTE_AL_CONFIRMAR",
+                    "Producto",
+                    detalle.id_producto,
+                    f"venta={venta.id_venta}, pedido={detalle.cantidad}, disponible={inventario.stock_actual}",
+                )
+                inventario.stock_actual = 0
+            else:
+                inventario.stock_actual -= detalle.cantidad
             inventario.fecha_actualizacion = datetime.now()
 
         movimiento = models.MovimientoStock(

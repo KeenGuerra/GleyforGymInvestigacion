@@ -10,6 +10,8 @@ from app import config, models, schemas
 from app.database import get_db
 from app.security import encriptar_password, verificar_password, crear_token, obtener_usuario_actual, requerir_roles
 from app.rate_limit import excedio_intentos, registrar_intento_fallido, limpiar_intentos
+
+MAX_REGISTROS_POR_IP = 15
 from app.auditoria import registrar as registrar_auditoria
 from app.correo import enviar_correo, enviar_verificacion_correo
 from app.constants import (
@@ -387,7 +389,11 @@ def registro_publico(
     ip_cliente = request.client.host if request.client else "desconocida"
     clave_intentos = f"registro:{ip_cliente}"
 
-    if excedio_intentos(clave_intentos):
+    # Umbral más alto que el de login (MAX_INTENTOS): una IP compartida
+    # (wifi del gimnasio) puede generar varios registros legítimos distintos
+    # en poco tiempo, a diferencia de login donde 5 intentos fallidos en
+    # 15 min ya es sospechoso.
+    if excedio_intentos(clave_intentos, maximo=MAX_REGISTROS_POR_IP):
         raise HTTPException(
             status_code=429,
             detail="Demasiados registros desde esta IP. Intenta de nuevo en unos minutos."
