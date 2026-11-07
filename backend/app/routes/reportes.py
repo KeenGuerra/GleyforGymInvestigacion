@@ -89,3 +89,53 @@ def obtener_kpis(db: Annotated[Session, Depends(get_db)]):
         "asistencias_hoy": asistencias_hoy,
         "asistencias_mes": asistencias_mes,
     }
+
+
+@router.get("/ingresos")
+def obtener_reporte_ingresos(
+    db: Annotated[Session, Depends(get_db)],
+    desde: date,
+    hasta: date,
+):
+    """Ingresos (pagos PAGADO) agrupados por día dentro del rango [desde, hasta]."""
+    filas = (
+        db.query(models.Pago.fecha_pago, func.coalesce(func.sum(models.Pago.monto), 0))
+        .filter(
+            models.Pago.estado == "PAGADO",
+            models.Pago.fecha_pago >= desde,
+            models.Pago.fecha_pago <= hasta,
+        )
+        .group_by(models.Pago.fecha_pago)
+        .order_by(models.Pago.fecha_pago)
+        .all()
+    )
+
+    por_dia = [{"fecha": str(fecha), "monto": round(monto, 2)} for fecha, monto in filas]
+    total = round(sum(fila["monto"] for fila in por_dia), 2)
+
+    return {"desde": str(desde), "hasta": str(hasta), "total": total, "por_dia": por_dia}
+
+
+@router.get("/asistencias")
+def obtener_reporte_asistencias(
+    db: Annotated[Session, Depends(get_db)],
+    desde: date,
+    hasta: date,
+):
+    """Asistencias (no ANULADAS) agrupadas por día dentro del rango [desde, hasta]."""
+    filas = (
+        db.query(models.Asistencia.fecha, func.count(models.Asistencia.id_asistencia))
+        .filter(
+            models.Asistencia.estado != "ANULADO",
+            models.Asistencia.fecha >= desde,
+            models.Asistencia.fecha <= hasta,
+        )
+        .group_by(models.Asistencia.fecha)
+        .order_by(models.Asistencia.fecha)
+        .all()
+    )
+
+    por_dia = [{"fecha": str(fecha), "cantidad": cantidad} for fecha, cantidad in filas]
+    total = sum(fila["cantidad"] for fila in por_dia)
+
+    return {"desde": str(desde), "hasta": str(hasta), "total": total, "por_dia": por_dia}

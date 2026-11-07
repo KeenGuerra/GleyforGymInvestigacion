@@ -880,6 +880,60 @@ def test_kpis_dashboard():
     assert client.get("/reportes/kpis", headers=headers_cliente).status_code == 403
 
 
+def test_reporte_ingresos():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "YAPE", "fecha_pago": "2026-06-05", "estado": "PAGADO",
+        },
+        headers=headers_admin,
+    )
+
+    res = client.get("/reportes/ingresos?desde=2026-06-01&hasta=2026-06-30", headers=headers_admin)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 150.0
+    assert data["por_dia"] == [{"fecha": "2026-06-05", "monto": 150.0}]
+
+    # Fuera del rango -> sin resultados
+    res_vacio = client.get("/reportes/ingresos?desde=2026-01-01&hasta=2026-01-31", headers=headers_admin)
+    assert res_vacio.json()["total"] == 0
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    res_cliente = client.get("/reportes/ingresos?desde=2026-06-01&hasta=2026-06-30", headers=headers_cliente)
+    assert res_cliente.status_code == 403
+
+
+def test_reporte_asistencias():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    client.post(
+        "/asistencias/",
+        json={"id_cliente": 1, "fecha": "2026-06-05", "hora_entrada": "08:00:00"},
+        headers=headers_admin,
+    )
+
+    res = client.get("/reportes/asistencias?desde=2026-06-01&hasta=2026-06-30", headers=headers_admin)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 1
+    assert data["por_dia"] == [{"fecha": "2026-06-05", "cantidad": 1}]
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    res_cliente = client.get("/reportes/asistencias?desde=2026-06-01&hasta=2026-06-30", headers=headers_cliente)
+    assert res_cliente.status_code == 403
+
+
 def test_entrenadores_crud():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")

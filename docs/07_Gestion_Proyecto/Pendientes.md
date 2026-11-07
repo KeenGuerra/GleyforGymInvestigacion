@@ -98,7 +98,7 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 ## P-07 Reportes operativos consolidados
 
-Hoy solo hay exportación CSV de clientes (`web-admin/src/utils/exportarCsv.js`) y los KPIs del dashboard. No hay un reporte descargable que consolide, por ejemplo, ingresos por rango de fechas o asistencia por período.
+~~Resuelto (2026-11)~~: nuevos `GET /reportes/ingresos` y `GET /reportes/asistencias` (por rango `desde`/`hasta`, agrupados por día). Nueva página `web-admin/src/pages/Reportes.jsx` (ruta `/reportes`, solo ADMIN) con selector de fechas, tablas por día y exportación a CSV reutilizando `exportarCsv.js`.
 
 ---
 
