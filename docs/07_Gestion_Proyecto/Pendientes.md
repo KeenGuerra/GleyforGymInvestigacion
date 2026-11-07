@@ -116,7 +116,9 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 ## P-10 Rate limiting de login solo en memoria
 
-`backend/app/rate_limit.py` limita los intentos de login (5 intentos / 15 min) pero el conteo vive en memoria del proceso — es correcto para el despliegue actual (un solo worker en Render), pero si el backend se escala a múltiples workers, cada uno llevaría su propio conteo independiente. Ya está documentado como limitación aceptada en el propio código; solo requeriría acción (ej. Redis) si se decide escalar horizontalmente.
+`backend/app/rate_limit.py` limita los intentos de login (5 intentos / 15 min) pero el conteo vive en memoria del proceso — es correcto para el despliegue actual (un solo worker en Render), pero si el backend se escala a múltiples workers, cada uno llevaría su propio conteo independiente.
+
+**Decisión (2026-11)**: no se resuelve ahora. Se retoma junto con la migración de todo el despliegue a un VPS de Hostinger (pendiente, ver P-16): ahí sí tendría sentido correr varios workers para aprovechar el servidor, y ese es el momento correcto para agregar Redis y resolver esto de una vez, en vez de hacerlo ahora sin necesidad real.
 
 ---
 
@@ -150,11 +152,17 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 El respaldo de la base de datos depende enteramente del plan gestionado de PostgreSQL en Render. No hay un `pg_dump` automatizado ni almacenado fuera de Render.
 
+**Decisión (2026-11)**: no se resuelve ahora — hoy el entorno de Render es de desarrollo (los datos no tienen valor real todavía), así que no se justifica construir una solución de backups para un entorno que se va a reemplazar. Se implementa como parte de la migración a Hostinger (ver P-16), definiendo ahí la estrategia real para el entorno de producción final (backup nativo de Hostinger o `pg_dump` programado dentro del VPS).
+
 ---
 
 ## P-16 Riesgos del plan gratuito de Render
 
 El despliegue actual usa el plan **free** de Render (`render.yaml`): esto implica *cold starts* tras períodos de inactividad y que la base de datos free expira a los 90 días si no se actualiza a un plan pago. Es un riesgo operativo real mientras el proyecto siga en este tier, independiente del código de la aplicación.
+
+**Incidente (2026-11)**: ya ocurrió una vez — la base de datos expiró y se recreó vía "Manual Sync" del Blueprint, sin pérdida relevante porque el entorno sigue siendo de desarrollo. Puede volver a pasar cada 90 días mientras no se resuelva.
+
+**Decisión (2026-11)**: no se paga un plan superior en Render. En vez de eso, se migrará **todo el despliegue** (backend + base de datos) a un **VPS de Hostinger** de pago, reutilizando `docker-compose.yml` (P-13). Queda pendiente de que el usuario compre el plan VPS (y, idealmente, un dominio propio para poder habilitar HTTPS con Let's Encrypt). Esta migración queda para el final del backlog; P-10 y P-15 se resuelven junto con ella.
 
 ---
 
