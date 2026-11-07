@@ -146,12 +146,6 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 ---
 
-## P-14 Monitoreo y tracking de errores
-
-No hay Sentry ni ninguna herramienta equivalente de APM. El logging es puntual (`logging` usado solo en `main.py`, `routes/productos.py` y `routes/usuarios.py`), sin agregación central ni alertas.
-
----
-
 ## P-15 Backups automatizados propios
 
 El respaldo de la base de datos depende enteramente del plan gestionado de PostgreSQL en Render. No hay un `pg_dump` automatizado ni almacenado fuera de Render.
