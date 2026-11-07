@@ -56,9 +56,9 @@ Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yap
 
 ---
 
-## P-03 Envío real de correo (SMTP)
+## P-03 Envío real de correo
 
-~~Resuelto (2026-11)~~: nuevo `backend/app/correo.py` con `enviar_correo()`, usando Gmail SMTP (`smtplib`, puerto 465 SSL) con las credenciales opcionales `GMAIL_USER`/`GMAIL_APP_PASSWORD` (sin ellas, sigue solo logueando, como antes). Probado con un envío real: el correo llegó correctamente a la bandeja de entrada. Conectado en `solicitar_reset_password` (recuperación de contraseña) y reutilizado por `enviar_verificacion_correo()` (P-01). Pruebas en `backend/tests/test_correo.py` (3 pruebas, con la llamada SMTP simulada).
+~~Resuelto (2026-11)~~: `backend/app/correo.py` con `enviar_correo()` probado primero con Gmail SMTP (`smtplib`), que funcionó enviando un correo real desde una máquina local. Al desplegar a producción (Render) se confirmó que las conexiones SMTP salientes a `smtp.gmail.com` no se completan (timeout, probado en los puertos 465 y 587) — limitación del hosting, no de las credenciales. Se reemplazó por la API HTTPS de Brevo (`BREVO_API_KEY`/`BREVO_SENDER_EMAIL`/`BREVO_SENDER_NAME`, opcionales — sin ellas sigue solo logueando, como antes), que sí funciona porque usa el puerto 443 (nunca bloqueado). El correo remitente debe verificarse una vez en el panel de Brevo (Senders) antes de poder usarse. Conectado en `solicitar_reset_password` (recuperación de contraseña) y reutilizado por `enviar_verificacion_correo()` (P-01). El envío ya no propaga errores (se loguea y sigue, igual que `registrar_auditoria()`) para no colgar ni tumbar la operación principal si el correo falla. Pruebas en `backend/tests/test_correo.py` (4 pruebas, con la llamada HTTP simulada).
 
 ---
 

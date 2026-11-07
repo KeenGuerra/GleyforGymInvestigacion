@@ -1,8 +1,9 @@
 import logging
 import secrets
-import smtplib
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
+
+# pyrefly: ignore [missing-import]
+import httpx
 
 from app import config
 
@@ -10,40 +11,46 @@ logger = logging.getLogger("gleyforgym")
 
 TOKEN_VERIFICACION_EXPIRA_MINUTOS = 60 * 24  # 24 horas
 
-
-SMTP_TIMEOUT_SEGUNDOS = 10
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+BREVO_TIMEOUT_SEGUNDOS = 10
 
 
 def enviar_correo(destinatario: str, asunto: str, cuerpo_html: str) -> None:
-    """Envía un correo real vía Gmail SMTP si GMAIL_USER/GMAIL_APP_PASSWORD
-    están configurados (ver P-03). Si no, solo deja el correo logueado —
-    así el resto del sistema (recuperación de contraseña, verificación de
-    correo) funciona igual en desarrollo sin necesitar credenciales reales.
+    """Envía un correo real vía la API de Brevo si BREVO_API_KEY/
+    BREVO_SENDER_EMAIL están configuradas (ver P-03). Si no, solo deja el
+    correo logueado — así el resto del sistema (recuperación de contraseña,
+    verificación de correo) funciona igual en desarrollo sin necesitar
+    credenciales reales.
 
-    No propaga errores: si el envío falla o se cuelga (ej. el proveedor de
-    hosting no deja conectar a smtp.gmail.com), se loguea y se sigue —igual
-    que registrar_auditoria()— para no tumbar ni colgar la operación
-    principal (crear la cuenta, generar el token de reset) solo porque el
-    correo no pudo salir. Sin esto, una petición podía quedarse colgada
-    para siempre esperando una conexión SMTP que nunca completa.
+    Se usa una API HTTPS en vez de SMTP directo porque Render (el hosting
+    actual) no deja completar conexiones SMTP salientes (confirmado en
+    producción contra smtp.gmail.com, tanto en el puerto 465 como el 587).
+
+    No propaga errores: si el envío falla, se loguea y se sigue —igual que
+    registrar_auditoria()— para no tumbar la operación principal (crear la
+    cuenta, generar el token de reset) solo porque el correo no pudo salir.
     """
-    if not config.GMAIL_USER or not config.GMAIL_APP_PASSWORD:
-        logger.info("SMTP no configurado; correo simulado para %s: %s", destinatario, asunto)
+    if not config.BREVO_API_KEY or not config.BREVO_SENDER_EMAIL:
+        logger.info("Brevo no configurado; correo simulado para %s: %s", destinatario, asunto)
         return
 
-    mensaje = MIMEText(cuerpo_html, "html")
-    mensaje["Subject"] = asunto
-    mensaje["From"] = config.GMAIL_USER
-    mensaje["To"] = destinatario
-
     try:
-        # Puerto 587 con STARTTLS en vez de 465 con SSL directo: algunos
-        # proveedores de hosting (Render incluido, confirmado en producción)
-        # no dejan completar la conexión en el 465.
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=SMTP_TIMEOUT_SEGUNDOS) as servidor:
-            servidor.starttls()
-            servidor.login(config.GMAIL_USER, config.GMAIL_APP_PASSWORD)
-            servidor.sendmail(config.GMAIL_USER, [destinatario], mensaje.as_string())
+        respuesta = httpx.post(
+            BREVO_API_URL,
+            headers={
+                "accept": "application/json",
+                "content-type": "application/json",
+                "api-key": config.BREVO_API_KEY,
+            },
+            json={
+                "sender": {"name": config.BREVO_SENDER_NAME, "email": config.BREVO_SENDER_EMAIL},
+                "to": [{"email": destinatario}],
+                "subject": asunto,
+                "htmlContent": cuerpo_html,
+            },
+            timeout=BREVO_TIMEOUT_SEGUNDOS,
+        )
+        respuesta.raise_for_status()
         logger.info("Correo enviado a %s: %s", destinatario, asunto)
     except Exception:
         logger.exception("No se pudo enviar el correo a %s: %s", destinatario, asunto)

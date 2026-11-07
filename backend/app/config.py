@@ -41,11 +41,15 @@ CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY")
 CULQI_PUBLIC_KEY = os.getenv("CULQI_PUBLIC_KEY")
 
-# Envío real de correo vía Gmail SMTP (ver docs/07_Gestion_Proyecto/Pendientes.md
-# P-01/P-03). No son obligatorias: mientras no estén configuradas,
-# app/correo.py solo deja el correo logueado (modo desarrollo), sin fallar.
-GMAIL_USER = os.getenv("GMAIL_USER")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+# Envío real de correo vía la API de Brevo (ver docs/07_Gestion_Proyecto/
+# Pendientes.md P-01/P-03). Se usa una API HTTPS en vez de SMTP directo
+# porque Render (el hosting actual) no deja completar conexiones SMTP
+# salientes (confirmado en producción, probado en los puertos 465 y 587).
+# No son obligatorias: mientras no estén configuradas, app/correo.py solo
+# deja el correo logueado (modo desarrollo), sin fallar.
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "")
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "GleyforGym")
 
 # URL pública del frontend, usada para armar los enlaces de los correos
 # (recuperación de contraseña, verificación de correo).
