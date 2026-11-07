@@ -140,12 +140,29 @@ button {
 .sidebar-menu {
   flex: 1;
   overflow-y: auto;
-  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 6px;
   margin-top: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 85, 0, 0.55) rgba(33, 27, 20, 0.06);
 }
 
 .sidebar-menu::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
+}
+
+.sidebar-menu::-webkit-scrollbar-track {
+  background: rgba(33, 27, 20, 0.06);
+  border-radius: 99px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 85, 0, 0.55);
+  border-radius: 99px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 85, 0, 0.8);
 }
 
 .menu-label {
