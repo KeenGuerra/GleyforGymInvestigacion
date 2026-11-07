@@ -485,6 +485,9 @@ def test_ia_nutricion_generacion():
     assert res_data["calorias_diarias"] == 2728
     # calorias_reales es la suma real de las comidas asignadas (comportamiento anterior)
     assert res_data["calorias_reales"] == 2100  # 500 + 200 + 700 + 300 + 400
+    # Sin ANTHROPIC_API_KEY (caso normal en tests) el orquestador híbrido cae
+    # directo al motor de reglas, con el mismo resultado de siempre.
+    assert res_data["origen_ia"] == "reglas_respaldo"
 
     # 3. No active meals
     db = TestingSessionLocal()
@@ -550,6 +553,9 @@ def test_ia_rutina_generacion():
     res_data = response.json()
     assert res_data["nivel"] == "Principiante"
     assert "ganancia muscular" in res_data["nombre"].lower()
+    # Sin ANTHROPIC_API_KEY (caso normal en tests) el orquestador híbrido cae
+    # directo al motor de reglas, con el mismo resultado de siempre.
+    assert res_data["origen_ia"] == "reglas_respaldo"
 
     # Test different objectives for division/config coverage
     db = TestingSessionLocal()
