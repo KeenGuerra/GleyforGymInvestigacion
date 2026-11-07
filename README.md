@@ -69,6 +69,14 @@ npm install
 npm run dev
 ```
 
+Alternativa con Docker (entorno reproducible, no requiere instalar Python/Node/PostgreSQL localmente):
+
+```bash
+docker compose up --build
+```
+
+Esto levanta PostgreSQL, el backend (`http://localhost:8000`) y el frontend (`http://localhost:5173`), con el usuario admin de ejemplo ya sembrado (`admin@gleyforgym.com` / `Admin123*`). Es solo para desarrollo local; el despliegue real sigue siendo el de `render.yaml`.
+
 ## Pruebas
 
 - Backend: `pytest` (suite de integración sobre todos los módulos).

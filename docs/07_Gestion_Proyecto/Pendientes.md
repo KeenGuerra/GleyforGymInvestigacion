@@ -142,7 +142,7 @@ Hoy el "envío" de recuperación de contraseña solo queda registrado en un log 
 
 ## P-13 Dockerización
 
-No hay `Dockerfile` para backend ni frontend, ni `docker-compose.yml`. El despliegue depende 100% de los buildpacks nativos de Render (`render.yaml`). Sería útil para desarrollo local reproducible y para portar el despliegue a otro proveedor en el futuro.
+~~Resuelto (2026-11)~~: `backend/Dockerfile`, `web-admin/Dockerfile` (build multi-stage con nginx) y `docker-compose.yml` en la raíz (`db` + `backend` + `frontend`, con healthcheck de PostgreSQL). Probado de punta a punta con `docker compose up --build`: las tres migraciones/seeds de `create_db.py` corren solas, y un login real contra `POST /usuarios/login` devuelve 200 con el admin sembrado. No reemplaza el despliegue de `render.yaml`, es solo para desarrollo local reproducible.
 
 ---
 
