@@ -17,3 +17,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./test_conftest_placeholder.db"
 # envío real via Gmail SMTP.
 os.environ["GMAIL_USER"] = ""
 os.environ["GMAIL_APP_PASSWORD"] = ""
+
+# Mismo motivo: los tests nunca deben llamar a la API real de Anthropic (ni
+# gastar cuota paga) sin importar lo que tenga backend/.env en esta máquina.
+os.environ["ANTHROPIC_API_KEY"] = ""

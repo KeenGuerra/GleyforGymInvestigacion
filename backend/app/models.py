@@ -196,6 +196,13 @@ class Rutina(Base):
     observaciones_revision = Column(Text, nullable=True)
     editado_antes_revision = Column(Boolean, default=False)
 
+    # Integración híbrida con Claude (ver app/ia/claude_client.py). NULL en
+    # filas generadas antes de esta feature o creadas manualmente.
+    origen_ia = Column(String(20), nullable=True)  # "claude" | "reglas_respaldo"
+    modelo_ia = Column(String(50), nullable=True)  # solo si origen_ia == "claude"
+    tiempo_respuesta_ms = Column(Integer, nullable=True)
+    justificacion_ia = Column(Text, nullable=True)
+
     cliente = relationship("Cliente", back_populates="rutinas")
     ejercicios = relationship("RutinaEjercicio", back_populates="rutina")
 
@@ -251,6 +258,13 @@ class PlanNutricional(Base):
     peso_usado = Column(Float, nullable=True)
     ajuste_tendencia_kcal = Column(Integer, default=0)
     justificacion_ajuste = Column(Text, nullable=True)
+
+    # Integración híbrida con Claude (ver app/ia/claude_client.py). NULL en
+    # filas generadas antes de esta feature o creadas manualmente.
+    origen_ia = Column(String(20), nullable=True)  # "claude" | "reglas_respaldo"
+    modelo_ia = Column(String(50), nullable=True)  # solo si origen_ia == "claude"
+    tiempo_respuesta_ms = Column(Integer, nullable=True)
+    justificacion_ia = Column(Text, nullable=True)
 
     cliente = relationship("Cliente", back_populates="planes_nutricionales")
     comidas = relationship("PlanComida", back_populates="plan")

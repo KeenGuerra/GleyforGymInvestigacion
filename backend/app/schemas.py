@@ -371,6 +371,10 @@ class RutinaResponse(RutinaCreate):
     fecha_revision: Optional[datetime] = None
     observaciones_revision: Optional[str] = None
     editado_antes_revision: bool = False
+    origen_ia: Optional[str] = None
+    modelo_ia: Optional[str] = None
+    tiempo_respuesta_ms: Optional[int] = None
+    justificacion_ia: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -484,6 +488,10 @@ class PlanNutricionalResponse(PlanNutricionalCreate):
     peso_usado: Optional[float] = None
     ajuste_tendencia_kcal: int = 0
     justificacion_ajuste: Optional[str] = None
+    origen_ia: Optional[str] = None
+    modelo_ia: Optional[str] = None
+    tiempo_respuesta_ms: Optional[int] = None
+    justificacion_ia: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

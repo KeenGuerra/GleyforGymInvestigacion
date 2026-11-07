@@ -84,6 +84,14 @@ def initialize_tables():
         ("ejercicios", "restricciones", "VARCHAR"),
         ("comidas", "restricciones", "VARCHAR"),
         ("plan_comidas", "id_comida_catalogo", "INTEGER"),
+        ("rutinas", "origen_ia", "VARCHAR(20)"),
+        ("rutinas", "modelo_ia", "VARCHAR(50)"),
+        ("rutinas", "tiempo_respuesta_ms", "INTEGER"),
+        ("rutinas", "justificacion_ia", "TEXT"),
+        ("planes_nutricionales", "origen_ia", "VARCHAR(20)"),
+        ("planes_nutricionales", "modelo_ia", "VARCHAR(50)"),
+        ("planes_nutricionales", "tiempo_respuesta_ms", "INTEGER"),
+        ("planes_nutricionales", "justificacion_ia", "TEXT"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:

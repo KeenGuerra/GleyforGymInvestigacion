@@ -41,5 +41,12 @@ GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 # (recuperación de contraseña, verificación de correo).
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# Integración híbrida con la API de Claude para el motor de IA (ver
+# docs/07_Gestion_Proyecto/Pendientes.md — punto 8 del plan de tesis). Sin
+# ANTHROPIC_API_KEY, el sistema no intenta llamar a Claude y usa directamente
+# el motor de reglas (app/ia/claude_client.py), igual que Culqi/Gmail.
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+CLAUDE_MODEL_IA = os.getenv("CLAUDE_MODEL_IA", "claude-haiku-5-5")
+
 # CORS Origins - default allows all for development, but customizable via env
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
