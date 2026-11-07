@@ -54,7 +54,14 @@ describe("Pagos Page Component", () => {
 
   it("fails validation if form fields are missing or invalid", async () => {
     render(<Pagos />);
-    
+
+    // Espera a que carguen los clientes/membresías antes de interactuar con
+    // los selects: si no, la opción "1" todavía no existe en el DOM y el
+    // fireEvent.change de más abajo se pierde (carrera intermitente en CI).
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
+    });
+
     // 1. Missing client
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() => {
@@ -94,7 +101,7 @@ describe("Pagos Page Component", () => {
     render(<Pagos />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Cliente")).toBeDefined();
+      expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
     });
 
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
@@ -221,7 +228,7 @@ describe("Pagos Page Component", () => {
     render(<Pagos />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Cliente")).toBeDefined();
+      expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
     });
 
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
