@@ -1317,11 +1317,11 @@ tr:hover td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(250, 247, 242, 0.85);
+  background: rgba(9, 9, 11, 0.9);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 4px 30px rgba(33, 27, 20, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
 }
 
 .public-brand {
@@ -1346,7 +1346,7 @@ tr:hover td {
 
 .public-menu a,
 .public-link-btn {
-  color: #57503f;
+  color: #d4d4d8;
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
@@ -1355,6 +1355,21 @@ tr:hover td {
 
 .public-menu a:hover {
   color: var(--orange);
+}
+
+/* La navbar pública es oscura a propósito (igual que el logo), a
+   diferencia del resto de la app que ahora es clara — .btn-secondary
+   necesita su propia versión clara-sobre-oscuro aquí. */
+.public-navbar .btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.public-navbar .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .public-hero {
