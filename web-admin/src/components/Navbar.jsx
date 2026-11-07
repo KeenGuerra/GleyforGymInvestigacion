@@ -30,7 +30,6 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
       <button
         className="public-brand-logo"
         onClick={() => navigate("/")}
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
       >
         <img src={logoGleyforGym} alt="Logo GleyforGym" />
       </button>

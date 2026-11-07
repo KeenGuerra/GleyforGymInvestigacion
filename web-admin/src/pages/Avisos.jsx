@@ -65,7 +65,7 @@ function Avisos() {
                   <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "12px" }}>
                     {items.map((aviso) => (
                       <div key={aviso.id_aviso}>
-                        <strong style={{ color: "#fff" }}>{aviso.titulo}</strong>
+                        <strong style={{ color: "var(--text)" }}>{aviso.titulo}</strong>
                         <p className="item-description" style={{ margin: 0 }}>{aviso.contenido}</p>
                       </div>
                     ))}

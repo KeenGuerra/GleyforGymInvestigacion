@@ -146,7 +146,7 @@ function Tienda() {
             placeholder="Buscar producto..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            style={{ width: "100%", padding: "12px 16px", fontSize: "15px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "#fff" }}
+            style={{ width: "100%", padding: "12px 16px", fontSize: "15px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }}
           />
         </div>
 
@@ -161,7 +161,7 @@ function Tienda() {
         )}
 
         {!isLoggedIn && (
-          <p style={{ textAlign: "center", color: "#a1a1aa", marginBottom: "2rem", fontSize: "15px" }}>
+          <p style={{ textAlign: "center", color: "var(--muted)", marginBottom: "2rem", fontSize: "15px" }}>
             <a href="/login" style={{ color: "var(--orange)", textDecoration: "none", fontWeight: 600 }}>Inicia sesión</a> para agregar productos al carrito.
           </p>
         )}
@@ -221,7 +221,7 @@ function Tienda() {
                       <input
                         type="number" min="1" max={c.stock_actual} value={c.cantidad}
                         onChange={(e) => actualizarCantidad(c.id_producto, e.target.value)}
-                        style={{ width: "50px", padding: "6px", borderRadius: "8px", border: "1px solid #444", background: "#1a1a2e", color: "#fff", textAlign: "center" }}
+                        style={{ width: "50px", padding: "6px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", textAlign: "center" }}
                       />
                       <strong style={{ minWidth: "70px", textAlign: "right" }}>S/ {(c.cantidad * c.precio_venta).toFixed(2)}</strong>
                       <button className="btn-danger" onClick={() => eliminarDelCarrito(c.id_producto)} style={{ padding: "6px 12px", fontSize: "13px" }}>X</button>
