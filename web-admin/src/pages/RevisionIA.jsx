@@ -58,6 +58,7 @@ function RevisionIA() {
           fecha_creacion: r.fecha_creacion,
           editado_antes_revision: r.editado_antes_revision,
           observaciones_revision: r.observaciones_revision,
+          origen_ia: r.origen_ia,
         })),
         ...planes.map((p) => ({
           tipo: "plan",
@@ -70,6 +71,7 @@ function RevisionIA() {
           editado_antes_revision: p.editado_antes_revision,
           observaciones_revision: p.observaciones_revision,
           comidas: p.comidas || [],
+          origen_ia: p.origen_ia,
         })),
       ].sort((a, b) => new Date(a.fecha_creacion) - new Date(b.fecha_creacion));
 
@@ -94,6 +96,9 @@ function RevisionIA() {
     if (estado === "rechazada") return "badge badge-danger";
     return "badge";
   };
+
+  const badgeOrigen = (origen) => (origen === "claude" ? "badge badge-success" : "badge");
+  const etiquetaOrigen = (origen) => (origen === "claude" ? "Claude" : "Reglas");
 
   const aprobar = async (item) => {
     try {
@@ -285,6 +290,7 @@ function RevisionIA() {
                 <th>Nombre</th>
                 <th>Objetivo</th>
                 <th>Generado el</th>
+                <th>Origen</th>
                 <th>Estado</th>
                 <th></th>
               </tr>
@@ -299,6 +305,7 @@ function RevisionIA() {
                     <td>{item.titulo}</td>
                     <td>{item.objetivo || "-"}</td>
                     <td>{formatearFecha(item.fecha_creacion)}</td>
+                    <td><span className={badgeOrigen(item.origen_ia)}>{etiquetaOrigen(item.origen_ia)}</span></td>
                     <td><span className={badgeEstado(item.estado_revision)}>{item.estado_revision || "sin revisión"}</span></td>
                     <td className="table-actions">
                       {item.estado_revision === "pendiente" && (
