@@ -7,8 +7,8 @@ const CONFIG_TIPO = {
   HORARIO: { titulo: "Horario de atención", icono: FaClock, color: "var(--orange)", badge: "Horario" },
   COACHES: { titulo: "Nuestros coaches", icono: FaUserTie, color: "#22c55e", badge: "Coaches" },
   BAILE: { titulo: "Clases de baile", icono: FaMusic, color: "#a855f7", badge: "Baile" },
-  COMUNICADO: { titulo: "Comunicados", icono: FaBullhorn, color: "#eab308", badge: "Comunicado" },
-  EVENTO: { titulo: "Próximos eventos", icono: FaBullhorn, color: "#eab308", badge: "Evento" },
+  COMUNICADO: { titulo: "Comunicados", icono: FaBullhorn, color: "var(--orange-text)", badge: "Comunicado" },
+  EVENTO: { titulo: "Próximos eventos", icono: FaBullhorn, color: "var(--orange-text)", badge: "Evento" },
 };
 
 function Avisos() {

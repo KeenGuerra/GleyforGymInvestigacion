@@ -67,4 +67,17 @@ describe("MiPerfil Page Component", () => {
       expect(api.put).toHaveBeenCalled();
     });
   });
+
+  // ── No debe congelarse para siempre si falla la carga del cliente ────────
+  it("shows an error message instead of hanging forever when the profile fails to load", async () => {
+    api.get.mockRejectedValue(new Error("Network error"));
+
+    render(<MiPerfil />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo cargar tu información de cliente.")).toBeDefined();
+    });
+
+    expect(screen.queryByText("Cargando perfil...")).toBeNull();
+  });
 });

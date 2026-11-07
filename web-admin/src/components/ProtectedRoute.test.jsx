@@ -95,4 +95,54 @@ describe("ProtectedRoute Component", () => {
 
     expect(screen.getByText("Dashboard de Cliente")).toBeDefined();
   });
+
+  // ── requiereCliente: compradores sin membresía no deben llegar a páginas
+  // de socio (Mi perfil, Mi rutina, etc.) navegando directo por URL ────────
+  it("redirects to /dashboard when requiereCliente and the account has no Cliente profile", () => {
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("rol", "CLIENTE");
+    localStorage.setItem("tiene_cliente", "false");
+
+    render(
+      <MemoryRouter initialEntries={["/mi-perfil"]}>
+        <Routes>
+          <Route
+            path="/mi-perfil"
+            element={
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
+                <div>Contenido de Socio</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/dashboard" element={<div>Dashboard General</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Dashboard General")).toBeDefined();
+  });
+
+  it("renders children when requiereCliente and the account has a Cliente profile", () => {
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("rol", "CLIENTE");
+    localStorage.setItem("tiene_cliente", "true");
+
+    render(
+      <MemoryRouter initialEntries={["/mi-perfil"]}>
+        <Routes>
+          <Route
+            path="/mi-perfil"
+            element={
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
+                <div>Contenido de Socio</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/dashboard" element={<div>Dashboard General</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Contenido de Socio")).toBeDefined();
+  });
 });

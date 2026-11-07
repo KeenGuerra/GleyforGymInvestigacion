@@ -119,6 +119,39 @@ describe("Login Page Component", () => {
     expect(screen.getByText("Acceder al sistema", { selector: "button" })).toBeDefined();
   });
 
+  it("disables the submit button while the login request is in flight", async () => {
+    let resolverPost;
+    api.post.mockReturnValue(
+      new Promise((resolve) => {
+        resolverPost = resolve;
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText("Correo electrónico"), { target: { value: "test@gym.com" } });
+    fireEvent.change(screen.getByLabelText("Contraseña"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByText("Acceder al sistema", { selector: "button" }));
+
+    const boton = screen.getByRole("button", { name: "Accediendo..." });
+    expect(boton.disabled).toBe(true);
+
+    resolverPost({
+      data: {
+        token: "jwt-token",
+        usuario: { id_usuario: 5, rol: "ADMIN", correo: "test@gym.com" },
+      },
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
   it("navigates to the public registration page", () => {
     render(
       <MemoryRouter>

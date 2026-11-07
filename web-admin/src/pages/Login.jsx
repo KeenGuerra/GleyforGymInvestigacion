@@ -11,6 +11,8 @@ function Login() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState("");
 
+  const [enviando, setEnviando] = useState(false);
+
   const [modoRecuperar, setModoRecuperar] = useState(false);
   const [correoRecuperar, setCorreoRecuperar] = useState("");
   const [mensajeRecuperar, setMensajeRecuperar] = useState("");
@@ -19,6 +21,7 @@ function Login() {
   const iniciarSesion = async (e) => {
     e.preventDefault();
     setError("");
+    setEnviando(true);
 
     try {
       const res = await api.post("/usuarios/login", {
@@ -36,6 +39,8 @@ function Login() {
     } catch (error) {
       console.error(error);
       setError("Correo o contraseña incorrectos");
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -145,8 +150,8 @@ function Login() {
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary auth-submit">
-                Acceder al sistema
+              <button type="submit" className="btn-primary auth-submit" disabled={enviando}>
+                {enviando ? "Accediendo..." : "Acceder al sistema"}
               </button>
 
               <p className="muted-text">

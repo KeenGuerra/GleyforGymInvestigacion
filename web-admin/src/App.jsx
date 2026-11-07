@@ -290,7 +290,7 @@ export default function App() {
           <Route
             path="/mi-perfil"
             element={
-              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
                 <MiPerfil />
               </ProtectedRoute>
             }
@@ -299,7 +299,7 @@ export default function App() {
           <Route
             path="/mi-rutina"
             element={
-              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
                 <MiRutina />
               </ProtectedRoute>
             }
@@ -308,7 +308,7 @@ export default function App() {
           <Route
             path="/mi-nutricion"
             element={
-              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
                 <MiNutricion />
               </ProtectedRoute>
             }
@@ -317,7 +317,7 @@ export default function App() {
           <Route
             path="/mi-progreso"
             element={
-              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
                 <MiProgreso />
               </ProtectedRoute>
             }
@@ -326,7 +326,7 @@ export default function App() {
           <Route
             path="/mi-membresia"
             element={
-              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
                 <MiMembresia />
               </ProtectedRoute>
             }
@@ -335,7 +335,7 @@ export default function App() {
           <Route
             path="/mis-pagos"
             element={
-              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
                 <MisPagos />
               </ProtectedRoute>
             }

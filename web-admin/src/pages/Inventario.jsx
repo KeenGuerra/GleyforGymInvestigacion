@@ -60,8 +60,8 @@ function Inventario() {
 
       <section className="stats-grid">
         <div className="stat-card"><span>Productos</span><strong>{inventario.length}</strong></div>
-        <div className="stat-card"><span>Bajo stock</span><strong style={{ color: alertasStock.length > 0 ? "#ff6b6b" : undefined }}>{alertasStock.length}</strong></div>
-        <div className="stat-card"><span>Por vencer</span><strong style={{ color: alertasVencimiento.length > 0 ? "#ffa726" : undefined }}>{alertasVencimiento.length}</strong></div>
+        <div className="stat-card"><span>Bajo stock</span><strong style={{ color: alertasStock.length > 0 ? "var(--danger)" : undefined }}>{alertasStock.length}</strong></div>
+        <div className="stat-card"><span>Por vencer</span><strong style={{ color: alertasVencimiento.length > 0 ? "var(--warning)" : undefined }}>{alertasVencimiento.length}</strong></div>
       </section>
 
       <div className="tabs-container" style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
@@ -164,10 +164,10 @@ function Inventario() {
             <>
               {alertasStock.length > 0 && (
                 <>
-                  <h3 style={{ color: "#ff6b6b", marginBottom: "0.5rem" }}>Stock bajo</h3>
+                  <h3 style={{ color: "var(--danger)", marginBottom: "0.5rem" }}>Stock bajo</h3>
                   <div className="cards-grid">
                     {alertasStock.map((inv) => (
-                      <div key={inv.id_inventario} className="card item-card" style={{ borderLeft: "3px solid #ff6b6b" }}>
+                      <div key={inv.id_inventario} className="card item-card" style={{ borderLeft: "3px solid var(--danger)" }}>
                         <h3>{inv.nombre_producto}</h3>
                         <div className="mini-stats-grid">
                           <div><strong>{inv.stock_actual}</strong><span>Actual</span></div>
@@ -180,10 +180,10 @@ function Inventario() {
               )}
               {alertasVencimiento.length > 0 && (
                 <>
-                  <h3 style={{ color: "#ffa726", margin: "1rem 0 0.5rem" }}>Próximos a vencer</h3>
+                  <h3 style={{ color: "var(--warning)", margin: "1rem 0 0.5rem" }}>Próximos a vencer</h3>
                   <div className="cards-grid">
                     {alertasVencimiento.map((l) => (
-                      <div key={l.id_lote} className="card item-card" style={{ borderLeft: "3px solid #ffa726" }}>
+                      <div key={l.id_lote} className="card item-card" style={{ borderLeft: "3px solid var(--warning)" }}>
                         <h3>{l.nombre_producto}</h3>
                         <p className="item-description">Lote: {l.numero_lote}</p>
                         <p className="item-description">Vence: {l.fecha_vencimiento}</p>

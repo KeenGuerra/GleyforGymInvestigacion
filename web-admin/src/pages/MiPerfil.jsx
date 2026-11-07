@@ -15,7 +15,7 @@ import {
 } from "../constants/opciones";
 
 function MiPerfil() {
-  const { cliente, recargarCliente } = useClienteActual();
+  const { cliente, error: errorCliente, recargarCliente } = useClienteActual();
   const [editando, setEditando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const correo = localStorage.getItem("correo");
@@ -112,6 +112,10 @@ function MiPerfil() {
       setMensajePassword(error.response?.data?.detail || "No se pudo cambiar la contraseña");
     }
   };
+
+  if (errorCliente) {
+    return <p className="error-message">{errorCliente}</p>;
+  }
 
   if (!cliente) {
     return <p className="empty-message">Cargando perfil...</p>;
