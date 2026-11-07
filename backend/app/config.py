@@ -31,5 +31,15 @@ CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY")
 CULQI_PUBLIC_KEY = os.getenv("CULQI_PUBLIC_KEY")
 
+# Envío real de correo vía Gmail SMTP (ver docs/07_Gestion_Proyecto/Pendientes.md
+# P-01/P-03). No son obligatorias: mientras no estén configuradas,
+# app/correo.py solo deja el correo logueado (modo desarrollo), sin fallar.
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+
+# URL pública del frontend, usada para armar los enlaces de los correos
+# (recuperación de contraseña, verificación de correo).
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 # CORS Origins - default allows all for development, but customizable via env
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")

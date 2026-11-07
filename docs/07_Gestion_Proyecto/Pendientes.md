@@ -16,9 +16,7 @@ Cada punto cita el archivo (y línea, cuando aplica) donde se verificó.
 
 ## P-01 Verificación de correo al registrarse
 
-No existe campo `correo_verificado` ni flujo de confirmación. Un usuario puede registrarse con cualquier correo, válido o no, sin que el sistema lo confirme.
-
-Bloqueado por: P-03 (envío real de correo), si se decide verificar por email.
+~~Resuelto (2026-11)~~: `Usuario` ahora tiene `correo_verificado`, `token_verificacion` y `token_verificacion_expira`. Al crear cualquier usuario (`POST /clientes/`, `POST /usuarios/`, `POST /entrenadores/`) se genera un token y se envía un correo de confirmación (`enviar_verificacion_correo()` en `app/correo.py`). Nueva página pública `web-admin/src/pages/VerificarCorreo.jsx` (ruta `/verificar-correo?token=...`) que confirma el correo automáticamente al abrirse. **Decisión de alcance**: no se bloquea el login de cuentas no verificadas — el campo solo registra el estado, para no romper el flujo actual (las cuentas de clientes/entrenadores las crea el staff del gimnasio, no es un auto-registro público).
 
 ---
 
@@ -60,19 +58,7 @@ Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yap
 
 ## P-03 Envío real de correo (SMTP)
 
-TODO explícito en el código:
-
-```text
-backend/app/routes/usuarios.py:301
-# TODO: reemplazar por un envío real (SMTP/SendGrid/Mailgun) cuando
-# el proyecto tenga un proveedor de correo configurado.
-```
-
-Hoy el "envío" de recuperación de contraseña solo queda registrado en un log (`logger.info`), no llega ningún correo real. Falta:
-
-1. Elegir proveedor (SendGrid, Mailgun, o SMTP directo de un dominio propio).
-2. Implementar el envío real en el punto ya marcado.
-3. Reutilizar esa misma infraestructura para P-01 si se decide verificar correo por email.
+~~Resuelto (2026-11)~~: nuevo `backend/app/correo.py` con `enviar_correo()`, usando Gmail SMTP (`smtplib`, puerto 465 SSL) con las credenciales opcionales `GMAIL_USER`/`GMAIL_APP_PASSWORD` (sin ellas, sigue solo logueando, como antes). Probado con un envío real: el correo llegó correctamente a la bandeja de entrada. Conectado en `solicitar_reset_password` (recuperación de contraseña) y reutilizado por `enviar_verificacion_correo()` (P-01). Pruebas en `backend/tests/test_correo.py` (3 pruebas, con la llamada SMTP simulada).
 
 ---
 

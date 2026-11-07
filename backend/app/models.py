@@ -20,6 +20,9 @@ class Usuario(Base):
     fecha_creacion = Column(DateTime, default=datetime.now)
     reset_token = Column(String(100), nullable=True)  # token de un solo uso para "olvidé mi contraseña"
     reset_token_expira = Column(DateTime, nullable=True)
+    correo_verificado = Column(Boolean, default=False)
+    token_verificacion = Column(String(100), nullable=True)
+    token_verificacion_expira = Column(DateTime, nullable=True)
 
     cliente = relationship("Cliente", back_populates="usuario", uselist=False)
     entrenador = relationship("Entrenador", back_populates="usuario", uselist=False)

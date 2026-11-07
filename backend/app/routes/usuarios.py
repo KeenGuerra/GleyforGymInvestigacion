@@ -3,15 +3,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
-import logging
 import secrets
 from datetime import datetime, timedelta
 
-from app import models, schemas
+from app import config, models, schemas
 from app.database import get_db
 from app.security import encriptar_password, verificar_password, crear_token, obtener_usuario_actual, requerir_roles
 from app.rate_limit import excedio_intentos, registrar_intento_fallido, limpiar_intentos
 from app.auditoria import registrar as registrar_auditoria
+from app.correo import enviar_correo, enviar_verificacion_correo
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -59,6 +59,8 @@ def crear_usuario(
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
+
+    enviar_verificacion_correo(nuevo_usuario, db)
 
     registrar_auditoria(
         db, usuario_actual, "CREAR", "Usuario", nuevo_usuario.id_usuario,
@@ -271,8 +273,6 @@ def login(
 # RECUPERACIÓN DE CONTRASEÑA
 # =========================
 
-logger = logging.getLogger("gleyforgym")
-
 RESET_TOKEN_EXPIRA_MINUTOS = 30
 
 
@@ -298,11 +298,14 @@ def solicitar_reset_password(
         usuario.reset_token_expira = datetime.now() + timedelta(minutes=RESET_TOKEN_EXPIRA_MINUTOS)
         db.commit()
 
-        # TODO: reemplazar por un envío real (SMTP/SendGrid/Mailgun) cuando
-        # el proyecto tenga un proveedor de correo configurado.
-        logger.info(
-            "Correo de recuperación simulado para %s: enlace con token=%s (expira en %s min)",
-            usuario.correo, token, RESET_TOKEN_EXPIRA_MINUTOS,
+        enlace = f"{config.FRONTEND_URL}/reset-password?token={token}"
+        enviar_correo(
+            usuario.correo,
+            "Recupera tu contraseña — GleyforGym",
+            f"<p>Recibimos una solicitud para restablecer tu contraseña.</p>"
+            f'<p><a href="{enlace}">Haz clic aquí para crear una nueva contraseña</a></p>'
+            f"<p>Este enlace expira en {RESET_TOKEN_EXPIRA_MINUTOS} minutos. "
+            f"Si no solicitaste esto, ignora este correo.</p>",
         )
 
     return {"mensaje": "Si el correo está registrado, se enviaron instrucciones para restablecer la contraseña."}
@@ -328,6 +331,30 @@ def reset_password(
     registrar_auditoria(db, None, "RESET_PASSWORD", "Usuario", usuario.id_usuario, f"correo={usuario.correo}")
 
     return {"mensaje": "Contraseña actualizada correctamente"}
+
+
+@router.post("/verificar-correo")
+def verificar_correo(
+    datos: schemas.VerificarCorreoRequest,
+    db: Annotated[Session, Depends(get_db)],
+):
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.token_verificacion == datos.token
+    ).first()
+
+    if (
+        not usuario
+        or not usuario.token_verificacion_expira
+        or usuario.token_verificacion_expira < datetime.now()
+    ):
+        raise HTTPException(status_code=400, detail="El enlace de verificación es inválido o expiró")
+
+    usuario.correo_verificado = True
+    usuario.token_verificacion = None
+    usuario.token_verificacion_expira = None
+    db.commit()
+
+    return {"mensaje": "Correo verificado correctamente"}
 
 
 @router.put(

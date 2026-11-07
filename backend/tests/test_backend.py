@@ -1,5 +1,5 @@
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 # Add backend folder to path
@@ -932,6 +932,62 @@ def test_reporte_asistencias():
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     res_cliente = client.get("/reportes/asistencias?desde=2026-06-01&hasta=2026-06-30", headers=headers_cliente)
     assert res_cliente.status_code == 403
+
+
+def test_verificar_correo():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_cliente = client.post(
+        "/clientes/",
+        json={
+            "dni": "99887766", "nombres": "Nueva", "apellidos": "Persona",
+            "correo": "nueva.persona@gleyforgym.com", "password": "12345678",
+        },
+        headers=headers_admin,
+    )
+    id_usuario = res_cliente.json()["id_usuario"]
+
+    db = TestingSessionLocal()
+    try:
+        usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+        assert usuario.correo_verificado is False
+        assert usuario.token_verificacion is not None
+        token = usuario.token_verificacion
+    finally:
+        db.close()
+
+    res = client.post("/usuarios/verificar-correo", json={"token": token})
+    assert res.status_code == 200
+
+    db = TestingSessionLocal()
+    try:
+        usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+        assert usuario.correo_verificado is True
+        assert usuario.token_verificacion is None
+    finally:
+        db.close()
+
+    # Token inválido
+    res_invalido = client.post("/usuarios/verificar-correo", json={"token": "no-existe"})
+    assert res_invalido.status_code == 400
+
+    # Token expirado
+    db = TestingSessionLocal()
+    try:
+        usuario2 = models.Usuario(
+            correo="expirado@gleyforgym.com", password_hash=encriptar_password("x"),
+            rol="CLIENTE", estado="ACTIVO",
+            token_verificacion="token-expirado",
+            token_verificacion_expira=datetime(2020, 1, 1),
+        )
+        db.add(usuario2)
+        db.commit()
+    finally:
+        db.close()
+
+    res_expirado = client.post("/usuarios/verificar-correo", json={"token": "token-expirado"})
+    assert res_expirado.status_code == 400
 
 
 def test_entrenadores_crud():

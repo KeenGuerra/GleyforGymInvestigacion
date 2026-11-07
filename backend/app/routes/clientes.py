@@ -10,6 +10,7 @@ from typing import Annotated
 from app.database import get_db
 from app import models, schemas
 from app.security import encriptar_password, obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
+from app.correo import enviar_verificacion_correo
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -163,6 +164,8 @@ def crear_cliente(
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
+
+    enviar_verificacion_correo(nuevo_usuario, db)
 
     nuevo_cliente = models.Cliente(
         id_usuario=nuevo_usuario.id_usuario,

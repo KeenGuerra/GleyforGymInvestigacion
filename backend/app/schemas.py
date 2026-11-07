@@ -60,6 +60,10 @@ class ResetPasswordRequest(BaseModel):
     password_nueva: str = Field(min_length=6)
 
 
+class VerificarCorreoRequest(BaseModel):
+    token: str
+
+
 class CambiarPasswordRequest(BaseModel):
     password_actual: str
     password_nueva: str = Field(min_length=6)
