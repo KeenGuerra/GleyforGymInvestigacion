@@ -30,6 +30,10 @@ services:
         sync: false # Set manually in Render dashboard (ver Pendientes.md P-03)
       - key: BREVO_SENDER_EMAIL
         sync: false # Set manually in Render dashboard (ver Pendientes.md P-03)
+      - key: CULQI_SECRET_KEY
+        sync: false # Set manually in Render dashboard (ver Pendientes.md P-02)
+      - key: CULQI_PUBLIC_KEY
+        sync: false # Set manually in Render dashboard (ver Pendientes.md P-02)
       - key: ANTHROPIC_API_KEY
         sync: false # Set manually in Render dashboard (integracion hibrida de IA, ver app/ia/claude_client.py)
 

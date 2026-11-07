@@ -1,6 +1,7 @@
 import sys
 from datetime import date, datetime
 from pathlib import Path
+from unittest.mock import patch
 
 # Add backend folder to path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -2323,6 +2324,168 @@ def test_webhook_pagos_rechaza_secreto_invalido_o_ausente():
     db = TestingSessionLocal()
     pago_final = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
     assert pago_final.estado == "PENDIENTE"
+    db.close()
+
+
+def test_webhook_pagos_acepta_secreto_por_query_string():
+    """El panel de Culqi solo permite configurar una URL de destino, no
+    headers personalizados, asi que el secreto tambien debe aceptarse por
+    query string (?secret=...)."""
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+    id_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "TARJETA", "fecha_pago": "2026-06-01", "estado": "PENDIENTE",
+        },
+        headers=headers_admin,
+    ).json()["id_pago"]
+    id_transaccion = client.post(f"/pagos/{id_pago}/checkout", headers=headers_admin).json()["id_transaccion_externa"]
+
+    res = client.post(
+        f"/webhooks/pagos?secret={config.WEBHOOK_SECRET}",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+    )
+    assert res.status_code == 200
+
+    db = TestingSessionLocal()
+    assert db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first().estado == "PAGADO"
+    db.close()
+
+
+class _GatewayRealStub:
+    """Simula un gateway real (ej. CulqiGateway): solo expone
+    consultar_estado(), sin resolver_transaccion() (eso es exclusivo de
+    MockGateway) — asi el webhook toma el camino de 'gateway real'."""
+
+    def __init__(self, estado):
+        self._estado = estado
+
+    def consultar_estado(self, id_transaccion_externa):
+        return self._estado
+
+
+def test_webhook_pagos_con_gateway_real_ignora_resultado_declarado_y_revalida():
+    """Con un gateway real, el webhook no debe confiar en el campo
+    'resultado' del payload (que aqui dice FALLIDO) — debe revalidar via
+    consultar_estado() (el stub dice PAGADO) y confiar en eso."""
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+    id_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "TARJETA", "fecha_pago": "2026-06-01", "estado": "PENDIENTE",
+        },
+        headers=headers_admin,
+    ).json()["id_pago"]
+    id_transaccion = client.post(f"/pagos/{id_pago}/checkout", headers=headers_admin).json()["id_transaccion_externa"]
+
+    with patch("app.routes.webhooks.gateway", _GatewayRealStub("PAGADO")):
+        res = client.post(
+            "/webhooks/pagos",
+            json={"id_transaccion_externa": id_transaccion, "resultado": "FALLIDO"},
+            headers=HEADERS_WEBHOOK,
+        )
+    assert res.status_code == 200
+
+    db = TestingSessionLocal()
+    assert db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first().estado == "PAGADO"
+    db.close()
+
+
+def test_webhook_pagos_con_gateway_real_extrae_id_de_formas_alternativas():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+    id_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "TARJETA", "fecha_pago": "2026-06-01", "estado": "PENDIENTE",
+        },
+        headers=headers_admin,
+    ).json()["id_pago"]
+    id_transaccion = client.post(f"/pagos/{id_pago}/checkout", headers=headers_admin).json()["id_transaccion_externa"]
+
+    with patch("app.routes.webhooks.gateway", _GatewayRealStub("PAGADO")):
+        res = client.post(
+            "/webhooks/pagos",
+            json={"data": {"object": {"id": id_transaccion}}},
+            headers=HEADERS_WEBHOOK,
+        )
+    assert res.status_code == 200
+
+    db = TestingSessionLocal()
+    assert db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first().estado == "PAGADO"
+    db.close()
+
+
+def test_webhook_pagos_con_gateway_real_sin_id_reconocible_devuelve_400():
+    populate_db_for_coverage()
+    with patch("app.routes.webhooks.gateway", _GatewayRealStub("PAGADO")):
+        res = client.post(
+            "/webhooks/pagos",
+            json={"algo_sin_id": True},
+            headers=HEADERS_WEBHOOK,
+        )
+    assert res.status_code == 400
+
+
+def test_webhook_pagos_con_gateway_real_transaccion_desconocida_devuelve_404():
+    populate_db_for_coverage()
+    with patch("app.routes.webhooks.gateway", _GatewayRealStub("DESCONOCIDO")):
+        res = client.post(
+            "/webhooks/pagos",
+            json={"id": "ord_no_existe"},
+            headers=HEADERS_WEBHOOK,
+        )
+    assert res.status_code == 404
+
+
+def test_webhook_pagos_con_gateway_real_pendiente_no_cambia_nada():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+    id_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 150.0,
+            "metodo_pago": "TARJETA", "fecha_pago": "2026-06-01", "estado": "PENDIENTE",
+        },
+        headers=headers_admin,
+    ).json()["id_pago"]
+    id_transaccion = client.post(f"/pagos/{id_pago}/checkout", headers=headers_admin).json()["id_transaccion_externa"]
+
+    with patch("app.routes.webhooks.gateway", _GatewayRealStub("PENDIENTE")):
+        res = client.post(
+            "/webhooks/pagos",
+            json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+            headers=HEADERS_WEBHOOK,
+        )
+    assert res.status_code == 200
+
+    db = TestingSessionLocal()
+    assert db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first().estado == "PENDIENTE"
     db.close()
 
 

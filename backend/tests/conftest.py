@@ -20,3 +20,8 @@ os.environ["BREVO_API_KEY"] = ""
 # Mismo motivo: los tests nunca deben llamar a la API real de Anthropic (ni
 # gastar cuota paga) sin importar lo que tenga backend/.env en esta máquina.
 os.environ["ANTHROPIC_API_KEY"] = ""
+
+# Mismo motivo: los tests deben usar siempre MockGateway (pagos_gateway),
+# nunca llamar a la API real de Culqi, sin importar lo que tenga
+# backend/.env en esta máquina (ej. CULQI_SECRET_KEY de sandbox para P-02).
+os.environ["CULQI_SECRET_KEY"] = ""

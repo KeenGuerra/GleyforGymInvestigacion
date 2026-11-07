@@ -1,12 +1,9 @@
 # pyrefly: ignore [missing-import]
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
-from typing import Annotated, Literal
+from typing import Annotated
 import secrets
-
-# pyrefly: ignore [missing-import]
-from pydantic import BaseModel
 
 from app.database import get_db
 from app import config, models
@@ -17,72 +14,116 @@ from app.routes.ventas import aplicar_confirmacion_venta
 router = APIRouter()
 
 
-def _verificar_secreto_webhook(x_webhook_secret: str | None) -> None:
-    if not secrets.compare_digest(x_webhook_secret or "", config.WEBHOOK_SECRET):
+def _verificar_secreto_webhook(secreto_entregado: str | None) -> None:
+    if not secrets.compare_digest(secreto_entregado or "", config.WEBHOOK_SECRET):
         raise HTTPException(status_code=401, detail="Secreto de webhook inválido")
 
 
-class WebhookPagoPayload(BaseModel):
-    id_transaccion_externa: str
-    resultado: Literal["EXITOSO", "FALLIDO"]
+def _extraer_id_transaccion(payload: dict) -> str | None:
+    """Intenta extraer el ID de la transacción/orden de un payload de
+    webhook. El formato propio (id_transaccion_externa) es el que usa
+    MockGateway; el resto son formas razonables para un webhook real (ej.
+    Culqi) cuyo formato exacto no está documentado públicamente — se
+    revalida igual contra la API del proveedor antes de confiar en nada, así
+    que esto solo necesita acertar el ID, no el resultado declarado."""
+    if payload.get("id_transaccion_externa"):
+        return str(payload["id_transaccion_externa"])
+    if payload.get("id"):
+        return str(payload["id"])
+
+    datos = payload.get("data")
+    if isinstance(datos, dict):
+        if datos.get("id"):
+            return str(datos["id"])
+        objeto = datos.get("object")
+        if isinstance(objeto, dict) and objeto.get("id"):
+            return str(objeto["id"])
+
+    objeto = payload.get("object")
+    if isinstance(objeto, dict) and objeto.get("id"):
+        return str(objeto["id"])
+
+    return None
 
 
 @router.post("/pagos")
-def webhook_pagos(
-    payload: WebhookPagoPayload,
+async def webhook_pagos(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     x_webhook_secret: Annotated[str | None, Header(alias="X-Webhook-Secret")] = None,
+    secret: Annotated[str | None, Query()] = None,
 ):
     """
-    Recibe la confirmación asíncrona de la pasarela de pago (hoy simulada por
-    MockGateway). Protegido por un secreto compartido (header
-    X-Webhook-Secret, ver WEBHOOK_SECRET en config.py) para que no cualquiera
-    que conozca un id_transaccion_externa pueda falsificar un pago.
+    Recibe la confirmación asíncrona de la pasarela de pago. Protegido por un
+    secreto compartido (header X-Webhook-Secret o query param ?secret=, ver
+    WEBHOOK_SECRET en config.py) para que no cualquiera que conozca un
+    id_transaccion_externa pueda falsificar un pago — se acepta por query
+    string porque el panel de Culqi solo permite configurar una URL de
+    destino, no headers personalizados.
 
-    NOTA al activar CulqiGateway (ver app/pagos_gateway/culqi.py): este
-    endpoint y su `WebhookPagoPayload` asumen el formato propio de
-    MockGateway (id_transaccion_externa + resultado). El webhook real de
-    Culqi llega con su propio formato de evento y su propia firma — al
-    migrar, reemplazar (o complementar) esta verificación de secreto por la
-    verificación de firma de Culqi, y revalidar el estado llamando a
-    `gateway.consultar_estado(id_transaccion_externa)` en vez de confiar
-    únicamente en el campo "resultado" del payload entrante.
+    Con MockGateway (dev/tests): confía en el campo "resultado" del payload,
+    es el propio mecanismo de simular el webhook.
+
+    Con un gateway real (ej. CulqiGateway): el formato del webhook real de
+    Culqi para Órdenes no está documentado públicamente, así que no se
+    confía en lo que declare el payload — solo se usa para extraer el ID de
+    la transacción, y el resultado se revalida siempre llamando a
+    gateway.consultar_estado() contra la API del proveedor.
     """
-    _verificar_secreto_webhook(x_webhook_secret)
+    _verificar_secreto_webhook(x_webhook_secret or secret)
 
-    resultado_mock = gateway.resolver_transaccion(
-        payload.id_transaccion_externa, exito=(payload.resultado == "EXITOSO")
-    )
-    if resultado_mock is None:
-        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload de webhook inválido")
 
-    nuevo_estado = "PAGADO" if payload.resultado == "EXITOSO" else "FALLIDO"
+    id_transaccion = _extraer_id_transaccion(payload)
+    if not id_transaccion:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo identificar la transacción en el payload del webhook",
+        )
+
+    if hasattr(gateway, "resolver_transaccion"):
+        resultado_declarado = payload.get("resultado")
+        if resultado_declarado not in ("EXITOSO", "FALLIDO"):
+            raise HTTPException(status_code=400, detail="Payload de webhook inválido")
+
+        resultado_mock = gateway.resolver_transaccion(
+            id_transaccion, exito=(resultado_declarado == "EXITOSO")
+        )
+        if resultado_mock is None:
+            raise HTTPException(status_code=404, detail="Transacción no encontrada")
+
+        nuevo_estado = "PAGADO" if resultado_declarado == "EXITOSO" else "FALLIDO"
+    else:
+        estado_real = gateway.consultar_estado(id_transaccion)
+        if estado_real == "DESCONOCIDO":
+            raise HTTPException(status_code=404, detail="Transacción no encontrada")
+        if estado_real == "PENDIENTE":
+            return {"mensaje": "Transacción aún pendiente, sin cambios"}
+        nuevo_estado = estado_real  # "PAGADO" o "FALLIDO"
+
+    detalle_auditoria = f"resultado={nuevo_estado}, transaccion={id_transaccion}"
 
     pago = db.query(models.Pago).filter(
-        models.Pago.id_transaccion_externa == payload.id_transaccion_externa
+        models.Pago.id_transaccion_externa == id_transaccion
     ).first()
     if pago:
         pago.estado = nuevo_estado
         db.commit()
-        registrar_auditoria(
-            db, None, "WEBHOOK_PAGO", "Pago", pago.id_pago,
-            f"resultado={payload.resultado}, transaccion={payload.id_transaccion_externa}",
-        )
+        registrar_auditoria(db, None, "WEBHOOK_PAGO", "Pago", pago.id_pago, detalle_auditoria)
         return {"mensaje": f"Pago actualizado a {nuevo_estado}", "id_pago": pago.id_pago}
 
     venta = db.query(models.Venta).filter(
-        models.Venta.id_transaccion_externa == payload.id_transaccion_externa
+        models.Venta.id_transaccion_externa == id_transaccion
     ).first()
     if venta:
-        if payload.resultado == "EXITOSO" and venta.estado == "PENDIENTE":
+        if nuevo_estado == "PAGADO" and venta.estado == "PENDIENTE":
             aplicar_confirmacion_venta(db, venta, id_usuario=venta.id_usuario)
-        elif payload.resultado == "FALLIDO":
+        elif nuevo_estado == "FALLIDO":
             venta.estado = "FALLIDA"
             db.commit()
-        registrar_auditoria(
-            db, None, "WEBHOOK_PAGO", "Venta", venta.id_venta,
-            f"resultado={payload.resultado}, transaccion={payload.id_transaccion_externa}",
-        )
+        registrar_auditoria(db, None, "WEBHOOK_PAGO", "Venta", venta.id_venta, detalle_auditoria)
         return {"mensaje": f"Venta actualizada a {venta.estado}", "id_venta": venta.id_venta}
 
     raise HTTPException(status_code=404, detail="No hay pago ni venta asociados a esta transacción")
