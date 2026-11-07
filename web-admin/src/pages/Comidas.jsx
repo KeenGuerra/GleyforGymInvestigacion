@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
-import { OBJETIVOS } from "../constants/opciones";
+import { OBJETIVOS, RESTRICCIONES_ALIMENTARIAS, codigosATexto, textoACodigos } from "../constants/opciones";
 
 function Comidas() {
   const [comidas, setComidas] = useState([]);
@@ -19,9 +19,18 @@ function Comidas() {
     grasas: "",
     objetivo: "",
     estado: "ACTIVO",
+    restricciones: "",
   };
 
   const [form, setForm] = useState(formInicial);
+
+  const alternarRestriccion = (codigo) => {
+    const actuales = textoACodigos(form.restricciones);
+    const nuevas = actuales.includes(codigo)
+      ? actuales.filter((c) => c !== codigo)
+      : [...actuales, codigo];
+    setForm({ ...form, restricciones: codigosATexto(nuevas) });
+  };
 
   const cargarComidas = async () => {
     try {
@@ -88,6 +97,7 @@ function Comidas() {
         grasas: form.grasas ? Number(form.grasas) : null,
         objetivo: form.objetivo || null,
         estado: form.estado,
+        restricciones: form.restricciones || null,
       };
 
       await api.post("/comidas/", data);
@@ -275,6 +285,22 @@ function Comidas() {
                 value={form.descripcion}
                 onChange={cambiar}
               />
+            </div>
+
+            <div className="form-field field-large">
+              <label>Restricciones alimentarias que viola</label>
+              <div className="checkbox-group">
+                {RESTRICCIONES_ALIMENTARIAS.map((r) => (
+                  <label key={r.value} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={textoACodigos(form.restricciones).includes(r.value)}
+                      onChange={() => alternarRestriccion(r.value)}
+                    />
+                    {r.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 

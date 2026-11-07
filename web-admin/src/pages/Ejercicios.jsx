@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "../api/api";
-import { OBJETIVOS, NIVELES, GRUPOS_MUSCULARES } from "../constants/opciones";
+import { OBJETIVOS, NIVELES, GRUPOS_MUSCULARES, RESTRICCIONES_MEDICAS, codigosATexto, textoACodigos } from "../constants/opciones";
 
 function Ejercicios() {
   const [ejercicios, setEjercicios] = useState([]);
@@ -20,9 +20,18 @@ function Ejercicios() {
     descripcion: "",
     instrucciones: "",
     estado: "ACTIVO",
+    restricciones: "",
   };
 
   const [form, setForm] = useState(formInicial);
+
+  const alternarRestriccion = (codigo) => {
+    const actuales = textoACodigos(form.restricciones);
+    const nuevas = actuales.includes(codigo)
+      ? actuales.filter((c) => c !== codigo)
+      : [...actuales, codigo];
+    setForm({ ...form, restricciones: codigosATexto(nuevas) });
+  };
 
   const cargar = async () => {
     try {
@@ -233,6 +242,22 @@ function Ejercicios() {
             <div className="form-field field-large">
               <label htmlFor="instrucciones">Instrucciones</label>
               <textarea id="instrucciones" name="instrucciones" value={form.instrucciones} onChange={cambiar} />
+            </div>
+
+            <div className="form-field field-large">
+              <label>Restricciones físicas que agrava (para excluirlo si el cliente las tiene)</label>
+              <div className="checkbox-group">
+                {RESTRICCIONES_MEDICAS.map((r) => (
+                  <label key={r.value} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={textoACodigos(form.restricciones).includes(r.value)}
+                      onChange={() => alternarRestriccion(r.value)}
+                    />
+                    {r.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 

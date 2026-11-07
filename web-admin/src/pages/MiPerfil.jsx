@@ -5,10 +5,12 @@ import {
   OBJETIVOS,
   NIVELES,
   RESTRICCIONES_MEDICAS,
+  RESTRICCIONES_ALIMENTARIAS,
   NIVELES_ACTIVIDAD,
   codigosATexto,
   textoACodigos,
   etiquetasRestricciones,
+  etiquetasRestriccionesAlimentarias,
   etiquetaNivelActividad,
 } from "../constants/opciones";
 
@@ -34,6 +36,7 @@ function MiPerfil() {
     restricciones_medicas: "",
     restricciones_otras: "",
     nivel_actividad: "",
+    restricciones_alimentarias: "",
   });
 
   useEffect(() => {
@@ -50,6 +53,7 @@ function MiPerfil() {
       restricciones_medicas: cliente.restricciones_medicas || "",
       restricciones_otras: cliente.restricciones_otras || "",
       nivel_actividad: cliente.nivel_actividad || "",
+      restricciones_alimentarias: cliente.restricciones_alimentarias || "",
     });
   }, [cliente]);
 
@@ -74,6 +78,7 @@ function MiPerfil() {
         restricciones_medicas: form.restricciones_medicas || null,
         restricciones_otras: form.restricciones_otras || null,
         nivel_actividad: form.nivel_actividad || null,
+        restricciones_alimentarias: form.restricciones_alimentarias || null,
       });
 
       setMensaje("Perfil actualizado correctamente ✔");
@@ -333,6 +338,30 @@ function MiPerfil() {
                   }
                 />
               </div>
+
+              <div className="form-field field-large">
+                <label>Restricciones alimentarias</label>
+                <div className="checkbox-group">
+                  {RESTRICCIONES_ALIMENTARIAS.map((r) => {
+                    const seleccionadas = textoACodigos(form.restricciones_alimentarias);
+                    return (
+                      <label key={r.value} className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={seleccionadas.includes(r.value)}
+                          onChange={() => {
+                            const nuevas = seleccionadas.includes(r.value)
+                              ? seleccionadas.filter((c) => c !== r.value)
+                              : [...seleccionadas, r.value];
+                            setForm({ ...form, restricciones_alimentarias: codigosATexto(nuevas) });
+                          }}
+                        />
+                        {r.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="form-actions">
@@ -385,6 +414,7 @@ function MiPerfil() {
                 <p><span>Peso</span><strong>{cliente.peso || "-"} kg</strong></p>
                 <p><span>Estatura</span><strong>{cliente.estatura || "-"} m</strong></p>
                 <p><span>Restricciones médicas</span><strong>{etiquetasRestricciones(cliente.restricciones_medicas)}</strong></p>
+                <p><span>Restricciones alimentarias</span><strong>{etiquetasRestriccionesAlimentarias(cliente.restricciones_alimentarias)}</strong></p>
                 {cliente.restricciones_otras && (
                   <p><span>Otras observaciones</span><strong>{cliente.restricciones_otras}</strong></p>
                 )}

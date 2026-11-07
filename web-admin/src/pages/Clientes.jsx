@@ -6,6 +6,7 @@ import {
   OBJETIVOS,
   NIVELES,
   RESTRICCIONES_MEDICAS,
+  RESTRICCIONES_ALIMENTARIAS,
   NIVELES_ACTIVIDAD,
   codigosATexto,
   textoACodigos,
@@ -42,6 +43,7 @@ function Clientes() {
     restricciones_medicas: "",
     restricciones_otras: "",
     nivel_actividad: "",
+    restricciones_alimentarias: "",
   };
 
   const [form, setForm] = useState(formInicial);
@@ -107,6 +109,14 @@ function Clientes() {
       ? actuales.filter((c) => c !== codigo)
       : [...actuales, codigo];
     setForm({ ...form, restricciones_medicas: codigosATexto(nuevas) });
+  };
+
+  const alternarRestriccionAlimentaria = (codigo) => {
+    const actuales = textoACodigos(form.restricciones_alimentarias);
+    const nuevas = actuales.includes(codigo)
+      ? actuales.filter((c) => c !== codigo)
+      : [...actuales, codigo];
+    setForm({ ...form, restricciones_alimentarias: codigosATexto(nuevas) });
   };
 
   const limpiarFormulario = () => {
@@ -175,6 +185,7 @@ function Clientes() {
       restricciones_medicas: cliente.restricciones_medicas || "",
       restricciones_otras: cliente.restricciones_otras || "",
       nivel_actividad: cliente.nivel_actividad || "",
+      restricciones_alimentarias: cliente.restricciones_alimentarias || "",
     });
 
     globalThis.scrollTo({ top: 0, behavior: "smooth" });
@@ -486,6 +497,22 @@ function Clientes() {
                 value={form.restricciones_otras}
                 onChange={cambiar}
               />
+            </div>
+
+            <div className="form-field field-large">
+              <label>Restricciones alimentarias</label>
+              <div className="checkbox-group">
+                {RESTRICCIONES_ALIMENTARIAS.map((r) => (
+                  <label key={r.value} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={textoACodigos(form.restricciones_alimentarias).includes(r.value)}
+                      onChange={() => alternarRestriccionAlimentaria(r.value)}
+                    />
+                    {r.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 
