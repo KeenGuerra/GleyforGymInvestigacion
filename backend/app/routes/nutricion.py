@@ -301,6 +301,7 @@ def actualizar_comidas_plan(
             descripcion=item.descripcion,
             calorias_aprox=item.calorias_aprox,
             hora_recomendada=item.hora_recomendada,
+            id_comida_catalogo=item.id_comida_catalogo,
         ))
         kcal_nuevas += item.calorias_aprox or 0
 

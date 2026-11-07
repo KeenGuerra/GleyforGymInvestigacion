@@ -266,6 +266,7 @@ class PlanComida(Base):
     descripcion = Column(String, nullable=False)
     calorias_aprox = Column(Integer, nullable=True)
     hora_recomendada = Column(String, nullable=True)
+    id_comida_catalogo = Column(Integer, ForeignKey("comidas.id_comida_catalogo"), nullable=True)  # trazabilidad al alimento de origen, para verificar restricciones (F-09)
 
     plan = relationship("PlanNutricional", back_populates="comidas")
 

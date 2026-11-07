@@ -10,6 +10,7 @@ from typing import Annotated
 from app.database import get_db
 from app import models
 from app.security import obtener_usuario_actual, requerir_roles
+from app.constants import ESTADO_REVISION_PENDIENTE
 
 router = APIRouter(
     dependencies=[Depends(obtener_usuario_actual), Depends(requerir_roles("ADMIN", "ENTRENADOR"))]
@@ -139,3 +140,104 @@ def obtener_reporte_asistencias(
     total = sum(fila["cantidad"] for fila in por_dia)
 
     return {"desde": str(desde), "hasta": str(hasta), "total": total, "por_dia": por_dia}
+
+
+# =========================
+# EXPORTACIONES PARA LA TESIS (clientes anonimizados como C-00X)
+# =========================
+
+def _codigo_cliente(id_cliente: int) -> str:
+    return f"C-{id_cliente:03d}"
+
+
+def _codigos(texto: str | None) -> set[str]:
+    return {c.strip() for c in (texto or "").split(",") if c.strip()}
+
+
+@router.get("/ia/kcal")
+def reporte_ia_kcal(db: Annotated[Session, Depends(get_db)]):
+    """F-07: kcal_plan (suma real) vs. kcal_objetivo (Mifflin + actividad +
+    ajuste) por plan nutricional, con el cliente anonimizado."""
+    planes = db.query(models.PlanNutricional).order_by(models.PlanNutricional.fecha_creacion).all()
+
+    filas = []
+    for plan in planes:
+        kcal_objetivo = plan.calorias_diarias or 0
+        kcal_plan = plan.calorias_reales or 0
+        desviacion_pct = round((kcal_plan - kcal_objetivo) / kcal_objetivo * 100, 1) if kcal_objetivo else None
+        filas.append({
+            "codigo_cliente": _codigo_cliente(plan.id_cliente),
+            "kcal_plan": kcal_plan,
+            "kcal_objetivo": kcal_objetivo,
+            "desviacion_pct": desviacion_pct,
+        })
+    return filas
+
+
+@router.get("/ia/decisiones")
+def reporte_ia_decisiones(db: Annotated[Session, Depends(get_db)]):
+    """F-08: decisión del entrenador sobre cada rutina generada por IA ya
+    revisada (aprobada / aprobada_con_cambios / rechazada), con el cliente
+    anonimizado."""
+    rutinas = db.query(models.Rutina).filter(
+        models.Rutina.estado_revision.isnot(None),
+        models.Rutina.estado_revision != ESTADO_REVISION_PENDIENTE,
+    ).order_by(models.Rutina.fecha_revision).all()
+
+    return [
+        {
+            "codigo_cliente": _codigo_cliente(rutina.id_cliente),
+            "codigo_rutina": f"R-{rutina.id_rutina:03d}",
+            "decision": rutina.estado_revision,
+            "cambios_realizados": rutina.observaciones_revision,
+            "fecha": rutina.fecha_revision.isoformat() if rutina.fecha_revision else None,
+        }
+        for rutina in rutinas
+    ]
+
+
+@router.get("/ia/restricciones")
+def reporte_ia_restricciones(db: Annotated[Session, Depends(get_db)]):
+    """F-09: por cada rutina/plan generado por IA, verifica automáticamente
+    (no solo copia el dato) si algún ejercicio/alimento asignado viola una
+    restricción registrada del cliente, con el cliente anonimizado."""
+    filas = []
+
+    rutinas = db.query(models.Rutina).filter(models.Rutina.generada_por_ia.is_(True)).all()
+    for rutina in rutinas:
+        codigos_cliente = _codigos(rutina.cliente.restricciones_medicas if rutina.cliente else None)
+        viola = any(
+            codigos_cliente & _codigos(item.ejercicio.restricciones)
+            for item in rutina.ejercicios
+            if item.ejercicio
+        )
+        filas.append({
+            "codigo_cliente": _codigo_cliente(rutina.id_cliente),
+            "tipo": "rutina",
+            "objetivo": rutina.objetivo,
+            "restricciones_registradas": ",".join(sorted(codigos_cliente)) or None,
+            "viola_restriccion": viola,
+        })
+
+    planes = db.query(models.PlanNutricional).filter(models.PlanNutricional.generada_por_ia.is_(True)).all()
+    for plan in planes:
+        codigos_cliente = _codigos(plan.cliente.restricciones_alimentarias if plan.cliente else None)
+        viola = False
+        for comida_plan in plan.comidas:
+            if not comida_plan.id_comida_catalogo:
+                continue
+            comida_catalogo = db.query(models.Comida).filter(
+                models.Comida.id_comida_catalogo == comida_plan.id_comida_catalogo
+            ).first()
+            if comida_catalogo and codigos_cliente & _codigos(comida_catalogo.restricciones):
+                viola = True
+                break
+        filas.append({
+            "codigo_cliente": _codigo_cliente(plan.id_cliente),
+            "tipo": "plan",
+            "objetivo": plan.objetivo,
+            "restricciones_registradas": ",".join(sorted(codigos_cliente)) or None,
+            "viola_restriccion": viola,
+        })
+
+    return filas

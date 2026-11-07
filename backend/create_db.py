@@ -83,6 +83,7 @@ def initialize_tables():
         ("planes_nutricionales", "justificacion_ajuste", "TEXT"),
         ("ejercicios", "restricciones", "VARCHAR"),
         ("comidas", "restricciones", "VARCHAR"),
+        ("plan_comidas", "id_comida_catalogo", "INTEGER"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:

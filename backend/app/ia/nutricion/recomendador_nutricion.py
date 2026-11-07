@@ -89,7 +89,8 @@ def seleccionar_comidas_para_plan(cliente, comidas, progresos=None):
             "tipo_comida": comida.tipo_comida,
             "descripcion": comida.descripcion,
             "calorias_aprox": comida.calorias,
-            "hora_recomendada": obtener_hora(tipo)
+            "hora_recomendada": obtener_hora(tipo),
+            "id_comida_catalogo": comida.id_comida_catalogo,
         })
 
     return {

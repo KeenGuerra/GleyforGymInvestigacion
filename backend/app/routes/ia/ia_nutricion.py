@@ -91,7 +91,8 @@ def generar_nutricion_ia(
             tipo_comida=comida["tipo_comida"],
             descripcion=comida["descripcion"],
             calorias_aprox=comida["calorias_aprox"],
-            hora_recomendada=comida["hora_recomendada"]
+            hora_recomendada=comida["hora_recomendada"],
+            id_comida_catalogo=comida.get("id_comida_catalogo"),
         )
         db.add(nueva_comida)
 

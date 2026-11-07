@@ -164,6 +164,7 @@ function RevisionIA() {
             descripcion: c.descripcion,
             calorias_aprox: c.calorias_aprox,
             hora_recomendada: c.hora_recomendada,
+            id_comida_catalogo: c.id_comida_catalogo,
           })),
         });
       }
@@ -218,6 +219,7 @@ function RevisionIA() {
           descripcion: comida.descripcion || comida.nombre,
           calorias_aprox: comida.calorias,
           hora_recomendada: "",
+          id_comida_catalogo: comida.id_comida_catalogo,
         },
       ],
     }));

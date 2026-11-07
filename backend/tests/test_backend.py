@@ -587,6 +587,105 @@ def test_ia_rutina_generacion():
     assert response.status_code == 400
     assert "No hay ejercicios disponibles" in response.json()["detail"]
 
+
+def test_flujo_revision_rutina():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    res = client.post("/ia/rutina/generar/1", headers=headers_admin)
+    id_rutina = res.json()["id_rutina"]
+    assert res.json()["estado_revision"] == "pendiente"
+
+    # Un CLIENTE no ve la rutina pendiente en su lista...
+    res_lista_cliente = client.get("/rutinas/cliente/1", headers=headers_cliente)
+    assert res_lista_cliente.status_code == 200
+    assert all(r["id_rutina"] != id_rutina for r in res_lista_cliente.json())
+
+    # ...ni puede verla por URL directa (detalle ni PDF).
+    assert client.get(f"/rutinas/{id_rutina}/detalle", headers=headers_cliente).status_code == 404
+    assert client.get(f"/rutinas/{id_rutina}/pdf", headers=headers_cliente).status_code == 404
+
+    # Un CLIENTE no puede aprobar ni rechazar.
+    assert client.post(f"/rutinas/{id_rutina}/aprobar", headers=headers_cliente).status_code == 403
+    assert client.post(
+        f"/rutinas/{id_rutina}/rechazar", json={"motivo": "x"}, headers=headers_cliente
+    ).status_code == 403
+
+    # Editar mientras está pendiente marca editado_antes_revision, y al
+    # aprobar pasa automáticamente a "aprobada_con_cambios" (sin un endpoint aparte).
+    client.put(f"/rutinas/{id_rutina}", json={"nombre": "Rutina editada"}, headers=headers_admin)
+    res_aprobar = client.post(f"/rutinas/{id_rutina}/aprobar", headers=headers_admin)
+    assert res_aprobar.status_code == 200
+    assert res_aprobar.json()["estado_revision"] == "aprobada_con_cambios"
+
+    # Ya no se puede volver a aprobar/rechazar (ya no está pendiente).
+    assert client.post(f"/rutinas/{id_rutina}/aprobar", headers=headers_admin).status_code == 409
+    assert client.post(
+        f"/rutinas/{id_rutina}/rechazar", json={"motivo": "x"}, headers=headers_admin
+    ).status_code == 409
+
+    # Ahora el CLIENTE sí la ve.
+    res_lista_cliente2 = client.get("/rutinas/cliente/1", headers=headers_cliente)
+    assert any(r["id_rutina"] == id_rutina for r in res_lista_cliente2.json())
+    assert client.get(f"/rutinas/{id_rutina}/detalle", headers=headers_cliente).status_code == 200
+
+    # Segunda rutina: camino de rechazo.
+    res2 = client.post("/ia/rutina/generar/1", headers=headers_admin)
+    id_rutina2 = res2.json()["id_rutina"]
+    res_rechazar = client.post(
+        f"/rutinas/{id_rutina2}/rechazar", json={"motivo": "No aplica para este cliente"}, headers=headers_admin
+    )
+    assert res_rechazar.status_code == 200
+    assert res_rechazar.json()["estado_revision"] == "rechazada"
+    assert client.get(f"/rutinas/{id_rutina2}/detalle", headers=headers_cliente).status_code == 404
+
+    # Rechazar sin motivo falla validación.
+    res3 = client.post("/ia/rutina/generar/1", headers=headers_admin)
+    id_rutina3 = res3.json()["id_rutina"]
+    assert client.post(
+        f"/rutinas/{id_rutina3}/rechazar", json={"motivo": ""}, headers=headers_admin
+    ).status_code == 422
+
+    assert client.get("/rutinas/pendientes", headers=headers_admin).status_code == 200
+
+
+def test_flujo_revision_plan_nutricional():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    res = client.post("/ia/nutricion/generar/1", headers=headers_admin)
+    id_plan = res.json()["id_plan"]
+    assert res.json()["estado_revision"] == "pendiente"
+
+    res_lista_cliente = client.get("/nutricion/cliente/1", headers=headers_cliente)
+    assert all(p["id_plan"] != id_plan for p in res_lista_cliente.json())
+
+    assert client.get(f"/nutricion/{id_plan}/pdf", headers=headers_cliente).status_code == 404
+    assert client.post(f"/nutricion/{id_plan}/aprobar", headers=headers_cliente).status_code == 403
+
+    client.put(f"/nutricion/{id_plan}", json={"objetivo": "Mantener condición física"}, headers=headers_admin)
+    res_aprobar = client.post(f"/nutricion/{id_plan}/aprobar", headers=headers_admin)
+    assert res_aprobar.status_code == 200
+    assert res_aprobar.json()["estado_revision"] == "aprobada_con_cambios"
+
+    assert client.post(f"/nutricion/{id_plan}/aprobar", headers=headers_admin).status_code == 409
+
+    res_lista_cliente2 = client.get("/nutricion/cliente/1", headers=headers_cliente)
+    assert any(p["id_plan"] == id_plan for p in res_lista_cliente2.json())
+
+    res2 = client.post("/ia/nutricion/generar/1", headers=headers_admin)
+    id_plan2 = res2.json()["id_plan"]
+    res_rechazar = client.post(
+        f"/nutricion/{id_plan2}/rechazar", json={"motivo": "Calorías mal calculadas"}, headers=headers_admin
+    )
+    assert res_rechazar.status_code == 200
+    assert res_rechazar.json()["estado_revision"] == "rechazada"
+
+    assert client.get("/nutricion/pendientes", headers=headers_admin).status_code == 200
+
+
 def test_additional_crud_success_paths():
     populate_db_for_coverage()
     headers = get_auth_headers()
@@ -949,6 +1048,94 @@ def test_reporte_asistencias():
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     res_cliente = client.get("/reportes/asistencias?desde=2026-06-01&hasta=2026-06-30", headers=headers_cliente)
     assert res_cliente.status_code == 403
+
+
+def test_reporte_ia_kcal():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    res_plan = client.post("/ia/nutricion/generar/1", headers=headers)
+    assert res_plan.status_code == 200
+
+    res = client.get("/reportes/ia/kcal", headers=headers)
+    assert res.status_code == 200
+    filas = res.json()
+    assert len(filas) == 1
+    fila = filas[0]
+    assert fila["codigo_cliente"] == "C-001"
+    assert fila["kcal_plan"] == 2100  # suma real de las 5 comidas del fixture
+    assert fila["kcal_objetivo"] == res_plan.json()["calorias_diarias"]
+    assert fila["desviacion_pct"] is not None
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get("/reportes/ia/kcal", headers=headers_cliente).status_code == 403
+
+
+def test_reporte_ia_decisiones():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    res_rutina = client.post("/ia/rutina/generar/1", headers=headers)
+    id_rutina = res_rutina.json()["id_rutina"]
+
+    # Pendiente de revisión: todavía no debe aparecer en el reporte.
+    assert client.get("/reportes/ia/decisiones", headers=headers).json() == []
+
+    client.post(f"/rutinas/{id_rutina}/aprobar", headers=headers)
+
+    res = client.get("/reportes/ia/decisiones", headers=headers)
+    assert res.status_code == 200
+    filas = res.json()
+    assert len(filas) == 1
+    assert filas[0]["codigo_cliente"] == "C-001"
+    assert filas[0]["codigo_rutina"] == f"R-{id_rutina:03d}"
+    assert filas[0]["decision"] == "aprobada"
+    assert filas[0]["fecha"] is not None
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get("/reportes/ia/decisiones", headers=headers_cliente).status_code == 403
+
+
+def test_reporte_ia_restricciones():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    db = TestingSessionLocal()
+    sentadillas = db.query(models.Ejercicio).filter(models.Ejercicio.id_ejercicio == 5).first()
+    sentadillas.restricciones = "RODILLA"
+    cliente = db.query(models.Cliente).first()
+    cliente.restricciones_medicas = "RODILLA"
+    db.commit()
+    db.close()
+
+    res_rutina = client.post("/ia/rutina/generar/1", headers=headers)
+    id_rutina = res_rutina.json()["id_rutina"]
+
+    # El motor ya excluyó el ejercicio marcado -> no debería detectar violación.
+    res = client.get("/reportes/ia/restricciones", headers=headers)
+    assert res.status_code == 200
+    filas_rutina = [f for f in res.json() if f["tipo"] == "rutina"]
+    assert len(filas_rutina) == 1
+    assert filas_rutina[0]["codigo_cliente"] == "C-001"
+    assert filas_rutina[0]["restricciones_registradas"] == "RODILLA"
+    assert filas_rutina[0]["viola_restriccion"] is False
+
+    # Si alguien agrega manualmente el ejercicio restringido, sí debe detectarlo.
+    client.put(
+        f"/rutinas/{id_rutina}/ejercicios",
+        json={"ejercicios": [{
+            "id_ejercicio": 5, "nombre_ejercicio": "Sentadillas", "grupo_muscular": "Piernas",
+            "series": 3, "repeticiones": "10-12", "descanso_segundos": 60, "dia_semana": "Día 3", "orden": 1,
+        }]},
+        headers=headers,
+    )
+
+    res2 = client.get("/reportes/ia/restricciones", headers=headers)
+    filas_rutina2 = [f for f in res2.json() if f["tipo"] == "rutina"]
+    assert filas_rutina2[0]["viola_restriccion"] is True
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get("/reportes/ia/restricciones", headers=headers_cliente).status_code == 403
 
 
 def test_verificar_correo():

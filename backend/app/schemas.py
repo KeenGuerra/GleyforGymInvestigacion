@@ -430,6 +430,7 @@ class PlanComidaCreate(BaseModel):
     descripcion: str
     calorias_aprox: Optional[int] = None
     hora_recomendada: Optional[str] = None
+    id_comida_catalogo: Optional[int] = None
 
 
 class PlanComidaResponse(PlanComidaCreate):
@@ -494,6 +495,7 @@ class PlanComidaItem(BaseModel):
     descripcion: str
     calorias_aprox: Optional[int] = None
     hora_recomendada: Optional[str] = None
+    id_comida_catalogo: Optional[int] = None
 
 
 class ActualizarComidasPlanRequest(BaseModel):
