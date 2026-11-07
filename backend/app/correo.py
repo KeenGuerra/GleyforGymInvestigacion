@@ -11,11 +11,21 @@ logger = logging.getLogger("gleyforgym")
 TOKEN_VERIFICACION_EXPIRA_MINUTOS = 60 * 24  # 24 horas
 
 
+SMTP_TIMEOUT_SEGUNDOS = 10
+
+
 def enviar_correo(destinatario: str, asunto: str, cuerpo_html: str) -> None:
     """Envía un correo real vía Gmail SMTP si GMAIL_USER/GMAIL_APP_PASSWORD
     están configurados (ver P-03). Si no, solo deja el correo logueado —
     así el resto del sistema (recuperación de contraseña, verificación de
     correo) funciona igual en desarrollo sin necesitar credenciales reales.
+
+    No propaga errores: si el envío falla o se cuelga (ej. el proveedor de
+    hosting no deja conectar a smtp.gmail.com), se loguea y se sigue —igual
+    que registrar_auditoria()— para no tumbar ni colgar la operación
+    principal (crear la cuenta, generar el token de reset) solo porque el
+    correo no pudo salir. Sin esto, una petición podía quedarse colgada
+    para siempre esperando una conexión SMTP que nunca completa.
     """
     if not config.GMAIL_USER or not config.GMAIL_APP_PASSWORD:
         logger.info("SMTP no configurado; correo simulado para %s: %s", destinatario, asunto)
@@ -26,11 +36,13 @@ def enviar_correo(destinatario: str, asunto: str, cuerpo_html: str) -> None:
     mensaje["From"] = config.GMAIL_USER
     mensaje["To"] = destinatario
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as servidor:
-        servidor.login(config.GMAIL_USER, config.GMAIL_APP_PASSWORD)
-        servidor.sendmail(config.GMAIL_USER, [destinatario], mensaje.as_string())
-
-    logger.info("Correo enviado a %s: %s", destinatario, asunto)
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=SMTP_TIMEOUT_SEGUNDOS) as servidor:
+            servidor.login(config.GMAIL_USER, config.GMAIL_APP_PASSWORD)
+            servidor.sendmail(config.GMAIL_USER, [destinatario], mensaje.as_string())
+        logger.info("Correo enviado a %s: %s", destinatario, asunto)
+    except Exception:
+        logger.exception("No se pudo enviar el correo a %s: %s", destinatario, asunto)
 
 
 def enviar_verificacion_correo(usuario, db) -> None:
