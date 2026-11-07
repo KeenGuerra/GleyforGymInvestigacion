@@ -2371,6 +2371,25 @@ class _GatewayRealStub:
         return self._estado
 
 
+class _GatewayRealStubFalla:
+    """Simula un gateway real cuya consultar_estado() falla (red caida,
+    error del proveedor) — no debe tumbar el webhook sin control."""
+
+    def consultar_estado(self, id_transaccion_externa):
+        raise RuntimeError("fallo simulado de red")
+
+
+def test_webhook_pagos_con_gateway_real_falla_al_consultar_devuelve_502():
+    populate_db_for_coverage()
+    with patch("app.routes.webhooks.gateway", _GatewayRealStubFalla()):
+        res = client.post(
+            "/webhooks/pagos",
+            json={"id": "ord_cualquiera"},
+            headers=HEADERS_WEBHOOK,
+        )
+    assert res.status_code == 502
+
+
 def test_webhook_pagos_con_gateway_real_ignora_resultado_declarado_y_revalida():
     """Con un gateway real, el webhook no debe confiar en el campo
     'resultado' del payload (que aqui dice FALLIDO) — debe revalidar via

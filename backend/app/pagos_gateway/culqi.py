@@ -97,6 +97,8 @@ class CulqiGateway(GatewayPago):
             headers=self._headers(),
             timeout=15,
         )
+        if respuesta.status_code == 404:
+            return "DESCONOCIDO"
         respuesta.raise_for_status()
         orden = respuesta.json()
 

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
+import logging
 import secrets
 
 from app.database import get_db
@@ -10,6 +11,8 @@ from app import config, models
 from app.pagos_gateway import gateway
 from app.auditoria import registrar as registrar_auditoria
 from app.routes.ventas import aplicar_confirmacion_venta
+
+logger = logging.getLogger("gleyforgym")
 
 router = APIRouter()
 
@@ -25,23 +28,30 @@ def _extraer_id_transaccion(payload: dict) -> str | None:
     MockGateway; el resto son formas razonables para un webhook real (ej.
     Culqi) cuyo formato exacto no está documentado públicamente — se
     revalida igual contra la API del proveedor antes de confiar en nada, así
-    que esto solo necesita acertar el ID, no el resultado declarado."""
+    que esto solo necesita acertar el ID, no el resultado declarado.
+
+    Las rutas anidadas (data.object.id, object.id, data.id) se prueban
+    antes que el "id" de primer nivel a propósito: en convenciones de
+    webhook comunes (ej. Stripe), el "id" de primer nivel suele ser el ID
+    del EVENTO, no del recurso (la orden) — el recurso real suele viajar
+    anidado bajo data/object."""
     if payload.get("id_transaccion_externa"):
         return str(payload["id_transaccion_externa"])
-    if payload.get("id"):
-        return str(payload["id"])
 
     datos = payload.get("data")
     if isinstance(datos, dict):
-        if datos.get("id"):
-            return str(datos["id"])
         objeto = datos.get("object")
         if isinstance(objeto, dict) and objeto.get("id"):
             return str(objeto["id"])
+        if datos.get("id"):
+            return str(datos["id"])
 
     objeto = payload.get("object")
     if isinstance(objeto, dict) and objeto.get("id"):
         return str(objeto["id"])
+
+    if payload.get("id"):
+        return str(payload["id"])
 
     return None
 
@@ -72,7 +82,11 @@ async def webhook_pagos(
     """
     _verificar_secreto_webhook(x_webhook_secret or secret)
 
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Payload de webhook inválido")
+
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="Payload de webhook inválido")
 
@@ -96,7 +110,14 @@ async def webhook_pagos(
 
         nuevo_estado = "PAGADO" if resultado_declarado == "EXITOSO" else "FALLIDO"
     else:
-        estado_real = gateway.consultar_estado(id_transaccion)
+        try:
+            estado_real = gateway.consultar_estado(id_transaccion)
+        except Exception:
+            logger.exception("No se pudo consultar el estado de la transacción %s", id_transaccion)
+            raise HTTPException(
+                status_code=502,
+                detail="No se pudo verificar la transacción con el proveedor de pago",
+            )
         if estado_real == "DESCONOCIDO":
             raise HTTPException(status_code=404, detail="Transacción no encontrada")
         if estado_real == "PENDIENTE":

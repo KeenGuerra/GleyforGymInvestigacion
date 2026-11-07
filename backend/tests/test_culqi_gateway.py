@@ -122,3 +122,20 @@ def test_consultar_estado_mapea_los_estados_de_culqi(monkeypatch, estado_culqi, 
         headers={"Authorization": "Bearer sk_test_fake", "Content-Type": "application/json"},
         timeout=15,
     )
+
+
+def test_consultar_estado_orden_no_encontrada_devuelve_desconocido(monkeypatch):
+    """Antes de esta correccion, un 404 de Culqi (orden no encontrada, ej.
+    por un ID mal extraido del payload del webhook) hacia explotar
+    raise_for_status() sin control, en vez de devolver un estado manejable
+    igual que MockGateway."""
+    monkeypatch.setattr("app.config.CULQI_SECRET_KEY", "sk_test_fake")
+    gateway = CulqiGateway()
+
+    respuesta_404 = MagicMock()
+    respuesta_404.status_code = 404
+
+    with patch("app.pagos_gateway.culqi.httpx.get", return_value=respuesta_404):
+        assert gateway.consultar_estado("ord_no_existe") == "DESCONOCIDO"
+
+    respuesta_404.raise_for_status.assert_not_called()
