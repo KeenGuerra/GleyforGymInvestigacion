@@ -72,8 +72,8 @@ function Login() {
           </div>
 
           <div className="info-card auth-info">
-            <span className="badge">SaaS Fitness</span>
-            <h2>Controla tu gimnasio desde una sola plataforma</h2>
+            <span className="badge">Panel GleyforGym</span>
+            <h2>Toda la gestión de GleyforGym en un solo lugar</h2>
             <p>
               Accede al panel para gestionar clientes, pagos, asistencias,
               rutinas IA y planes nutricionales.

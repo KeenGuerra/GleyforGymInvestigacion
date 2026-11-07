@@ -46,7 +46,7 @@ describe("Inicio Page Component", () => {
     );
 
     expect(screen.getByText("GleyforGym: tu gimnasio inteligente en Chupaca")).toBeDefined();
-    expect(screen.getByText("Todo lo que necesita un gimnasio moderno")).toBeDefined();
+    expect(screen.getByText("Todo lo que necesitas para entrenar mejor")).toBeDefined();
 
     await waitFor(() => {
       expect(screen.getByText("Plan Fuerza")).toBeDefined();

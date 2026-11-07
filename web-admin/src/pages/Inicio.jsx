@@ -53,15 +53,16 @@ function Inicio() {
   <div className="public-hero-layer"></div>
 
   <div className="public-hero-full-content">
-    <span className="badge">Sistema inteligente para gimnasios</span>
+    <span className="badge">Bienvenido a GleyforGym</span>
 
     <h1>
       GleyforGym: tu gimnasio inteligente en Chupaca
     </h1>
 
     <p>
-      Gestiona clientes, pagos, asistencias, rutinas con inteligencia artificial
-      y planes nutricionales personalizados desde una plataforma moderna.
+      Entrena con rutinas generadas por inteligencia artificial, sigue tu plan
+      nutricional personalizado y controla tus pagos y asistencias desde una
+      app pensada para ti.
     </p>
 
     <div className="form-actions">
@@ -79,43 +80,43 @@ function Inicio() {
       <section className="public-section" id="beneficios">
         <div className="section-title">
           <span className="badge">Nuestras ventajas</span>
-          <h2>Todo lo que necesita un gimnasio moderno</h2>
+          <h2>Todo lo que necesitas para entrenar mejor</h2>
         </div>
 
         <div className="cards-grid">
           <div className="card item-card">
             <span className="badge">01</span>
-            <h3>Gestión de clientes</h3>
+            <h3>Tu membresía, siempre al día</h3>
             <p>
-              Controla socios, membresías, pagos, asistencia y progreso físico
-              desde un panel administrativo ordenado.
+              Consulta tu membresía, tus pagos, tu asistencia y tu progreso
+              físico desde tu propio panel.
             </p>
           </div>
 
           <div className="card item-card">
             <span className="badge">02</span>
-            <h3>Control de pagos</h3>
+            <h3>Pagos sin complicaciones</h3>
             <p>
-              Registra pagos, consulta historial y mantén organizadas las
-              membresías activas.
+              Revisa tu historial de pagos y el estado de tu membresía en
+              cualquier momento.
             </p>
           </div>
 
           <div className="card item-card">
             <span className="badge">03</span>
-            <h3>Rutinas IA</h3>
+            <h3>Rutinas con IA</h3>
             <p>
-              Genera rutinas personalizadas usando información real registrada
-              en el sistema.
+              Recibe rutinas de entrenamiento personalizadas, generadas con
+              inteligencia artificial según tus datos y objetivos.
             </p>
           </div>
 
           <div className="card item-card">
             <span className="badge">04</span>
-            <h3>Dashboard de control</h3>
+            <h3>Tu panel personal</h3>
             <p>
-              Visualiza métricas importantes y accede a módulos según el rol:
-              administrador, entrenador o cliente.
+              Accede a tu rutina, tu plan nutricional y tu progreso desde un
+              solo lugar.
             </p>
           </div>
         </div>

@@ -343,9 +343,9 @@ function DashboardAdmin() {
           </div>
 
           <div className="card promo-card">
-            <span className="badge">GLEYFORGYM SaaS</span>
+            <span className="badge">GLEYFORGYM</span>
             <h2>Gestión completa desde una sola plataforma</h2>
-            <p>Administra tu gimnasio con una experiencia moderna y ordenada.</p>
+            <p>Administra GleyforGym con una experiencia moderna y ordenada.</p>
           </div>
         </aside>
       </section>
