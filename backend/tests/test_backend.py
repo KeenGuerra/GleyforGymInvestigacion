@@ -495,7 +495,7 @@ def test_ia_nutricion_generacion():
     assert response.status_code == 400
     assert "No hay comidas activas" in response.json()["detail"]
 
-def test_ia_rutina_excluye_grupo_por_restriccion_medica():
+def test_ia_rutina_restriccion_rodilla_excluye_solo_el_ejercicio_marcado():
     populate_db_for_coverage()
     headers = get_auth_headers()
 
@@ -505,17 +505,34 @@ def test_ia_rutina_excluye_grupo_por_restriccion_medica():
     db.commit()
     db.close()
 
+    # Sin ningún ejercicio marcado con la restricción, "Piernas" ya NO se
+    # excluye completo (antes sí) -- se asigna igual porque el único
+    # ejercicio de ese grupo (Sentadillas) no está etiquetado.
     response = client.post("/ia/rutina/generar/1", headers=headers)
     assert response.status_code == 200
     res_data = response.json()
 
-    # El día de piernas debe quedar reportado como sin ejercicios elegibles,
-    # nunca relleno en silencio con ejercicios de otro grupo muscular.
+    detalle = client.get(f"/rutinas/{res_data['id_rutina']}/detalle", headers=headers)
+    assert detalle.status_code == 200
+    grupos_asignados = {e["grupo_muscular"] for e in detalle.json()["ejercicios"]}
+    assert "Piernas" in grupos_asignados
+
+    # Ahora se marca el único ejercicio de Piernas como de carga en la
+    # rodilla: recién ahí el grupo queda sin opciones elegibles.
+    db = TestingSessionLocal()
+    sentadillas = db.query(models.Ejercicio).filter(models.Ejercicio.id_ejercicio == 5).first()
+    sentadillas.restricciones = "RODILLA"
+    db.commit()
+    db.close()
+
+    response = client.post("/ia/rutina/generar/1", headers=headers)
+    assert response.status_code == 200
+    res_data = response.json()
+
     grupos_con_aviso = [g for aviso in res_data["avisos"] for g in aviso["grupos"]]
     assert "Piernas" in grupos_con_aviso
 
     detalle = client.get(f"/rutinas/{res_data['id_rutina']}/detalle", headers=headers)
-    assert detalle.status_code == 200
     grupos_asignados = {e["grupo_muscular"] for e in detalle.json()["ejercicios"]}
     assert "Piernas" not in grupos_asignados
 
@@ -538,15 +555,15 @@ def test_ia_rutina_generacion():
     db = TestingSessionLocal()
     cliente = db.query(models.Cliente).first()
     
-    # Objective: Bajar grasa
-    cliente.objetivo = "Bajar grasa corporal"
+    # Objective: Bajar de peso (valor exacto del catálogo fijo OBJETIVOS)
+    cliente.objetivo = "Bajar de peso"
     db.commit()
     response = client.post("/ia/rutina/generar/1", headers=headers)
     assert response.status_code == 200
     assert "pérdida de grasa" in response.json()["nombre"].lower()
 
-    # Objective: Fuerza
-    cliente.objetivo = "Fuerza"
+    # Objective: Ganar fuerza (valor exacto del catálogo fijo OBJETIVOS)
+    cliente.objetivo = "Ganar fuerza"
     db.commit()
     response = client.post("/ia/rutina/generar/1", headers=headers)
     assert response.status_code == 200

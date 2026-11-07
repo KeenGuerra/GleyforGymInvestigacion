@@ -28,10 +28,25 @@ def _mejor_opcion_para_presupuesto(opciones, presupuesto_calorico):
     return min(opciones, key=lambda c: abs((c.calorias or 0) - presupuesto_calorico))
 
 
-def seleccionar_comidas_para_plan(cliente, comidas):
+def _excluye_restricciones(comida, codigos_restriccion: set) -> bool:
+    """True si el alimento NO viola ninguna restricción alimentaria del cliente."""
+    if not codigos_restriccion:
+        return True
+    etiquetas = {c.strip() for c in (comida.restricciones or "").split(",") if c.strip()}
+    return not (etiquetas & codigos_restriccion)
+
+
+def seleccionar_comidas_para_plan(cliente, comidas, progresos=None):
     objetivo = (cliente.objetivo or "").upper()
 
-    comidas_activas = [c for c in comidas if c.estado == "ACTIVO"]
+    codigos_restriccion = {
+        c.strip() for c in (cliente.restricciones_alimentarias or "").split(",") if c.strip()
+    }
+
+    comidas_activas = [
+        c for c in comidas
+        if c.estado == "ACTIVO" and _excluye_restricciones(c, codigos_restriccion)
+    ]
 
     comidas_filtradas = [
         c for c in comidas_activas
@@ -42,7 +57,7 @@ def seleccionar_comidas_para_plan(cliente, comidas):
     if len(comidas_filtradas) < 3:
         comidas_filtradas = comidas_activas
 
-    macros_objetivo = calcular_macros(cliente)
+    macros_objetivo = calcular_macros(cliente, progresos)
     calorias_objetivo = macros_objetivo["calorias"]
 
     plan = []
@@ -88,4 +103,8 @@ def seleccionar_comidas_para_plan(cliente, comidas):
         "grasas_reales": total_grasas,
         "comidas": plan,
         "avisos": franjas_sin_opciones,
+        "fuente_peso": macros_objetivo["fuente_peso"],
+        "peso_usado": macros_objetivo["peso_usado"],
+        "ajuste_tendencia_kcal": macros_objetivo["ajuste_tendencia_kcal"],
+        "justificacion_ajuste": macros_objetivo["justificacion_ajuste"],
     }

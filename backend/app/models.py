@@ -50,6 +50,8 @@ class Cliente(Base):
     restricciones_medicas = Column(String, nullable=True)  # códigos separados por coma, ver app.constants.RESTRICCIONES_MEDICAS
     restricciones_otras = Column(String, nullable=True)  # notas libres no cubiertas por el catálogo
     nivel_actividad = Column(String(30), nullable=True)  # ver app.constants.NIVELES_ACTIVIDAD
+    restricciones_alimentarias = Column(String, nullable=True)  # códigos separados por coma, ver app.constants.RESTRICCIONES_ALIMENTARIAS
+    peso_actualizado_en = Column(DateTime, nullable=True)  # se actualiza cada vez que cambia `peso`, para comparar contra Progreso
 
     fecha_registro = Column(DateTime, default=datetime.now)
     estado = Column(String, default="ACTIVO")
@@ -184,6 +186,16 @@ class Rutina(Base):
     fecha_creacion = Column(DateTime, default=datetime.now)
     estado = Column(String, default="ACTIVA")  # ACTIVA, INACTIVA
 
+    # Revisión del entrenador (ver app.constants.ESTADOS_REVISION). Sin default
+    # a nivel de columna a propósito: las filas existentes se migran a
+    # "aprobada" una sola vez en create_db.py; las nuevas lo fijan en el
+    # endpoint que las crea.
+    estado_revision = Column(String(30), nullable=True)
+    revisado_por = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    fecha_revision = Column(DateTime, nullable=True)
+    observaciones_revision = Column(Text, nullable=True)
+    editado_antes_revision = Column(Boolean, default=False)
+
     cliente = relationship("Cliente", back_populates="rutinas")
     ejercicios = relationship("RutinaEjercicio", back_populates="rutina")
 
@@ -227,6 +239,19 @@ class PlanNutricional(Base):
     fecha_creacion = Column(DateTime, default=datetime.now)
     estado = Column(String, default="ACTIVO")
 
+    # Revisión del entrenador (mismo mecanismo que Rutina, ver ahí el comentario).
+    estado_revision = Column(String(30), nullable=True)
+    revisado_por = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    fecha_revision = Column(DateTime, nullable=True)
+    observaciones_revision = Column(Text, nullable=True)
+    editado_antes_revision = Column(Boolean, default=False)
+
+    # Uso del progreso del cliente para ajustar las calorías (ver app.ia.nutricion).
+    fuente_peso = Column(String(20), nullable=True)  # "cliente" | "progreso"
+    peso_usado = Column(Float, nullable=True)
+    ajuste_tendencia_kcal = Column(Integer, default=0)
+    justificacion_ajuste = Column(Text, nullable=True)
+
     cliente = relationship("Cliente", back_populates="planes_nutricionales")
     comidas = relationship("PlanComida", back_populates="plan")
 
@@ -258,6 +283,7 @@ class Ejercicio(Base):
     video_url = Column(Text, nullable=True)
     cloudinary_public_id = Column(String(255), nullable=True)
     estado = Column(String(20), default="ACTIVO")
+    restricciones = Column(String, nullable=True)  # códigos de app.constants.RESTRICCIONES_MEDICAS que este ejercicio puede agravar (ej. RODILLA)
 
     rutina_ejercicios = relationship("RutinaEjercicio", back_populates="ejercicio")
 
@@ -277,6 +303,7 @@ class Comida(Base):
 
     objetivo = Column(String, nullable=True)
     estado = Column(String, default="ACTIVO")
+    restricciones = Column(String, nullable=True)  # códigos de app.constants.RESTRICCIONES_ALIMENTARIAS que este alimento viola
 
 
 # =========================

@@ -40,8 +40,14 @@ function MiRutina() {
 
         const rutinasRes = await api.get(`/rutinas/cliente/${cliente.id_cliente}`);
 
+        // El backend ya filtra lo pendiente/rechazado para un CLIENTE; este
+        // filtro es una segunda capa de seguridad, no la única.
         const rutinasActivas = rutinasRes.data.filter(
-          (rutina) => rutina.estado !== "INACTIVA"
+          (rutina) =>
+            rutina.estado !== "INACTIVA" &&
+            (!rutina.estado_revision ||
+              rutina.estado_revision === "aprobada" ||
+              rutina.estado_revision === "aprobada_con_cambios")
         );
 
         setRutinas(rutinasActivas);

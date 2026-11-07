@@ -184,6 +184,8 @@ def crear_cliente(
         restricciones_medicas=cliente.restricciones_medicas,
         restricciones_otras=cliente.restricciones_otras,
         nivel_actividad=cliente.nivel_actividad,
+        restricciones_alimentarias=cliente.restricciones_alimentarias,
+        peso_actualizado_en=datetime.now() if cliente.peso is not None else None,
         estado=ESTADO_ACTIVO
     )
 
@@ -247,6 +249,9 @@ def actualizar_cliente(
         cliente_db.edad = calcular_edad(datos_actualizados["fecha_nacimiento"])
     else:
         cliente_db.edad = calcular_edad(cliente_db.fecha_nacimiento)
+
+    if "peso" in datos_actualizados:
+        cliente_db.peso_actualizado_en = datetime.now()
 
     # SINCRONIZAR ESTADO CLIENTE -> USUARIO
     usuario = None

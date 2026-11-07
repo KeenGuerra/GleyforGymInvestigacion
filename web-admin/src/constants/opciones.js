@@ -33,6 +33,19 @@ export const RESTRICCIONES_MEDICAS = [
   { value: "CADERA", label: "Lesión de cadera" },
 ];
 
+// Catálogo cerrado de restricciones alimentarias. El "value" es el código que
+// guarda el backend en Cliente.restricciones_alimentarias / Comida.restricciones.
+export const RESTRICCIONES_ALIMENTARIAS = [
+  { value: "LACTOSA", label: "Intolerancia a la lactosa" },
+  { value: "GLUTEN", label: "Intolerancia al gluten" },
+  { value: "VEGETARIANO", label: "Vegetariano" },
+  { value: "VEGANO", label: "Vegano" },
+  { value: "FRUTOS_SECOS", label: "Alergia a maní / frutos secos" },
+  { value: "MARISCOS", label: "Alergia a mariscos" },
+  { value: "HUEVO", label: "Alergia al huevo" },
+  { value: "DIABETES_AZUCARES", label: "Diabetes / control de azúcares" },
+];
+
 export const NIVELES_ACTIVIDAD = [
   { value: "SEDENTARIO", label: "Sedentario (poco o nada de ejercicio)" },
   { value: "LIGERO", label: "Ligera (1-3 días/semana)" },
@@ -62,4 +75,13 @@ export function etiquetasRestricciones(texto) {
 
 export function etiquetaNivelActividad(valor) {
   return NIVELES_ACTIVIDAD.find((n) => n.value === valor)?.label || "No especificado";
+}
+
+// Convierte "LACTOSA,GLUTEN" en "Intolerancia a la lactosa, Intolerancia al gluten".
+export function etiquetasRestriccionesAlimentarias(texto) {
+  const codigos = textoACodigos(texto);
+  if (codigos.length === 0) return "Ninguna";
+  return codigos
+    .map((c) => RESTRICCIONES_ALIMENTARIAS.find((r) => r.value === c)?.label || c)
+    .join(", ");
 }

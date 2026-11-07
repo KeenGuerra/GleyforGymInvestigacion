@@ -49,6 +49,7 @@ async def crear_ejercicio(
     descripcion: Annotated[str | None, Form()] = None,
     instrucciones: Annotated[str | None, Form()] = None,
     estado: Annotated[str, Form()] = "ACTIVO",
+    restricciones: Annotated[str | None, Form()] = None,
     video: Annotated[UploadFile | None, File()] = None
 ):
     video_url = None
@@ -86,7 +87,8 @@ async def crear_ejercicio(
         instrucciones=instrucciones,
         video_url=video_url,
         cloudinary_public_id=public_id,
-        estado=estado
+        estado=estado,
+        restricciones=restricciones
     )
 
     db.add(nuevo)

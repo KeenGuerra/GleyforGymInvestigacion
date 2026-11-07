@@ -8,7 +8,8 @@ from app.database import get_db
 from app import models
 from app.ia.rutina.recomendador_rutinas import generar_rutina_inteligente
 from app.security import obtener_usuario_actual, verificar_propiedad_cliente
-from app.constants import MSG_CLIENTE_NO_ENCONTRADO
+from app.auditoria import registrar as registrar_auditoria
+from app.constants import MSG_CLIENTE_NO_ENCONTRADO, ESTADO_REVISION_PENDIENTE
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 
@@ -51,7 +52,8 @@ def generar_rutina_ia(
         descripcion="Rutina generada automáticamente usando ejercicios reales con videos.",
         dias_semana=resultado_ia["dias_semana"],
         generada_por_ia=True,
-        estado="ACTIVA"
+        estado="ACTIVA",
+        estado_revision=ESTADO_REVISION_PENDIENTE,
     )
 
     db.add(nueva_rutina)
@@ -75,6 +77,11 @@ def generar_rutina_ia(
 
     db.commit()
 
+    registrar_auditoria(
+        db, usuario_actual, "GENERAR_IA", "Rutina", nueva_rutina.id_rutina,
+        f"cliente={cliente.id_cliente}, objetivo={nueva_rutina.objetivo}",
+    )
+
     return {
         "mensaje": "Rutina IA generada correctamente",
         "id_rutina": nueva_rutina.id_rutina,
@@ -85,4 +92,5 @@ def generar_rutina_ia(
         "dias_semana": nueva_rutina.dias_semana,
         "total_ejercicios": len(resultado_ia["ejercicios"]),
         "avisos": resultado_ia.get("avisos", []),
+        "estado_revision": nueva_rutina.estado_revision,
     }

@@ -8,7 +8,10 @@ from app.database import get_db
 from app import models
 from app.ia.nutricion.recomendador_nutricion import seleccionar_comidas_para_plan
 from app.security import obtener_usuario_actual, verificar_propiedad_cliente
-from app.constants import MSG_CLIENTE_NO_ENCONTRADO, ESTADO_ACTIVO
+from app.auditoria import registrar as registrar_auditoria
+from app.constants import MSG_CLIENTE_NO_ENCONTRADO, ESTADO_ACTIVO, ESTADO_REVISION_PENDIENTE
+
+PROGRESOS_CONSULTADOS = 5  # cuántas evaluaciones recientes se consultan para el ajuste por tendencia
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 
@@ -45,7 +48,11 @@ def generar_nutricion_ia(
             detail="No hay comidas activas registradas"
         )
 
-    plan_generado = seleccionar_comidas_para_plan(cliente, comidas)
+    progresos = db.query(models.Progreso).filter(
+        models.Progreso.id_cliente == id_cliente
+    ).order_by(models.Progreso.fecha_registro.desc()).limit(PROGRESOS_CONSULTADOS).all()
+
+    plan_generado = seleccionar_comidas_para_plan(cliente, comidas, progresos)
 
     if len(plan_generado["comidas"]) == 0:
         raise HTTPException(
@@ -66,7 +73,12 @@ def generar_nutricion_ia(
         grasas_reales=plan_generado["grasas_reales"],
         restricciones=cliente.restricciones_medicas,
         generada_por_ia=True,
-        estado=ESTADO_ACTIVO
+        estado=ESTADO_ACTIVO,
+        estado_revision=ESTADO_REVISION_PENDIENTE,
+        fuente_peso=plan_generado["fuente_peso"],
+        peso_usado=plan_generado["peso_usado"],
+        ajuste_tendencia_kcal=plan_generado["ajuste_tendencia_kcal"],
+        justificacion_ajuste=plan_generado["justificacion_ajuste"],
     )
 
     db.add(nuevo_plan)
@@ -85,6 +97,11 @@ def generar_nutricion_ia(
 
     db.commit()
 
+    registrar_auditoria(
+        db, usuario_actual, "GENERAR_IA", "PlanNutricional", nuevo_plan.id_plan,
+        f"cliente={id_cliente}, kcal={nuevo_plan.calorias_diarias}, fuente_peso={nuevo_plan.fuente_peso}",
+    )
+
     return {
         "mensaje": "Plan nutricional generado con IA usando comidas reales",
         "id_plan": nuevo_plan.id_plan,
@@ -99,4 +116,5 @@ def generar_nutricion_ia(
         "grasas_reales": nuevo_plan.grasas_reales,
         "total_comidas": len(plan_generado["comidas"]),
         "avisos": plan_generado.get("avisos", []),
+        "estado_revision": nuevo_plan.estado_revision,
     }

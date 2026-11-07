@@ -39,8 +39,14 @@ function MiNutricion() {
           `/nutricion/cliente/${cliente.id_cliente}`
         );
 
+        // El backend ya filtra lo pendiente/rechazado para un CLIENTE; este
+        // filtro es una segunda capa de seguridad, no la única.
         const planesActivos = nutricionRes.data.filter(
-          (plan) => plan.estado !== "INACTIVO"
+          (plan) =>
+            plan.estado !== "INACTIVO" &&
+            (!plan.estado_revision ||
+              plan.estado_revision === "aprobada" ||
+              plan.estado_revision === "aprobada_con_cambios")
         );
 
         setPlanes(planesActivos);

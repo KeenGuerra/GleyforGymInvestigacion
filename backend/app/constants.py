@@ -122,6 +122,40 @@ NIVEL_ACTIVIDAD_MULTIPLICADORES = {
 NIVELES_ACTIVIDAD = list(NIVEL_ACTIVIDAD_MULTIPLICADORES.keys())
 NIVEL_ACTIVIDAD_DEFECTO = "MODERADO"
 
+# Restricciones alimentarias: catálogo cerrado, mismo patrón que
+# RESTRICCIONES_MEDICAS. Cliente.restricciones_alimentarias guarda estos
+# códigos separados por coma; Comida.restricciones usa el mismo catálogo
+# para marcar qué restricción viola cada alimento.
+RESTRICCION_ALIM_LACTOSA = "LACTOSA"
+RESTRICCION_ALIM_GLUTEN = "GLUTEN"
+RESTRICCION_ALIM_VEGETARIANO = "VEGETARIANO"
+RESTRICCION_ALIM_VEGANO = "VEGANO"
+RESTRICCION_ALIM_FRUTOS_SECOS = "FRUTOS_SECOS"
+RESTRICCION_ALIM_MARISCOS = "MARISCOS"
+RESTRICCION_ALIM_HUEVO = "HUEVO"
+RESTRICCION_ALIM_DIABETES = "DIABETES_AZUCARES"
+
+RESTRICCIONES_ALIMENTARIAS = [
+    RESTRICCION_ALIM_LACTOSA, RESTRICCION_ALIM_GLUTEN, RESTRICCION_ALIM_VEGETARIANO,
+    RESTRICCION_ALIM_VEGANO, RESTRICCION_ALIM_FRUTOS_SECOS, RESTRICCION_ALIM_MARISCOS,
+    RESTRICCION_ALIM_HUEVO, RESTRICCION_ALIM_DIABETES,
+]
+
+# Flujo de revisión del entrenador para rutinas/planes generados por IA
+# (ver docs/07_Gestion_Proyecto/Pendientes.md y Rutina/PlanNutricional.estado_revision).
+ESTADO_REVISION_PENDIENTE = "pendiente"
+ESTADO_REVISION_APROBADA = "aprobada"
+ESTADO_REVISION_APROBADA_CON_CAMBIOS = "aprobada_con_cambios"
+ESTADO_REVISION_RECHAZADA = "rechazada"
+
+ESTADOS_REVISION = [
+    ESTADO_REVISION_PENDIENTE, ESTADO_REVISION_APROBADA,
+    ESTADO_REVISION_APROBADA_CON_CAMBIOS, ESTADO_REVISION_RECHAZADA,
+]
+
+MSG_REVISION_NO_PENDIENTE = "Esta rutina/plan ya fue revisado y no está pendiente"
+MSG_REVISION_MOTIVO_REQUERIDO = "Debes indicar un motivo para rechazar"
+
 # Gestión comercial - Mensajes de error
 MSG_CATEGORIA_NO_ENCONTRADA = "Categoría no encontrada"
 MSG_CATEGORIA_YA_EXISTE = "Ya existe una categoría con ese nombre"

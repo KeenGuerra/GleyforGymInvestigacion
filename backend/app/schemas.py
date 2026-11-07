@@ -14,6 +14,7 @@ EstadoUsuario = Literal["ACTIVO", "INACTIVO"]
 EstadoGeneral = Literal["ACTIVO", "INACTIVO"]
 EstadoRutina = Literal["ACTIVA", "INACTIVA"]
 EstadoClienteMembresia = Literal["ACTIVA", "PAUSADA", "TERMINADA", "CANCELADA"]
+EstadoRevision = Literal["pendiente", "aprobada", "aprobada_con_cambios", "rechazada"]
 
 MetodoPago = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA"]
 EstadoPago = Literal["PAGADO", "PENDIENTE", "ANULADO", "FALLIDO", "REEMBOLSADO"]
@@ -93,6 +94,7 @@ class ClienteBase(BaseModel):
     restricciones_medicas: Optional[str] = None  # códigos separados por coma, ver constants.RESTRICCIONES_MEDICAS
     restricciones_otras: Optional[str] = None
     nivel_actividad: Optional[str] = None  # ver constants.NIVELES_ACTIVIDAD
+    restricciones_alimentarias: Optional[str] = None  # códigos separados por coma, ver constants.RESTRICCIONES_ALIMENTARIAS
 
 
 class ClienteCreate(ClienteBase):
@@ -116,6 +118,7 @@ class ClienteUpdate(BaseModel):
     restricciones_medicas: Optional[str] = None
     restricciones_otras: Optional[str] = None
     nivel_actividad: Optional[str] = None
+    restricciones_alimentarias: Optional[str] = None
     estado: Optional[EstadoUsuario] = None
 
 
@@ -124,6 +127,7 @@ class ClienteResponse(ClienteBase):
     id_usuario: int
     estado: EstadoUsuario
     fecha_registro: datetime
+    peso_actualizado_en: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -356,11 +360,17 @@ class RutinaUpdate(BaseModel):
     dias_semana: Optional[int] = None
     generada_por_ia: Optional[bool] = None
     estado: Optional[EstadoRutina] = None
+    observaciones_revision: Optional[str] = None  # nota del entrenador al editar una rutina pendiente de revisión
 
 
 class RutinaResponse(RutinaCreate):
     id_rutina: int
     fecha_creacion: datetime
+    estado_revision: Optional[EstadoRevision] = None
+    revisado_por: Optional[int] = None
+    fecha_revision: Optional[datetime] = None
+    observaciones_revision: Optional[str] = None
+    editado_antes_revision: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -381,6 +391,33 @@ class RutinaEjercicioResponse(RutinaEjercicioCreate):
     id_rutina_ejercicio: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RutinaEjercicioItem(BaseModel):
+    """Un ítem de la lista enviada a PUT /rutinas/{id}/ejercicios — igual que
+    RutinaEjercicioCreate pero sin id_rutina (ya va en la URL)."""
+    id_ejercicio: Optional[int] = None
+    nombre_ejercicio: str
+    grupo_muscular: Optional[str] = None
+    series: Optional[int] = None
+    repeticiones: Optional[str] = None
+    descanso_segundos: Optional[int] = None
+    dia_semana: Optional[str] = None
+    orden: Optional[int] = None
+
+
+class ActualizarEjerciciosRutinaRequest(BaseModel):
+    ejercicios: List[RutinaEjercicioItem]
+    observaciones_revision: Optional[str] = None
+
+
+class AprobarRevisionResponse(BaseModel):
+    mensaje: str
+    estado_revision: EstadoRevision
+
+
+class RechazarRevisionRequest(BaseModel):
+    motivo: str = Field(min_length=1)
 
 
 # =========================
@@ -430,14 +467,38 @@ class PlanNutricionalUpdate(BaseModel):
     restricciones: Optional[str] = None
     generada_por_ia: Optional[bool] = None
     estado: Optional[EstadoGeneral] = None
+    observaciones_revision: Optional[str] = None  # nota del entrenador al editar un plan pendiente de revisión
 
 
 class PlanNutricionalResponse(PlanNutricionalCreate):
     id_plan: int
     fecha_creacion: datetime
     comidas: List[PlanComidaResponse] = []
+    estado_revision: Optional[EstadoRevision] = None
+    revisado_por: Optional[int] = None
+    fecha_revision: Optional[datetime] = None
+    observaciones_revision: Optional[str] = None
+    editado_antes_revision: bool = False
+    fuente_peso: Optional[str] = None
+    peso_usado: Optional[float] = None
+    ajuste_tendencia_kcal: int = 0
+    justificacion_ajuste: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PlanComidaItem(BaseModel):
+    """Un ítem de la lista enviada a PUT /nutricion/{id}/comidas — igual que
+    PlanComidaCreate pero sin id_plan (ya va en la URL)."""
+    tipo_comida: str
+    descripcion: str
+    calorias_aprox: Optional[int] = None
+    hora_recomendada: Optional[str] = None
+
+
+class ActualizarComidasPlanRequest(BaseModel):
+    comidas: List[PlanComidaItem]
+    observaciones_revision: Optional[str] = None
 
 
 # =========================
@@ -458,6 +519,7 @@ class EjercicioBase(BaseModel):
     video_url: Optional[str] = None
     cloudinary_public_id: Optional[str] = None
     estado: EstadoGeneral = "ACTIVO"
+    restricciones: Optional[str] = None  # códigos de constants.RESTRICCIONES_MEDICAS que este ejercicio agrava
 
 
 class EjercicioCreate(EjercicioBase):
@@ -474,6 +536,7 @@ class EjercicioUpdate(BaseModel):
     video_url: Optional[str] = None
     cloudinary_public_id: Optional[str] = None
     estado: Optional[EstadoGeneral] = None
+    restricciones: Optional[str] = None
 
 
 class EjercicioOut(EjercicioBase):
@@ -496,6 +559,7 @@ class ComidaCreate(BaseModel):
     grasas: Optional[int] = None
     objetivo: Optional[str] = None
     estado: EstadoGeneral = "ACTIVO"
+    restricciones: Optional[str] = None  # códigos de constants.RESTRICCIONES_ALIMENTARIAS que este alimento viola
 
 
 class ComidaUpdate(BaseModel):
@@ -508,6 +572,7 @@ class ComidaUpdate(BaseModel):
     grasas: Optional[int] = None
     objetivo: Optional[str] = None
     estado: Optional[EstadoGeneral] = None
+    restricciones: Optional[str] = None
 
 
 class ComidaOut(ComidaCreate):

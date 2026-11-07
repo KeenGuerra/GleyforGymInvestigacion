@@ -93,6 +93,7 @@ export default function Layout() {
                 <NavLink to="/comidas">Comidas</NavLink>
                 <NavLink to="/rutinas">Rutinas IA</NavLink>
                 <NavLink to="/nutricion">Nutrición IA</NavLink>
+                <NavLink to="/revision-ia">Revisión de IA</NavLink>
                 <NavLink to="/gestion-avisos">Avisos</NavLink>
 
                 <p className="menu-label">Comercio</p>
@@ -115,6 +116,7 @@ export default function Layout() {
                 <NavLink to="/comidas">Comidas</NavLink>
                 <NavLink to="/rutinas">Rutinas IA</NavLink>
                 <NavLink to="/nutricion">Nutrición IA</NavLink>
+                <NavLink to="/revision-ia">Revisión de IA</NavLink>
               </>
             )}
 

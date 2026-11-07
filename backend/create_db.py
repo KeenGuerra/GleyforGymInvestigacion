@@ -60,6 +60,29 @@ def initialize_tables():
         ("usuarios", "correo_verificado", "BOOLEAN DEFAULT FALSE"),
         ("usuarios", "token_verificacion", "VARCHAR(100)"),
         ("usuarios", "token_verificacion_expira", "TIMESTAMP"),
+        ("clientes", "restricciones_alimentarias", "VARCHAR"),
+        ("clientes", "peso_actualizado_en", "TIMESTAMP"),
+        # Revisión del entrenador para rutinas/planes IA (ver Pendientes.md y
+        # constants.ESTADOS_REVISION). Sin DEFAULT a propósito: las filas
+        # existentes se migran a "aprobada" una sola vez en
+        # migrar_estado_revision_existentes(), no vía el DEFAULT de la
+        # columna (que las dejaría todas en "pendiente").
+        ("rutinas", "estado_revision", "VARCHAR(30)"),
+        ("rutinas", "revisado_por", "INTEGER"),
+        ("rutinas", "fecha_revision", "TIMESTAMP"),
+        ("rutinas", "observaciones_revision", "TEXT"),
+        ("rutinas", "editado_antes_revision", "BOOLEAN DEFAULT FALSE"),
+        ("planes_nutricionales", "estado_revision", "VARCHAR(30)"),
+        ("planes_nutricionales", "revisado_por", "INTEGER"),
+        ("planes_nutricionales", "fecha_revision", "TIMESTAMP"),
+        ("planes_nutricionales", "observaciones_revision", "TEXT"),
+        ("planes_nutricionales", "editado_antes_revision", "BOOLEAN DEFAULT FALSE"),
+        ("planes_nutricionales", "fuente_peso", "VARCHAR(20)"),
+        ("planes_nutricionales", "peso_usado", "FLOAT"),
+        ("planes_nutricionales", "ajuste_tendencia_kcal", "INTEGER DEFAULT 0"),
+        ("planes_nutricionales", "justificacion_ajuste", "TEXT"),
+        ("ejercicios", "restricciones", "VARCHAR"),
+        ("comidas", "restricciones", "VARCHAR"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:
@@ -141,6 +164,40 @@ def migrar_restricciones_medicas():
         db.close()
 
 
+def migrar_estado_revision_existentes():
+    """
+    Migración de datos de una sola vez: las rutinas/planes nutricionales que
+    ya existían antes del flujo de revisión del entrenador no deben quedar
+    como "pendiente" (nadie las generó para ser revisadas). Se marcan como
+    "aprobada". Es idempotente: solo toca filas con estado_revision NULL, que
+    tras la primera corrida ya no existen (las nuevas filas siempre lo fijan
+    explícitamente en el endpoint que las crea).
+    """
+    print("Revisando estado_revision de rutinas y planes existentes...")
+    from app.database import SessionLocal
+    from app.models import Rutina, PlanNutricional
+    from app.constants import ESTADO_REVISION_APROBADA
+
+    db = SessionLocal()
+    try:
+        rutinas = db.query(Rutina).filter(Rutina.estado_revision.is_(None)).all()
+        for rutina in rutinas:
+            rutina.estado_revision = ESTADO_REVISION_APROBADA
+
+        planes = db.query(PlanNutricional).filter(PlanNutricional.estado_revision.is_(None)).all()
+        for plan in planes:
+            plan.estado_revision = ESTADO_REVISION_APROBADA
+
+        total = len(rutinas) + len(planes)
+        if total:
+            db.commit()
+            print(f"  {len(rutinas)} rutina(s) y {len(planes)} plan(es) migrados a estado_revision='aprobada'.")
+        else:
+            print("  No había rutinas ni planes pendientes de migrar a estado_revision.")
+    finally:
+        db.close()
+
+
 def seed_admin_user():
     # Credenciales de ejemplo solo para desarrollo local. Cambiar la contraseña
     # del admin inmediatamente en cualquier entorno que no sea localhost.
@@ -214,6 +271,7 @@ if __name__ == "__main__":
             print(f"Skipping database creation (likely running on Render or managed DB): {e}")
         initialize_tables()
         migrar_restricciones_medicas()
+        migrar_estado_revision_existentes()
         seed_admin_user()
         seed_avisos_iniciales()
         print("Database setup completed successfully.")
