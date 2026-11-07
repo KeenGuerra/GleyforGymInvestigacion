@@ -33,6 +33,14 @@ class UsuarioCreate(UsuarioBase):
     password: str = Field(min_length=6)
 
 
+class UsuarioRegistroPublico(BaseModel):
+    """Registro público de autoservicio (ver POST /usuarios/registro) — a
+    diferencia de UsuarioCreate, nunca acepta `rol`: el backend siempre lo
+    fuerza a CLIENTE, para que nadie pueda autoregistrarse como ADMIN."""
+    correo: EmailStr
+    password: str = Field(min_length=6)
+
+
 class UsuarioUpdate(BaseModel):
     correo: Optional[EmailStr] = None
     rol: Optional[RolUsuario] = None
@@ -99,7 +107,10 @@ class ClienteBase(BaseModel):
 
 class ClienteCreate(ClienteBase):
     correo: EmailStr
-    password: str = Field(min_length=6)
+    # Opcional: si el correo ya pertenece a una cuenta de autoregistro
+    # público sin perfil de socio (ver POST /usuarios/registro), se reusa
+    # esa cuenta y su contraseña tal cual, sin pedir una nueva aquí.
+    password: Optional[str] = Field(default=None, min_length=6)
 
 
 class ClienteUpdate(BaseModel):

@@ -17,6 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
 from app.security import crear_token, encriptar_password
+from app import rate_limit
 import app.models as models
 
 # Use a local SQLite database for unit tests
@@ -251,6 +252,119 @@ def test_usuarios_edge_cases():
     )
     assert response.status_code == 403
     assert "Usuario inactivo" in response.json()["detail"]
+
+
+def test_registro_publico_crea_cuenta_sin_cliente_y_sin_verificar():
+    """POST /usuarios/registro (sin autenticación) crea solo un Usuario
+    rol CLIENTE, sin Cliente asociado y con correo_verificado=False — ver
+    P-0X 'comprador sin membresía'."""
+    populate_db_for_coverage()
+
+    response = client.post(
+        "/usuarios/registro",
+        json={"correo": "comprador.nuevo@example.com", "password": "clave123"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["correo"] == "comprador.nuevo@example.com"
+
+    db = TestingSessionLocal()
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.correo == "comprador.nuevo@example.com"
+    ).first()
+    assert usuario is not None
+    assert usuario.rol == "CLIENTE"
+    assert usuario.correo_verificado is False
+    assert usuario.cliente is None
+    db.close()
+
+    # Puede loguearse de inmediato (no verificado no bloquea el login, solo
+    # la compra — ver test_comercio.py) y el login informa tiene_cliente=False.
+    res_login = client.post(
+        "/usuarios/login",
+        json={"correo": "comprador.nuevo@example.com", "password": "clave123"},
+    )
+    assert res_login.status_code == 200
+    assert res_login.json()["usuario"]["tiene_cliente"] is False
+
+
+def test_registro_publico_rechaza_correo_duplicado():
+    populate_db_for_coverage()
+
+    response = client.post(
+        "/usuarios/registro",
+        json={"correo": "admin@gleyforgym.com", "password": "clave123"},
+    )
+    assert response.status_code == 400
+    assert "Correo ya registrado" in response.json()["detail"]
+
+
+def test_registro_publico_rate_limit_por_ip():
+    populate_db_for_coverage()
+    rate_limit._intentos_fallidos.clear()
+    try:
+        for i in range(5):
+            res = client.post(
+                "/usuarios/registro",
+                json={"correo": f"comprador.ratelimit.{i}@example.com", "password": "clave123"},
+            )
+            assert res.status_code == 200, res.text
+
+        res_bloqueado = client.post(
+            "/usuarios/registro",
+            json={"correo": "comprador.ratelimit.bloqueado@example.com", "password": "clave123"},
+        )
+        assert res_bloqueado.status_code == 429
+    finally:
+        rate_limit._intentos_fallidos.clear()
+
+
+def test_crear_cliente_reutiliza_cuenta_de_comprador_existente():
+    """Si el correo ya es una cuenta de autoregistro (CLIENTE sin Cliente),
+    crear_cliente() debe reusar ese Usuario (misma contraseña) en vez de
+    rechazarlo por correo duplicado o crear una cuenta separada."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    client.post(
+        "/usuarios/registro",
+        json={"correo": "comprador.luego.socio@example.com", "password": "miClaveOriginal"},
+    )
+    db = TestingSessionLocal()
+    total_usuarios_antes = db.query(models.Usuario).count()
+    id_usuario_comprador = db.query(models.Usuario).filter(
+        models.Usuario.correo == "comprador.luego.socio@example.com"
+    ).first().id_usuario
+    db.close()
+
+    response = client.post(
+        "/clientes/",
+        json={
+            "dni": "11223344",
+            "nombres": "Compradora",
+            "apellidos": "Que Se Hizo Socia",
+            "correo": "comprador.luego.socio@example.com",
+            "password": "esta-password-se-ignora",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["id_usuario"] == id_usuario_comprador
+
+    db = TestingSessionLocal()
+    # No se creó un Usuario nuevo, solo se le agregó el Cliente al existente.
+    assert db.query(models.Usuario).count() == total_usuarios_antes
+    db.close()
+
+    # Sigue entrando con su contraseña original, no con la que mandó el staff.
+    res_login = client.post(
+        "/usuarios/login",
+        json={"correo": "comprador.luego.socio@example.com", "password": "miClaveOriginal"},
+    )
+    assert res_login.status_code == 200
+    assert res_login.json()["usuario"]["tiene_cliente"] is True
+
 
 def test_clientes_edge_cases():
     populate_db_for_coverage()

@@ -72,6 +72,10 @@ def populate_comercio():
     db.query(models.Producto).delete()
     db.query(models.Categoria).delete()
     db.query(models.Proveedor).delete()
+    # Faltaba limpiar Cliente: sin esto, un Cliente de un test anterior podía
+    # quedar "pegado" a un id_usuario que SQLite reasigna al crear un Usuario
+    # nuevo en otro test (los ids se reciclan tras el delete de arriba).
+    db.query(models.Cliente).delete()
     db.query(models.Usuario).delete()
     db.commit()
 
@@ -357,6 +361,96 @@ def test_solicitar_venta_queda_pendiente_sin_tocar_stock_y_confirmar_si_lo_hace(
     assert res_confirmar.json()["estado"] == "CONFIRMADA"
 
     assert client.get(f"/inventario/{id_producto}", headers=headers_admin).json()["stock_actual"] == 7
+
+
+# ── Comprador sin membresía (autoregistro público, ver POST /usuarios/registro) ──
+def test_solicitar_venta_bloquea_comprador_sin_correo_verificado():
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    id_usuario_comprador = client.post(
+        "/usuarios/registro",
+        json={"correo": "comprador.sin.verificar@example.com", "password": "clave123"},
+    ).json()["id_usuario"]
+    headers_comprador = get_auth_headers(rol="CLIENTE", id_usuario=id_usuario_comprador)
+
+    res_bloqueado = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 1}]},
+        headers=headers_comprador,
+    )
+    assert res_bloqueado.status_code == 403
+    assert "Verifica tu correo" in res_bloqueado.json()["detail"]
+
+    db = TestingSessionLocal()
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario_comprador).first()
+    usuario.correo_verificado = True
+    db.commit()
+    db.close()
+
+    res_permitido = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 1}]},
+        headers=headers_comprador,
+    )
+    assert res_permitido.status_code == 200, res_permitido.text
+    assert res_permitido.json()["estado"] == "PENDIENTE"
+
+
+def test_checkout_de_comprador_sin_membresia_sobre_su_propia_venta():
+    """Antes de esta correccion, iniciar_checkout_venta() rechazaba con 403
+    a cualquier comprador sin Cliente asociado, incluso sobre su propio
+    pedido, porque asumia que 'sin Cliente' = 'otro cliente'."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    id_usuario_comprador = client.post(
+        "/usuarios/registro",
+        json={"correo": "comprador.checkout@example.com", "password": "clave123"},
+    ).json()["id_usuario"]
+
+    db = TestingSessionLocal()
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario_comprador).first()
+    usuario.correo_verificado = True
+    db.commit()
+    db.close()
+
+    headers_comprador = get_auth_headers(rol="CLIENTE", id_usuario=id_usuario_comprador)
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 2}]},
+        headers=headers_comprador,
+    ).json()["id_venta"]
+
+    res_checkout = client.post(f"/ventas/{id_venta}/checkout", headers=headers_comprador)
+    assert res_checkout.status_code == 200, res_checkout.text
+    assert res_checkout.json()["id_venta"] == id_venta
+
+    # Otro comprador sin membresia si debe seguir sin poder pagar un pedido ajeno.
+    id_usuario_otro = client.post(
+        "/usuarios/registro",
+        json={"correo": "otro.comprador@example.com", "password": "clave123"},
+    ).json()["id_usuario"]
+    headers_otro = get_auth_headers(rol="CLIENTE", id_usuario=id_usuario_otro)
+
+    res_ajeno = client.post(f"/ventas/{id_venta}/checkout", headers=headers_otro)
+    assert res_ajeno.status_code == 403
 
 
 # ── Ajuste manual de inventario ──────────────────────────────────────────────

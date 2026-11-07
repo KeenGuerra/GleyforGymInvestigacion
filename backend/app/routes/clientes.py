@@ -142,8 +142,17 @@ def crear_cliente(
         models.Usuario.correo == cliente.correo
     ).first()
 
+    # "Upgrade" de una cuenta de autoregistro público (POST /usuarios/registro,
+    # rol CLIENTE sin perfil de socio todavía) a socio real: se reusa el mismo
+    # Usuario/contraseña en vez de rechazar por correo duplicado, para que no
+    # termine con dos cuentas separadas. Cualquier otro caso (ya es socio, o
+    # el correo es de ADMIN/ENTRENADOR) sigue rechazándose como antes.
+    usuario_a_reusar = None
     if existe_correo:
-        raise HTTPException(status_code=400, detail=MSG_CORREO_REGISTRADO)
+        if existe_correo.rol == "CLIENTE" and existe_correo.cliente is None:
+            usuario_a_reusar = existe_correo
+        else:
+            raise HTTPException(status_code=400, detail=MSG_CORREO_REGISTRADO)
 
     existe_dni = db.query(models.Cliente).filter(
         models.Cliente.dni == cliente.dni
@@ -154,18 +163,24 @@ def crear_cliente(
 
     edad_calculada = calcular_edad(cliente.fecha_nacimiento)
 
-    nuevo_usuario = models.Usuario(
-        correo=cliente.correo,
-        password_hash=encriptar_password(cliente.password),
-        rol="CLIENTE",
-        estado=ESTADO_ACTIVO
-    )
+    if usuario_a_reusar:
+        nuevo_usuario = usuario_a_reusar
+    else:
+        if not cliente.password:
+            raise HTTPException(status_code=400, detail="La contraseña es obligatoria para una cuenta nueva")
 
-    db.add(nuevo_usuario)
-    db.commit()
-    db.refresh(nuevo_usuario)
+        nuevo_usuario = models.Usuario(
+            correo=cliente.correo,
+            password_hash=encriptar_password(cliente.password),
+            rol="CLIENTE",
+            estado=ESTADO_ACTIVO
+        )
 
-    enviar_verificacion_correo(nuevo_usuario, db)
+        db.add(nuevo_usuario)
+        db.commit()
+        db.refresh(nuevo_usuario)
+
+        enviar_verificacion_correo(nuevo_usuario, db)
 
     nuevo_cliente = models.Cliente(
         id_usuario=nuevo_usuario.id_usuario,

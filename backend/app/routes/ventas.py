@@ -282,7 +282,14 @@ def iniciar_checkout_venta(
         cliente = db.query(models.Cliente).filter(
             models.Cliente.id_usuario == usuario.get("id_usuario")
         ).first()
-        if not cliente or venta.id_cliente != cliente.id_cliente:
+        # Mismo fallback que mis_pedidos(): sin Cliente asociado (comprador
+        # sin membresía), la propiedad se valida contra id_usuario en vez
+        # de id_cliente — si no, nunca podría pagar su propio pedido.
+        if cliente:
+            es_propio = venta.id_cliente == cliente.id_cliente
+        else:
+            es_propio = venta.id_usuario == usuario.get("id_usuario")
+        if not es_propio:
             raise HTTPException(status_code=403, detail="No puedes pagar el pedido de otro cliente")
 
     if venta.estado != "PENDIENTE":
@@ -417,6 +424,21 @@ def solicitar_venta(
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_usuario == usuario.get("id_usuario")
     ).first()
+
+    # Sin Cliente asociado = cuenta de autoregistro público (ver
+    # POST /usuarios/registro), no un socio dado de alta por el staff. Para
+    # esas cuentas sí se exige correo verificado antes de comprar (evita
+    # compras con correos falsos); los socios reales no se ven afectados,
+    # por la decision de P-01 de no bloquearlos por esto.
+    if not cliente:
+        usuario_db = db.query(models.Usuario).filter(
+            models.Usuario.id_usuario == usuario.get("id_usuario")
+        ).first()
+        if not usuario_db or not usuario_db.correo_verificado:
+            raise HTTPException(
+                status_code=403,
+                detail="Verifica tu correo antes de comprar. Revisa tu bandeja de entrada."
+            )
 
     subtotal_total = 0
     detalles_procesados = []

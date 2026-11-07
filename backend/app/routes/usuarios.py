@@ -264,7 +264,11 @@ def login(
             "id_usuario": usuario.id_usuario,
             "correo": usuario.correo,
             "rol": usuario.rol,
-            "estado": usuario.estado
+            "estado": usuario.estado,
+            # Distingue un socio real de una cuenta de autoregistro público
+            # sin perfil (ver POST /usuarios/registro) — el frontend lo usa
+            # para decidir qué secciones de "mi cuenta" mostrar.
+            "tiene_cliente": usuario.cliente is not None,
         }
     }
 
@@ -355,6 +359,67 @@ def verificar_correo(
     db.commit()
 
     return {"mensaje": "Correo verificado correctamente"}
+
+
+# =========================
+# REGISTRO PÚBLICO (comprador sin membresía)
+# =========================
+@router.post(
+    "/registro",
+    responses={
+        400: {"description": "Correo ya registrado"},
+        429: {"description": "Demasiados registros desde esta IP, intenta más tarde"},
+    }
+)
+def registro_publico(
+    datos: schemas.UsuarioRegistroPublico,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Permite a cualquier persona crear una cuenta propia (rol CLIENTE, sin
+    perfil de socio) solo para comprar en la Tienda — a diferencia de
+    crear_usuario()/crear_cliente(), que exigen ser staff. No crea un
+    Cliente (ver app/routes/ventas.py, que ya tolera ventas sin Cliente
+    asociado): si la persona luego se hace socio real, clientes.py
+    reutiliza esta misma cuenta en vez de crear una duplicada.
+    """
+    ip_cliente = request.client.host if request.client else "desconocida"
+    clave_intentos = f"registro:{ip_cliente}"
+
+    if excedio_intentos(clave_intentos):
+        raise HTTPException(
+            status_code=429,
+            detail="Demasiados registros desde esta IP. Intenta de nuevo en unos minutos."
+        )
+
+    registrar_intento_fallido(clave_intentos)
+
+    existente = db.query(models.Usuario).filter(
+        models.Usuario.correo == datos.correo
+    ).first()
+
+    if existente:
+        raise HTTPException(status_code=400, detail=MSG_CORREO_REGISTRADO)
+
+    nuevo_usuario = models.Usuario(
+        correo=datos.correo,
+        password_hash=encriptar_password(datos.password),
+        rol="CLIENTE",
+        estado=ESTADO_ACTIVO,
+    )
+
+    db.add(nuevo_usuario)
+    db.commit()
+    db.refresh(nuevo_usuario)
+
+    enviar_verificacion_correo(nuevo_usuario, db)
+
+    return {
+        "mensaje": "Cuenta creada correctamente. Revisa tu correo para verificarla.",
+        "id_usuario": nuevo_usuario.id_usuario,
+        "correo": nuevo_usuario.correo,
+    }
 
 
 @router.put(
