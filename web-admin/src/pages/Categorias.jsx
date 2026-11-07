@@ -127,6 +127,8 @@ function Categorias() {
         <div className="stat-card"><span>Activas</span><strong>{categorias.filter((c) => c.estado === "ACTIVO").length}</strong></div>
       </section>
 
+      {error && <p className="error-message">{error}</p>}
+
       {mostrarFormulario && (
         <form onSubmit={guardar} className="form-card">
           <div className="card-header">
@@ -135,7 +137,6 @@ function Categorias() {
               <p>{editando ? "Modifica los datos de la categoría." : "Registra una nueva categoría para productos."}</p>
             </div>
           </div>
-          {error && <p className="error-message">{error}</p>}
           <div className="form-grid">
             <div className="form-field field-large">
               <label htmlFor="nombre">Nombre</label>

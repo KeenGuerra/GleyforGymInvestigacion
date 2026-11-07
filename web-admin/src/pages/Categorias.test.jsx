@@ -129,12 +129,13 @@ describe("Categorias Page Component", () => {
     });
   });
 
-  it("shows the empty list instead of crashing when loading fails", async () => {
+  it("shows the load error message instead of crashing when loading fails", async () => {
     api.get.mockRejectedValue(new Error("Network Error"));
     render(<Categorias />);
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith("/categorias/");
+      expect(screen.getByText("Error al cargar categorías")).toBeDefined();
       expect(screen.getByText("No hay categorías registradas.")).toBeDefined();
     });
   });

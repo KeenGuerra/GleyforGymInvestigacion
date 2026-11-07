@@ -56,6 +56,15 @@ describe("Proveedores Page Component", () => {
     });
   });
 
+  it("shows the load error message when loading suppliers fails", async () => {
+    api.get.mockRejectedValue(new Error("Network Error"));
+    render(<Proveedores />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Error al cargar proveedores")).toBeDefined();
+    });
+  });
+
   it("shows form and calls post on creating a supplier", async () => {
     api.post.mockResolvedValue({ data: {} });
     const { container } = render(<Proveedores />);

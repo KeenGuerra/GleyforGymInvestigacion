@@ -174,10 +174,11 @@ function Productos() {
         <div className="stat-card"><span>Activos</span><strong>{productos.filter((p) => p.estado === "ACTIVO").length}</strong></div>
       </section>
 
+      {error && <p className="error-message">{error}</p>}
+
       {mostrarFormulario && (
         <form onSubmit={guardar} className="form-card">
           <div className="card-header"><div><h2>{editando ? "Editar producto" : "Nuevo producto"}</h2></div></div>
-          {error && <p className="error-message">{error}</p>}
           <div className="form-grid">
             <div className="form-field field-large">
               <label>Nombre</label>

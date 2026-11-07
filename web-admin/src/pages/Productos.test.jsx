@@ -51,6 +51,19 @@ describe("Productos Page Component", () => {
     });
   });
 
+  it("shows the load error message when loading products fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/categorias/") return Promise.resolve({ data: mockCategorias });
+      return Promise.reject(new Error("Network Error"));
+    });
+
+    render(<Productos />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Error al cargar productos")).toBeDefined();
+    });
+  });
+
   it("requests the first page with the expected pagination params", async () => {
     render(<Productos />);
     await waitFor(() => {

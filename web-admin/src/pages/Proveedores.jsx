@@ -74,10 +74,11 @@ function Proveedores() {
         <div className="stat-card"><span>Filtrados</span><strong>{filtrados.length}</strong></div>
       </section>
 
+      {error && <p className="error-message">{error}</p>}
+
       {mostrarFormulario && (
         <form onSubmit={guardar} className="form-card">
           <div className="card-header"><div><h2>{editando ? "Editar proveedor" : "Nuevo proveedor"}</h2></div></div>
-          {error && <p className="error-message">{error}</p>}
           <div className="form-grid">
             <div className="form-field field-large"><label>Razón social</label><input name="razon_social" value={form.razon_social} onChange={cambiar} /></div>
             <div className="form-field"><label>RUC</label><input name="ruc" value={form.ruc} onChange={cambiar} /></div>
