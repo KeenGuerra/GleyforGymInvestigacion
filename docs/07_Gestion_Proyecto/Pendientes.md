@@ -50,9 +50,14 @@ Pruebas agregadas en `Pagos.test.jsx` y `Tienda.test.jsx` para ambos flujos (éx
 
 En autorrevisión antes de la primera prueba real se corrigieron dos bugs: `CulqiGateway.consultar_estado()` no manejaba un 404 de Culqi (orden no encontrada) y `_extraer_id_transaccion()` priorizaba el `id` de primer nivel del payload antes que las rutas anidadas, al revés de la convención común de webhooks (estilo Stripe) donde el nivel superior suele ser el ID del *evento*, no del recurso.
 
+**Avance (2026-11, continuación 3) — bugs reales encontrados en la primera prueba real (no simulada)**: al intentar pagar de verdad desde "Mi Membresía" se encontraron y corrigieron tres problemas que solo aparecen contra la API real de Culqi (nunca los hubiera detectado el webhook simulado):
+1. Culqi rechaza la orden con 400 si el teléfono del cliente llega vacío o mal formado — ahora `iniciar_checkout_pago`/`iniciar_checkout_venta` exigen un teléfono de exactamente 9 dígitos (Perú) antes de llamar a Culqi, con un mensaje claro en vez de un 500 genérico.
+2. Culqi exige que `order_number` sea único **para siempre en toda la cuenta** (no solo en nuestra BD) — reintentar "Completar pago" sobre el mismo Pago/Venta volvía a llamar a `crear_checkout()` con la misma referencia y Culqi la rechazaba. Se agregó `GatewayPago.obtener_checkout()` para recuperar la orden ya creada en vez de crear una nueva (checkout idempotente).
+3. La referencia (`pago-<id>`/`venta-<id>`) se arma solo con el ID autoincremental de nuestra BD, que no es único entre entornos/pruebas distintas contra la misma cuenta de Culqi — chocó con una orden de pruebas anteriores. Se agregó un sufijo aleatorio a la referencia.
+
 Falta:
 
-1. Completar un pago de prueba real de punta a punta (QR de Yape sandbox, número de prueba `900 000 001` + cualquier código de 6 dígitos, o PagoEfectivo) contra el backend desplegado, y confirmar que el webhook real de Culqi llega con un formato que `_extraer_id_transaccion()` reconoce. **Es lo único de este punto sin confirmar todavía** — todo lo probado hasta ahora fue con el webhook simulado (payload armado a mano), no con un pago real aprobado por Culqi.
+1. Completar un pago de prueba real de punta a punta (QR de Yape sandbox, número de prueba `900 000 001` + cualquier código de 6 dígitos, o PagoEfectivo) contra el backend desplegado, y confirmar que el webhook real de Culqi llega con un formato que `_extraer_id_transaccion()` reconoce. **Sigue siendo lo único sin confirmar** — ya se corrigieron los bugs que impedían siquiera llegar a generar la orden de pago (ver arriba), pero aún no se completó un pago hasta el final (escanear el QR/pagar y que el webhook confirme).
 
 Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
 
@@ -91,6 +96,19 @@ Ahora el interceptor solo cierra sesión si **ya había** un token guardado ante
 ## P-21 Bootstrap para alertas/toasts
 
 ~~Resuelto (2026-11)~~: se agregó Bootstrap (`bootstrap` + `sass` como dependencias) a pedido, pero **solo** los componentes de alerta/toast, importados vía Sass en `web-admin/src/styles/bootstrap-custom.scss` — deliberadamente sin `reboot` (resetea tipografía/body global) ni `grid`/`buttons`/`card`/`badge`. La app ya tiene su propio tema (`index.css`, ~2185 líneas) con clases como `.btn-primary`/`.card`/`.badge`, los mismos nombres que usa Bootstrap por defecto; importarlo completo habría roto esa UI existente. Nuevo hook `useToast.js` + componente `ToastFeedback.jsx` (auto-cierre manejado por `setTimeout` en React, sin depender del runtime JS de Bootstrap), usados en los tres dashboards para avisar cuando falla la carga inicial (ver P-20).
+
+---
+
+## P-22 Checklist para pasar a la cuenta real de Culqi (producción)
+
+El gimnasio pagará en persona con un POS físico aparte (no integrado a este sistema — hoy esas ventas se anotan a mano), pero quiere usar su **cuenta real de Culqi** para las compras desde la web (Tienda + Mi Membresía) en vez de la cuenta de pruebas (sandbox) usada hasta ahora. El código no distingue entre sandbox/real (usa la misma URL de Culqi, solo cambia según el prefijo de la llave), pero faltan pasos operativos antes de activarlo:
+
+1. **Reemplazar las llaves en Render**: `CULQI_SECRET_KEY`/`CULQI_PUBLIC_KEY` en el dashboard del backend tienen hoy las llaves de sandbox (`sk_test_.../pk_test_...`) — cambiarlas por las llaves reales (`sk_live_.../pk_live_...`) de la cuenta del gimnasio.
+2. **Volver a registrar el webhook en el ambiente de Producción de Culqi**: el webhook (Crear Webhook → Órdenes → status/changed → `.../webhooks/pagos?secret=...`) se configuró en la pestaña de Desarrollo — Culqi separa Desarrollo/Producción y no traslada la configuración sola. Si se olvida este paso, los pagos reales no activarían la membresía/venta automáticamente (quedarían como PENDIENTE para siempre).
+3. **Cancelar los `Pago`/`Venta`/`ClienteMembresia` que quedaron PENDIENTE de las pruebas con sandbox** antes de lanzar — sus `id_transaccion_externa` son de órdenes `ord_test_...` que no existen para la cuenta real, así que mejor no dejarlos sueltos confundiendo al staff.
+4. **Probar con un monto real pequeño** (ej. S/ 1) antes de anunciarlo a los socios, para confirmar que el webhook llega y activa correctamente con dinero de verdad — mismo patrón que se usó en sandbox (ver P-02), pero esta vez si se cobra.
+
+No se resuelve nada de esto todavía — queda anotado para cuando el gimnasio tenga lista su cuenta real de Culqi (KYC/verificación de negocio aprobada por Culqi, que es un trámite del lado del gimnasio, no de este código).
 
 ---
 
