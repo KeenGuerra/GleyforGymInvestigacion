@@ -150,6 +150,16 @@ function Ejercicios() {
     }
   };
 
+  const activar = async (id) => {
+    try {
+      await api.put(`/ejercicios/${id}`, { estado: "ACTIVO" });
+      await cargar();
+    } catch (error) {
+      console.error("Error al activar ejercicio:", error);
+      setError("No se pudo activar el ejercicio");
+    }
+  };
+
   const ejerciciosFiltrados = ejercicios.filter((e) => {
     const texto = busqueda.toLowerCase();
 
@@ -381,12 +391,21 @@ function Ejercicios() {
                     Editar
                   </button>
 
-                  <button
-                    className="btn-danger"
-                    onClick={() => desactivar(e.id_ejercicio)}
-                  >
-                    Desactivar
-                  </button>
+                  {e.estado === "INACTIVO" ? (
+                    <button
+                      className="btn-secondary"
+                      onClick={() => activar(e.id_ejercicio)}
+                    >
+                      Activar
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-danger"
+                      onClick={() => desactivar(e.id_ejercicio)}
+                    >
+                      Desactivar
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -75,4 +75,19 @@ describe("GestionAvisos Page Component", () => {
       expect(api.delete).toHaveBeenCalledWith("/avisos/1");
     });
   });
+
+  it("shows an Activar button instead of Desactivar for an INACTIVO aviso, and reactivates it", async () => {
+    api.get.mockResolvedValue({ data: [{ ...mockAvisos[0], estado: "INACTIVO" }] });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<GestionAvisos />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/avisos/1", { estado: "ACTIVO" });
+    });
+  });
 });

@@ -51,6 +51,10 @@ function Proveedores() {
     try { await api.delete(`/proveedores/${id}`); await cargar(); } catch { setError("Error al desactivar"); }
   };
 
+  const activar = async (id) => {
+    try { await api.put(`/proveedores/${id}`, { estado: "ACTIVO" }); await cargar(); } catch { setError("Error al activar"); }
+  };
+
   const filtrados = proveedores.filter((p) => {
     const t = busqueda.toLowerCase();
     return String(p.razon_social || "").toLowerCase().includes(t) || String(p.ruc || "").includes(t) || String(p.estado || "").toLowerCase().includes(t);
@@ -112,7 +116,11 @@ function Proveedores() {
                 {p.contacto && <p className="item-description">Contacto: {p.contacto}</p>}
                 <div className="item-actions">
                   <button className="btn-secondary" onClick={() => editar(p)}>Editar</button>
-                  <button className="btn-danger" onClick={() => desactivar(p.id_proveedor)}>Desactivar</button>
+                  {p.estado === "INACTIVO" ? (
+                    <button className="btn-secondary" onClick={() => activar(p.id_proveedor)}>Activar</button>
+                  ) : (
+                    <button className="btn-danger" onClick={() => desactivar(p.id_proveedor)}>Desactivar</button>
+                  )}
                 </div>
               </div>
             ))}

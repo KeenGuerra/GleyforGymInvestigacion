@@ -943,6 +943,20 @@ tr:hover td {
   gap: 12px;
 }
 
+/* .detail-list quedaba en una sola columna (sin grid-template-columns) y
+   cada <p> conservaba el margen vertical por defecto del navegador, que se
+   sumaba al gap del grid -- por eso se veían cajas enormes con mucho
+   espacio vacío (ver MiRutina.jsx/DetalleCliente.jsx/MiPerfil.jsx/
+   MiProgreso.jsx/MisPagos.jsx, que comparten este mismo patrón). .list no
+   se toca: sus filas (.list-item) sí deben ocupar todo el ancho. */
+.detail-list {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.detail-list p {
+  margin: 0;
+}
+
 .list-item {
   display: flex;
   justify-content: space-between;
@@ -1815,7 +1829,8 @@ tr:hover td {
   .quick-actions-grid,
   .form-grid,
   .details-grid,
-  .mini-stats-grid {
+  .mini-stats-grid,
+  .detail-list {
     grid-template-columns: 1fr;
   }
 

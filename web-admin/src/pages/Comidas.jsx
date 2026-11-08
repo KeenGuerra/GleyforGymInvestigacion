@@ -149,6 +149,16 @@ function Comidas() {
     }
   };
 
+  const activar = async (id) => {
+    try {
+      await api.put(`/comidas/${id}`, { estado: "ACTIVO" });
+      await cargarComidas();
+    } catch (error) {
+      console.error(error);
+      setError("Error al activar comida");
+    }
+  };
+
   const comidasFiltradas = comidas.filter((c) => {
     const texto = busqueda.toLowerCase();
 
@@ -406,12 +416,21 @@ function Comidas() {
                     Editar
                   </button>
 
-                  <button
-                    className="btn-danger"
-                    onClick={() => desactivar(c.id_comida_catalogo)}
-                  >
-                    Desactivar
-                  </button>
+                  {c.estado === "INACTIVO" ? (
+                    <button
+                      className="btn-secondary"
+                      onClick={() => activar(c.id_comida_catalogo)}
+                    >
+                      Activar
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-danger"
+                      onClick={() => desactivar(c.id_comida_catalogo)}
+                    >
+                      Desactivar
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

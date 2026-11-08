@@ -154,6 +154,21 @@ describe("Proveedores Page Component", () => {
     });
   });
 
+  it("shows an Activar button instead of Desactivar for an INACTIVO supplier, and reactivates it", async () => {
+    api.get.mockResolvedValue({ data: [{ ...mockProveedores[0], estado: "INACTIVO" }] });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<Proveedores />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/proveedores/1", { estado: "ACTIVO" });
+    });
+  });
+
   it("does not deactivate when confirm is cancelled", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<Proveedores />);

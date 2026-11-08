@@ -109,6 +109,16 @@ function GestionAvisos() {
     }
   };
 
+  const activar = async (id) => {
+    try {
+      await api.put(`/avisos/${id}`, { estado: "ACTIVO" });
+      await cargarAvisos();
+    } catch (error) {
+      console.error(error);
+      setError("Error al activar el aviso");
+    }
+  };
+
   const avisosFiltrados = avisos.filter((a) => {
     const texto = busqueda.toLowerCase();
     return (
@@ -259,9 +269,15 @@ function GestionAvisos() {
                         <button className="btn-secondary" onClick={() => editar(a)}>
                           Editar
                         </button>
-                        <button className="btn-danger" onClick={() => desactivar(a.id_aviso)}>
-                          Desactivar
-                        </button>
+                        {a.estado === "INACTIVO" ? (
+                          <button className="btn-secondary" onClick={() => activar(a.id_aviso)}>
+                            Activar
+                          </button>
+                        ) : (
+                          <button className="btn-danger" onClick={() => desactivar(a.id_aviso)}>
+                            Desactivar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

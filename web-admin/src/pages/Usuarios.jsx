@@ -124,6 +124,16 @@ function Usuarios() {
     }
   };
 
+  const activar = async (id) => {
+    try {
+      await api.put(`/usuarios/${id}`, { estado: "ACTIVO" });
+      cargarUsuarios();
+    } catch (error) {
+      console.error(error);
+      setError("Error al activar usuario");
+    }
+  };
+
   const resetearPassword = async (e) => {
     e.preventDefault();
     setMensajeReset("");
@@ -402,12 +412,21 @@ function Usuarios() {
                           Restablecer contraseña
                         </button>
 
-                        <button
-                          onClick={() => desactivar(u.id_usuario)}
-                          className="btn-danger"
-                        >
-                          Desactivar
-                        </button>
+                        {u.estado === "INACTIVO" ? (
+                          <button
+                            onClick={() => activar(u.id_usuario)}
+                            className="btn-secondary"
+                          >
+                            Activar
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => desactivar(u.id_usuario)}
+                            className="btn-danger"
+                          >
+                            Desactivar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

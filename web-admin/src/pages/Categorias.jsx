@@ -99,6 +99,16 @@ function Categorias() {
     }
   };
 
+  const activar = async (id) => {
+    try {
+      await api.put(`/categorias/${id}`, { estado: "ACTIVO" });
+      await cargar();
+    } catch (err) {
+      console.error(err);
+      setError("Error al activar categoría");
+    }
+  };
+
   const filtradas = categorias.filter((c) => {
     const t = busqueda.toLowerCase();
     return (
@@ -179,7 +189,11 @@ function Categorias() {
                 {c.descripcion && <p className="item-description">{c.descripcion}</p>}
                 <div className="item-actions">
                   <button className="btn-secondary" onClick={() => editar(c)}>Editar</button>
-                  <button className="btn-danger" onClick={() => desactivar(c.id_categoria)}>Desactivar</button>
+                  {c.estado === "INACTIVO" ? (
+                    <button className="btn-secondary" onClick={() => activar(c.id_categoria)}>Activar</button>
+                  ) : (
+                    <button className="btn-danger" onClick={() => desactivar(c.id_categoria)}>Desactivar</button>
+                  )}
                 </div>
               </div>
             ))}

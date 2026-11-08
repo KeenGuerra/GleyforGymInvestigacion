@@ -146,6 +146,17 @@ function Productos() {
     try { await api.delete(`/productos/${id}`); await cargar(); } catch { setError("Error al desactivar"); }
   };
 
+  const activar = async (id) => {
+    try {
+      const data = new FormData();
+      data.append("estado", "ACTIVO");
+      await api.put(`/productos/${id}`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      await cargar();
+    } catch { setError("Error al activar"); }
+  };
+
   const filtrados = productos.filter((p) => {
     const t = busqueda.toLowerCase();
     return (
@@ -292,7 +303,11 @@ function Productos() {
                   {p.descripcion && <p className="item-description">{p.descripcion}</p>}
                   <div className="item-actions">
                     <button className="btn-secondary" onClick={() => editar(p)}>Editar</button>
-                    <button className="btn-danger" onClick={() => desactivar(p.id_producto)}>Desactivar</button>
+                    {p.estado === "INACTIVO" ? (
+                      <button className="btn-secondary" onClick={() => activar(p.id_producto)}>Activar</button>
+                    ) : (
+                      <button className="btn-danger" onClick={() => desactivar(p.id_producto)}>Desactivar</button>
+                    )}
                   </div>
                 </div>
               </div>

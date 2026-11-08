@@ -151,6 +151,29 @@ describe("Productos Page Component", () => {
     });
   });
 
+  it("shows an Activar button instead of Desactivar for an INACTIVO product, and reactivates it", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/categorias/") return Promise.resolve({ data: mockCategorias });
+      return Promise.resolve({ data: [{ ...mockProductos[0], estado: "INACTIVO" }] });
+    });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<Productos />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        "/productos/1",
+        expect.any(FormData),
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+    });
+    expect(api.put.mock.calls[0][1].get("estado")).toBe("ACTIVO");
+  });
+
   it("navigates between pages", async () => {
     render(<Productos />);
     await waitFor(() => expect(screen.getByText("Página 1")).toBeDefined());

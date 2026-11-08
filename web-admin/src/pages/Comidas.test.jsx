@@ -114,4 +114,32 @@ describe("Comidas Page Component", () => {
     });
     expect(api.post).not.toHaveBeenCalled();
   });
+
+  it("deactivates a meal on confirm", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    api.delete.mockResolvedValue({ data: {} });
+    render(<Comidas />);
+
+    await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
+    fireEvent.click(screen.getByText("Desactivar"));
+
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith("/comidas/1");
+    });
+  });
+
+  it("shows an Activar button instead of Desactivar for an INACTIVO meal, and reactivates it", async () => {
+    api.get.mockResolvedValue({ data: [{ ...mockComidas[0], estado: "INACTIVO" }] });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<Comidas />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/comidas/1", { estado: "ACTIVO" });
+    });
+  });
 });

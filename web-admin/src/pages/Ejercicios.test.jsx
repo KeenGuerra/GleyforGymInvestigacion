@@ -126,6 +126,26 @@ describe("Ejercicios Page Component", () => {
     });
   });
 
+  it("shows an Activar button instead of Desactivar for an INACTIVO exercise, and reactivates it", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/ejercicios/")) {
+        return Promise.resolve({ data: [{ ...mockEjercicios[0], estado: "INACTIVO" }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<Ejercicios />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/ejercicios/1", { estado: "ACTIVO" });
+    });
+  });
+
   it("does not deactivate an exercise if confirmation is cancelled", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
 

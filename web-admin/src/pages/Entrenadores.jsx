@@ -135,6 +135,16 @@ function Entrenadores() {
     }
   };
 
+  const activar = async (id) => {
+    try {
+      await api.put(`/entrenadores/${id}`, { estado: "ACTIVO" });
+      await cargar();
+    } catch (err) {
+      console.error(err);
+      setError("Error al activar entrenador");
+    }
+  };
+
   const filtrados = entrenadores.filter((e) => {
     const texto = busqueda.toLowerCase();
     return (
@@ -338,9 +348,15 @@ function Entrenadores() {
                         <button className="btn-secondary" onClick={() => editar(e)}>
                           Editar
                         </button>
-                        <button className="btn-danger" onClick={() => desactivar(e.id_entrenador)}>
-                          Desactivar
-                        </button>
+                        {e.estado === "INACTIVO" ? (
+                          <button className="btn-secondary" onClick={() => activar(e.id_entrenador)}>
+                            Activar
+                          </button>
+                        ) : (
+                          <button className="btn-danger" onClick={() => desactivar(e.id_entrenador)}>
+                            Desactivar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

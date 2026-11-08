@@ -140,6 +140,21 @@ describe("Entrenadores Page Component", () => {
     });
   });
 
+  it("shows an Activar button instead of Desactivar for an INACTIVO trainer, and reactivates it", async () => {
+    api.get.mockResolvedValue({ data: [{ ...mockEntrenadores[0], estado: "INACTIVO" }] });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<Entrenadores />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/entrenadores/1", { estado: "ACTIVO" });
+    });
+  });
+
   it("does not deactivate when confirm is cancelled", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<Entrenadores />);

@@ -123,6 +123,21 @@ describe("Usuarios Page Component", () => {
     });
   });
 
+  it("shows an Activar button instead of Desactivar for an INACTIVO user, and reactivates it", async () => {
+    api.get.mockResolvedValue({ data: [{ ...mockUsuarios[0], estado: "INACTIVO" }] });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<Usuarios />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/usuarios/1", { estado: "ACTIVO" });
+    });
+  });
+
   it("does not deactivate user if confirm is cancelled", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<Usuarios />);

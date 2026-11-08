@@ -115,6 +115,16 @@ function Membresias() {
     }
   };
 
+  const activarMembresia = async (id) => {
+    try {
+      await api.put(`/membresias/${id}`, { estado: "ACTIVO" });
+      cargarMembresias();
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo activar la membresía");
+    }
+  };
+
   const membresiasFiltradas = membresias.filter((m) =>
     `${m.nombre} ${m.descripcion} ${m.beneficios} ${m.estado}`
       .toLowerCase()
@@ -334,12 +344,21 @@ function Membresias() {
                     Editar
                   </button>
 
-                  <button
-                    onClick={() => desactivarMembresia(plan.id_membresia)}
-                    className="btn-danger"
-                  >
-                    Desactivar
-                  </button>
+                  {plan.estado === "INACTIVO" ? (
+                    <button
+                      onClick={() => activarMembresia(plan.id_membresia)}
+                      className="btn-secondary"
+                    >
+                      Activar
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => desactivarMembresia(plan.id_membresia)}
+                      className="btn-danger"
+                    >
+                      Desactivar
+                    </button>
+                  )}
                 </div>
               </article>
             ))}

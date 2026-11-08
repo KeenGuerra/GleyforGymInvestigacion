@@ -120,6 +120,21 @@ describe("Categorias Page Component", () => {
     expect(api.delete).not.toHaveBeenCalled();
   });
 
+  it("shows an Activar button instead of Desactivar for an INACTIVO category, and reactivates it", async () => {
+    api.get.mockResolvedValue({ data: [{ ...mockCategorias[0], estado: "INACTIVO" }] });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(<Categorias />);
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/categorias/1", { estado: "ACTIVO" });
+    });
+  });
+
   it("shows an empty message when there are no categories", async () => {
     api.get.mockResolvedValue({ data: [] });
     render(<Categorias />);
