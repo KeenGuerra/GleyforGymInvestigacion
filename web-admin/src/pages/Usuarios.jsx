@@ -15,7 +15,7 @@ function Usuarios() {
   const formInicial = {
     correo: "",
     password: "",
-    rol: "ENTRENADOR",
+    rol: "RECEPCIONISTA",
     estado: "ACTIVO",
   };
 
@@ -101,7 +101,7 @@ function Usuarios() {
     setForm({
       correo: usuario.correo || "",
       password: "",
-      rol: usuario.rol || "ENTRENADOR",
+      rol: usuario.rol || "RECEPCIONISTA",
       estado: usuario.estado || "ACTIVO",
     });
 
@@ -310,7 +310,15 @@ function Usuarios() {
             <div className="form-field">
               <label htmlFor="rol">Rol</label>
               <select id="rol" name="rol" value={form.rol} onChange={cambiar}>
-                <option value="ENTRENADOR">ENTRENADOR</option>
+                {/* ENTRENADOR no se crea ni se asigna aquí: su cuenta y su
+                    perfil (DNI, especialidad) se crean juntos en
+                    "Entrenadores" (POST /entrenadores/). Esta opción solo se
+                    muestra si ya se está editando una cuenta que ya tenía
+                    ese rol, para no dejar el <select> sin ninguna opción
+                    seleccionada. */}
+                {form.rol === "ENTRENADOR" && (
+                  <option value="ENTRENADOR">ENTRENADOR</option>
+                )}
                 <option value="RECEPCIONISTA">RECEPCIONISTA</option>
                 <option value="ADMIN">ADMIN</option>
               </select>

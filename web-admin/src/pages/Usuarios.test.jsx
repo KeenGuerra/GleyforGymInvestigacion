@@ -71,6 +71,17 @@ describe("Usuarios Page Component", () => {
     expect(screen.getByRole("option", { name: "RECEPCIONISTA" })).toBeDefined();
   });
 
+  it("does not offer ENTRENADOR as a role when creating a new user (it's created from the Entrenadores screen instead)", async () => {
+    render(<Usuarios />);
+
+    fireEvent.click(screen.getByText("+ Crear usuario"));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Rol")).toBeDefined();
+    });
+
+    expect(screen.queryByRole("option", { name: "ENTRENADOR" })).toBeNull();
+  });
+
   it("shows form and calls post on submitting a new user", async () => {
     api.post.mockResolvedValue({ data: {} });
     render(<Usuarios />);
