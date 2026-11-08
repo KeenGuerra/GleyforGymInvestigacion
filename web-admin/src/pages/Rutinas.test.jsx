@@ -9,6 +9,8 @@ vi.mock("../api/api", () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -101,6 +103,31 @@ describe("Rutinas Page Component", () => {
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ia/rutina/generar/1");
       expect(mockNavigate).toHaveBeenCalledWith("/rutinas/11/detalle");
+    });
+  });
+
+  it("shows an Activar button instead of Desactivar for an INACTIVA routine, and reactivates it", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/rutinas/")) {
+        return Promise.resolve({ data: [{ ...mockRutinas[0], estado: "INACTIVA" }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    api.put.mockResolvedValue({ data: {} });
+
+    render(
+      <MemoryRouter>
+        <Rutinas />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/rutinas/10", { estado: "ACTIVA" });
     });
   });
 });

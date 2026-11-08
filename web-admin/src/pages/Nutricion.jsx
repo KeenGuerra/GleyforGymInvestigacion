@@ -79,6 +79,16 @@ function Nutricion() {
     }
   };
 
+  const activarPlan = async (idPlan) => {
+    try {
+      await api.put(`/nutricion/${idPlan}`, { estado: "ACTIVO" });
+      await cargarDatos();
+    } catch (error) {
+      console.error(error);
+      setError("Error al activar plan");
+    }
+  };
+
   const planesFiltrados = planes.filter((p) => {
     const cliente = obtenerNombreCliente(p.id_cliente).toLowerCase();
     const texto = busqueda.toLowerCase();
@@ -203,12 +213,21 @@ function Nutricion() {
                           Ver
                         </button>
 
-                        <button
-                          className="btn-danger"
-                          onClick={() => desactivarPlan(p.id_plan)}
-                        >
-                          Desactivar
-                        </button>
+                        {p.estado === "INACTIVO" ? (
+                          <button
+                            className="btn-secondary"
+                            onClick={() => activarPlan(p.id_plan)}
+                          >
+                            Activar
+                          </button>
+                        ) : (
+                          <button
+                            className="btn-danger"
+                            onClick={() => desactivarPlan(p.id_plan)}
+                          >
+                            Desactivar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

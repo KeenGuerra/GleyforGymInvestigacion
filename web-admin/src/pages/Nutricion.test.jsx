@@ -9,6 +9,7 @@ vi.mock("../api/api", () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -150,6 +151,27 @@ describe("Nutricion Page Component", () => {
     expect(globalThis.confirm).toHaveBeenCalled();
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/nutricion/10");
+    });
+  });
+
+  it("shows an Activar button instead of Desactivar for an INACTIVO plan, and reactivates it", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/nutricion/")) {
+        return Promise.resolve({ data: [{ ...mockPlanes[0], estado: "INACTIVO" }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    api.put.mockResolvedValue({ data: {} });
+
+    renderNutricion();
+    await waitFor(() => expect(screen.getByText("Activar")).toBeDefined());
+    expect(screen.queryByText("Desactivar")).toBeNull();
+
+    fireEvent.click(screen.getByText("Activar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/nutricion/10", { estado: "ACTIVO" });
     });
   });
 

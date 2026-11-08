@@ -83,6 +83,16 @@ function Rutinas() {
     }
   };
 
+  const activarRutina = async (id) => {
+    try {
+      await api.put(`/rutinas/${id}`, { estado: "ACTIVA" });
+      cargarDatos();
+    } catch (error) {
+      console.error(error);
+      setError("Error al activar rutina");
+    }
+  };
+
   const rutinasFiltradas = rutinas.filter((r) => {
     const cliente = obtenerNombreCliente(r.id_cliente).toLowerCase();
     const texto = busqueda.toLowerCase();
@@ -214,12 +224,21 @@ function Rutinas() {
                           Ver
                         </button>
 
-                        <button
-                          className="btn-danger"
-                          onClick={() => desactivarRutina(r.id_rutina)}
-                        >
-                          Desactivar
-                        </button>
+                        {r.estado === "INACTIVA" ? (
+                          <button
+                            className="btn-secondary"
+                            onClick={() => activarRutina(r.id_rutina)}
+                          >
+                            Activar
+                          </button>
+                        ) : (
+                          <button
+                            className="btn-danger"
+                            onClick={() => desactivarRutina(r.id_rutina)}
+                          >
+                            Desactivar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
