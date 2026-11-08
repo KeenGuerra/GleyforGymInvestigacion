@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import Nutricion from "./Nutricion";
 import api from "../api/api";
 
@@ -12,6 +13,15 @@ vi.mock("../api/api", () => ({
   },
 }));
 
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 const mockClientes = [
   { id_cliente: 1, nombres: "Juan", apellidos: "Perez", estado: "ACTIVO", objetivo: "Ganar masa" },
 ];
@@ -19,134 +29,123 @@ const mockClientes = [
 const mockPlanes = [
   {
     id_plan: 10,
+    id_cliente: 1,
     estado: "ACTIVO",
     objetivo: "Dieta Hiperproteica",
     calorias_diarias: 2500,
-    proteinas: 150,
-    carbohidratos: 200,
-    grasas: 70,
     generada_por_ia: true,
     fecha_creacion: "2026-06-01",
-    comidas: [
-      {
-        id_comida: 5,
-        tipo_comida: "Desayuno",
-        descripcion: "Avena con plátano",
-        calorias_aprox: 400,
-        hora_recomendada: "08:00 AM",
-      },
-    ],
   },
 ];
+
+function renderNutricion() {
+  return render(
+    <MemoryRouter>
+      <Nutricion />
+    </MemoryRouter>
+  );
+}
 
 describe("Nutricion Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
-      if (url.includes("/nutricion/cliente/")) return Promise.resolve({ data: mockPlanes });
+      if (url.includes("/nutricion/")) return Promise.resolve({ data: mockPlanes });
       return Promise.resolve({ data: [] });
     });
   });
 
-  it("has an accessible label associated with the client select", async () => {
-    render(<Nutricion />);
-    const selectElement = document.getElementById("cliente_nutricion");
-    expect(selectElement).toBeDefined();
-    expect(selectElement?.tagName).toBe("SELECT");
-  });
-
-  it("shows the client select with the correct label", async () => {
-    render(<Nutricion />);
-    const label = screen.getByText("Cliente");
-    expect(label).toBeDefined();
-  });
-
-  it("loads planes when a client is selected", async () => {
-    render(<Nutricion />);
+  it("renders the header and lists generated plans", async () => {
+    renderNutricion();
+    expect(screen.getByText("Planes nutricionales")).toBeDefined();
     await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
-    });
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith("/nutricion/cliente/1");
-      expect(screen.getByText("Plan #10")).toBeDefined();
       expect(screen.getByText("Dieta Hiperproteica")).toBeDefined();
+      expect(screen.getByText("Juan Perez")).toBeDefined();
       expect(screen.getByText("2500 kcal")).toBeDefined();
-      expect(screen.getByText("Avena con plátano")).toBeDefined();
     });
   });
 
-  it("calls API to generate plan with IA on click", async () => {
-    api.post.mockResolvedValue({ data: {} });
-    render(<Nutricion />);
+  it("filters plans based on search term", async () => {
+    renderNutricion();
+    await waitFor(() => expect(screen.getByText("Dieta Hiperproteica")).toBeDefined());
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Buscar por cliente, objetivo o estado..."),
+      { target: { value: "noexiste" } }
+    );
 
     await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
+      expect(screen.queryByText("Dieta Hiperproteica")).toBeNull();
+      expect(screen.getByText("No hay planes nutricionales registrados")).toBeDefined();
     });
+  });
 
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
+  it("requires a client before generating a plan with IA", async () => {
+    renderNutricion();
+    await waitFor(() => expect(screen.getByText("Generar plan con IA")).toBeDefined());
 
-    const btn = screen.getByText("Generar plan con IA");
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByText("Generar plan con IA"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Seleccione un cliente")).toBeDefined();
+    });
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("generates a plan with IA for the selected client", async () => {
+    api.post.mockResolvedValue({ data: { id_plan: 11 } });
+    renderNutricion();
+
+    await waitFor(() => expect(screen.getByText("Generar plan con IA")).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
+    fireEvent.click(screen.getByText("Generar plan con IA"));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ia/nutricion/generar/1");
     });
   });
 
-  it("shows error if API generation fails", async () => {
-    api.post.mockRejectedValue({
-      response: { data: { detail: "Límite de tokens IA excedido" } },
-    });
-    render(<Nutricion />);
+  it("shows an error when IA generation fails", async () => {
+    api.post.mockRejectedValue({ response: { data: { detail: "Límite de tokens IA excedido" } } });
+    renderNutricion();
 
-    await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
-    });
+    await waitFor(() => expect(screen.getByText("Generar plan con IA")).toBeDefined());
 
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    const btn = screen.getByText("Generar plan con IA");
-    fireEvent.click(btn);
+    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
+    fireEvent.click(screen.getByText("Generar plan con IA"));
 
     await waitFor(() => {
       expect(screen.getByText("Límite de tokens IA excedido")).toBeDefined();
     });
   });
 
-  it("shows error if client loading fails", async () => {
+  it("shows an error when loading data fails", async () => {
     api.get.mockRejectedValue(new Error("Network Error"));
-    render(<Nutricion />);
+    renderNutricion();
 
     await waitFor(() => {
-      expect(screen.getByText("Error al cargar clientes")).toBeDefined();
+      expect(screen.getByText("Error al cargar datos")).toBeDefined();
     });
   });
 
-  it("handles plan deactivation with confirmation", async () => {
+  it("navigates to the plan detail when clicking Ver", async () => {
+    renderNutricion();
+    await waitFor(() => expect(screen.getByText("Dieta Hiperproteica")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Ver"));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/nutricion/10/detalle");
+  });
+
+  it("deactivates a plan on confirm", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
+    renderNutricion();
 
-    render(<Nutricion />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
-    });
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("Desactivar plan")).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText("Desactivar plan"));
+    await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
+    fireEvent.click(screen.getByText("Desactivar"));
 
     expect(globalThis.confirm).toHaveBeenCalled();
     await waitFor(() => {
@@ -154,151 +153,27 @@ describe("Nutricion Page Component", () => {
     });
   });
 
-  it("does not deactivate plan if user cancels confirmation", async () => {
+  it("does not deactivate a plan if the user cancels the confirmation", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    renderNutricion();
 
-    render(<Nutricion />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
-    });
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("Desactivar plan")).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText("Desactivar plan"));
+    await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
+    fireEvent.click(screen.getByText("Desactivar"));
 
     expect(globalThis.confirm).toHaveBeenCalled();
     expect(api.delete).not.toHaveBeenCalled();
   });
 
-  it("shows error if plan deactivation fails", async () => {
+  it("shows an error when deactivating a plan fails", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockRejectedValue(new Error("Delete Error"));
+    renderNutricion();
 
-    render(<Nutricion />);
-    await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
-    });
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("Desactivar plan")).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText("Desactivar plan"));
+    await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
+    fireEvent.click(screen.getByText("Desactivar"));
 
     await waitFor(() => {
       expect(screen.getByText("Error al desactivar plan")).toBeDefined();
-    });
-  });
-
-  it("displays empty message when plan has no meals", async () => {
-    api.get.mockImplementation((url) => {
-      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
-      if (url.includes("/nutricion/cliente/")) {
-        return Promise.resolve({
-          data: [{ ...mockPlanes[0], comidas: [] }]
-        });
-      }
-      return Promise.resolve({ data: [] });
-    });
-
-    render(<Nutricion />);
-    await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
-    });
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("No hay comidas registradas en este plan.")).toBeDefined();
-    });
-  });
-
-  it("downloads the plan PDF when the button is clicked", async () => {
-    URL.createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
-    URL.revokeObjectURL = vi.fn();
-    const clickSpy = vi.fn();
-    const crearElementoOriginal = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag) => {
-      const el = crearElementoOriginal(tag);
-      el.click = clickSpy;
-      return el;
-    });
-
-    api.get.mockImplementation((url) => {
-      if (url.includes("/pdf")) return Promise.resolve({ data: new Blob(["pdf"]) });
-      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
-      if (url.includes("/nutricion/cliente/")) return Promise.resolve({ data: mockPlanes });
-      return Promise.resolve({ data: [] });
-    });
-
-    render(<Nutricion />);
-    await waitFor(() => expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined());
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => expect(screen.getByText("Descargar PDF")).toBeDefined());
-    fireEvent.click(screen.getByText("Descargar PDF"));
-
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith("/nutricion/10/pdf", { responseType: "blob" });
-      expect(clickSpy).toHaveBeenCalled();
-    });
-
-    vi.restoreAllMocks();
-  });
-
-  it("shows an error when the plan PDF download fails", async () => {
-    api.get.mockImplementation((url) => {
-      if (url.includes("/pdf")) return Promise.reject(new Error("fail"));
-      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
-      if (url.includes("/nutricion/cliente/")) return Promise.resolve({ data: mockPlanes });
-      return Promise.resolve({ data: [] });
-    });
-
-    render(<Nutricion />);
-    await waitFor(() => expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined());
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => expect(screen.getByText("Descargar PDF")).toBeDefined());
-    fireEvent.click(screen.getByText("Descargar PDF"));
-
-    await waitFor(() => {
-      expect(screen.getByText("No se pudo descargar el PDF del plan")).toBeDefined();
-    });
-  });
-
-  it("displays empty message when client has no active plans", async () => {
-    api.get.mockImplementation((url) => {
-      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
-      if (url.includes("/nutricion/cliente/")) {
-        return Promise.resolve({ data: [] });
-      }
-      return Promise.resolve({ data: [] });
-    });
-
-    render(<Nutricion />);
-    await waitFor(() => {
-      expect(screen.getByText("Juan Perez - Ganar masa")).toBeDefined();
-    });
-
-    const select = screen.getByLabelText("Cliente");
-    fireEvent.change(select, { target: { value: "1" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("Este cliente aún no tiene planes nutricionales activos.")).toBeDefined();
     });
   });
 });

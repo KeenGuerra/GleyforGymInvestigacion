@@ -22,6 +22,7 @@ import Comidas from "./pages/Comidas";
 import Rutinas from "./pages/Rutinas";
 import DetalleRutina from "./pages/DetalleRutina";
 import Nutricion from "./pages/Nutricion";
+import DetallePlanNutricional from "./pages/DetallePlanNutricional";
 import RevisionIA from "./pages/RevisionIA";
 import MiPerfil from "./pages/MiPerfil";
 import MiRutina from "./pages/MiRutina";
@@ -155,6 +156,15 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR"]}>
                 <Nutricion />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/nutricion/:id/detalle"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR"]}>
+                <DetallePlanNutricional />
               </ProtectedRoute>
             }
           />
