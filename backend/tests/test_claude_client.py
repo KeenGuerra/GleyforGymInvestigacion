@@ -169,6 +169,21 @@ def test_elegir_comidas_fuera_de_catalogo_falla(monkeypatch):
     assert fake_messages.llamadas == 2
 
 
+def test_esquemas_tool_use_tienen_additional_properties_false():
+    """Regresion: el modo strict de Claude rechaza con 400 cualquier objeto
+    del schema (el de arriba y los anidados en "items") que no declare
+    additionalProperties=False explicitamente -- esto nunca lo hubiera
+    detectado el doble falso del SDK que usan las demas pruebas de este
+    archivo, solo se vio llamando a la API real (ver Pendientes.md P-23)."""
+    esquema_rutina = claude_client._esquema_rutina()
+    assert esquema_rutina["additionalProperties"] is False
+    assert esquema_rutina["properties"]["ejercicios"]["items"]["additionalProperties"] is False
+
+    esquema_plan = claude_client._esquema_plan()
+    assert esquema_plan["additionalProperties"] is False
+    assert esquema_plan["properties"]["comidas"]["items"]["additionalProperties"] is False
+
+
 def test_elegir_comidas_desviacion_kcal_excesiva_falla(monkeypatch):
     monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "sk-ant-test")
     resultado_desviado = {

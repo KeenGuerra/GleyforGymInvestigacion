@@ -48,6 +48,9 @@ def _cliente_anthropic() -> "anthropic.Anthropic":
 
 
 def _esquema_rutina() -> dict:
+    # El modo "strict" de Claude exige "additionalProperties": false en TODO
+    # objeto del schema (el de arriba y los anidados en "items"), si no
+    # rechaza la llamada con 400 antes de intentar generar nada.
     return {
         "type": "object",
         "properties": {
@@ -67,10 +70,12 @@ def _esquema_rutina() -> dict:
                         "id_ejercicio", "dia_semana", "series",
                         "repeticiones", "descanso_segundos", "justificacion",
                     ],
+                    "additionalProperties": False,
                 },
             },
         },
         "required": ["ejercicios"],
+        "additionalProperties": False,
     }
 
 
@@ -93,10 +98,12 @@ def _esquema_plan() -> dict:
                         "id_comida_catalogo", "tipo_comida",
                         "porcion", "calorias_estimadas", "justificacion",
                     ],
+                    "additionalProperties": False,
                 },
             },
         },
         "required": ["comidas"],
+        "additionalProperties": False,
     }
 
 

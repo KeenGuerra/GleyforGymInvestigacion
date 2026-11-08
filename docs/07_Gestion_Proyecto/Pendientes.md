@@ -124,9 +124,11 @@ La integración híbrida con Claude (`app/ia/claude_client.py`/`orquestador.py`)
 
 **Avance (2026-11)**: se agregaron pruebas que confirman el camino "Claude" **a través del endpoint HTTP real** (`POST /ia/rutina/generar/{id}` y `/ia/nutricion/generar/{id}`, no solo a nivel unitario dentro de `claude_client.py` como antes) — reutilizando el mismo doble de SDK ya existente en `test_claude_client.py`, ahora también duplicado en `test_backend.py` para probarlo end-to-end: `origen_ia == "claude"` cuando Claude responde válido, y `"reglas_respaldo"` cuando falla o se desvía. También se completó la cobertura de `test_flujo_revision_plan_nutricional` (le faltaban el 403 de CLIENTE en `/rechazar` y el 422 de motivo vacío, que la de rutinas ya tenía). Backend: 155→159 pruebas.
 
+**Avance (2026-11, continuación) — bug real encontrado en la primera prueba real (no simulada)**: con la `ANTHROPIC_API_KEY` real puesta, la primera rutina generada cayó en "Reglas" en vez de "Claude". Reproducido directo contra la API: Claude devolvía `400 Bad Request` — *"For 'object' type, 'additionalProperties' must be explicitly set to false"*. El modo `strict: true` de las tool-use de Claude exige que **todo** objeto del schema (el de arriba y los anidados dentro de `items`) declare `additionalProperties: false` explícitamente; `_esquema_rutina()`/`_esquema_plan()` en `claude_client.py` no lo tenían. Nunca se detectó antes porque el doble de prueba del SDK que usan los tests no valida esta regla real de Anthropic — solo se vio llamando a la API de verdad. Corregido, con una prueba nueva (`test_esquemas_tool_use_tienen_additional_properties_false`) que verifica la estructura del schema directamente, para que no se repita sin depender de una llamada real.
+
 Falta:
 
-1. **Confirmar con la llave real**: cuando el usuario configure una `ANTHROPIC_API_KEY` real en Render, generar una rutina/plan desde la web y verificar en `RevisionIA.jsx` que la tarjeta muestre el origen "Claude" (no "Reglas") — es la única confirmación que falta, igual que con el pago real de Culqi (P-02/P-22).
+1. **Repetir la prueba real** ya con el fix puesto: generar una rutina/plan desde la web y confirmar en `RevisionIA.jsx` que ahora sí muestre el origen "Claude".
 
 ---
 
