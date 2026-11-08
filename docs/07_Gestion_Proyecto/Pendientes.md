@@ -112,6 +112,24 @@ No se resuelve nada de esto todavía — queda anotado para cuando el gimnasio t
 
 ---
 
+## P-23 IA: confirmar Claude en vivo, cobertura de tests y documentación desactualizada
+
+La integración híbrida con Claude (`app/ia/claude_client.py`/`orquestador.py`) ya funciona y tiene buena cobertura, pero investigando a fondo se encontraron tres huecos reales:
+
+1. **Nunca se confirmó una llamada real a la API de Anthropic en producción** — todos los tests usan un doble del SDK (`_FakeMessages`/`_FakeClient`) o corren sin `ANTHROPIC_API_KEY`, cayendo siempre al motor de reglas.
+2. **La documentación de arquitectura de la tesis quedaba desactualizada y contradecía el código**: `docs/04_Arquitectura/Arquitectura_IA.md` decía literalmente que el sistema "no utiliza todavía... Modelos LLM" — ya no era cierto, y tampoco mencionaba `claude_client.py`/`orquestador.py`/`anonimizacion.py` ni el flujo de revisión (pendiente/aprobada/rechazada).
+3. Detalle menor: `render.yaml` reservaba el espacio para `ANTHROPIC_API_KEY` pero no para `CLAUDE_MODEL_IA`.
+
+~~Resuelto (2026-11) — puntos 2 y 3~~: `Arquitectura_IA.md` actualizado (secciones 3, 4, 6, 8, 11, 13, 15, 18, 20, 21, 22) para reflejar la integración híbrida real, la anonimización y el flujo de revisión completo. `render.yaml` ya declara `CLAUDE_MODEL_IA`.
+
+**Avance (2026-11)**: se agregaron pruebas que confirman el camino "Claude" **a través del endpoint HTTP real** (`POST /ia/rutina/generar/{id}` y `/ia/nutricion/generar/{id}`, no solo a nivel unitario dentro de `claude_client.py` como antes) — reutilizando el mismo doble de SDK ya existente en `test_claude_client.py`, ahora también duplicado en `test_backend.py` para probarlo end-to-end: `origen_ia == "claude"` cuando Claude responde válido, y `"reglas_respaldo"` cuando falla o se desvía. También se completó la cobertura de `test_flujo_revision_plan_nutricional` (le faltaban el 403 de CLIENTE en `/rechazar` y el 422 de motivo vacío, que la de rutinas ya tenía). Backend: 155→159 pruebas.
+
+Falta:
+
+1. **Confirmar con la llave real**: cuando el usuario configure una `ANTHROPIC_API_KEY` real en Render, generar una rutina/plan desde la web y verificar en `RevisionIA.jsx` que la tarjeta muestre el origen "Claude" (no "Reglas") — es la única confirmación que falta, igual que con el pago real de Culqi (P-02/P-22).
+
+---
+
 # Prioridad Media
 
 ## P-05 Alertas de vencimiento de membresía

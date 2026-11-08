@@ -28,6 +28,10 @@ backend
     │
     └── ia
         │
+        ├── orquestador.py       # Capa híbrida: decide Claude vs motor de reglas
+        ├── claude_client.py     # Llamada real a la API de Anthropic (Claude)
+        ├── anonimizacion.py     # Códigos de cliente (nunca nombre/DNI/teléfono/correo a Claude)
+        │
         ├── rutina
         │   ├── recomendador_rutinas.py
         │   └── reglas_rutinas.py
@@ -37,6 +41,8 @@ backend
             ├── planes_comida.py
             └── recomendador_nutricion.py
 ```
+
+`orquestador.py` es el punto de entrada real que usan las rutas (`ia_rutina.py`/`ia_nutricion.py`): si hay `ANTHROPIC_API_KEY` configurada, le pide a Claude que elija/ordene entre los candidatos que el motor de reglas ya filtró; si Claude no está configurado, falla, o se desvía de lo permitido, el resultado final es exactamente el que ya devolvía el motor de reglas por su cuenta — Claude nunca reemplaza esa capa, solo la complementa de forma opcional.
 
 ---
 
@@ -54,7 +60,7 @@ Estatura
 Restricciones
    │
    ▼
-Motor IA
+Motor de reglas (filtra candidatos por nivel/objetivo/restricciones)
    │
    ├─────────────┐
    │             │
@@ -62,7 +68,15 @@ Motor IA
 Rutinas IA   Nutrición IA
    │             │
    ▼             ▼
-Base de Datos
+¿Hay ANTHROPIC_API_KEY?
+   │
+   ├── Sí ──▶ Claude elige/ordena entre los candidatos (orquestador.py)
+   │              │
+   │              ▼ (si falla o se desvía de lo permitido)
+   └── No ──▶ Resultado del motor de reglas, tal cual
+   │
+   ▼
+Base de Datos (estado_revision = pendiente, hasta que ADMIN/ENTRENADOR apruebe)
 ```
 
 ---
@@ -100,6 +114,16 @@ Responsable de:
 - Determinar series.
 - Determinar repeticiones.
 - Determinar descansos.
+
+---
+
+### orquestador.py / claude_client.py (capa híbrida, opcional)
+
+Responsable de:
+
+- Armar los candidatos ya filtrados por `recomendador_rutinas.py` y pasárselos a Claude (vía `claude_client.elegir_rutina_con_claude()`), con los datos del cliente anonimizados (`anonimizacion.py`).
+- Validar que la respuesta de Claude solo use ejercicios de la lista de candidatos permitida — si usa uno fuera de catálogo, falla la validación, o Claude no está configurado, el resultado final es el del motor de reglas sin cambios.
+- Registrar `origen_ia` (`"claude"` o `"reglas_respaldo"`), el modelo usado y el tiempo de respuesta, para que el staff vea en la pantalla de revisión de dónde salió cada rutina.
 
 ---
 
@@ -154,13 +178,18 @@ Datos físicos
 Filtrar ejercicios activos
    │
    ▼
-Aplicar reglas
+Aplicar reglas (candidatos por día)
    │
    ▼
-Generar rutina
+¿Hay ANTHROPIC_API_KEY? ── Sí ──▶ Claude elige/ordena entre los candidatos
+   │                                  │ (si falla/se desvía)
+   No                                 ▼
+   │                           Motor de reglas, tal cual
+   ▼                                  │
+Generar rutina ◀──────────────────────┘
    │
    ▼
-Guardar rutina
+Guardar rutina (estado_revision = pendiente)
 ```
 
 ---
@@ -222,7 +251,7 @@ clientes inexistentes
 
 ---
 
-## 11. Endpoint
+## 11. Endpoints
 
 ```http
 POST /ia/rutina/generar/{id_cliente}
@@ -232,6 +261,15 @@ Ejemplo:
 
 ```http
 POST /ia/rutina/generar/15
+```
+
+La rutina generada queda con `estado_revision = pendiente` — el cliente no la ve hasta que un ADMIN/ENTRENADOR la revise. Endpoints de revisión (`backend/app/routes/rutinas.py`):
+
+```http
+GET  /rutinas/pendientes                — lista las que esperan revisión (ADMIN/ENTRENADOR)
+PUT  /rutinas/{id_rutina}/ejercicios    — editar antes de aprobar (ADMIN/ENTRENADOR)
+POST /rutinas/{id_rutina}/aprobar       — aprueba; si se editó antes, queda "aprobada_con_cambios"
+POST /rutinas/{id_rutina}/rechazar      — rechaza, exige un motivo
 ```
 
 ---
@@ -269,6 +307,12 @@ Responsable de:
 
 - Seleccionar comidas.
 - Generar el plan completo.
+
+---
+
+### orquestador.py / claude_client.py (capa híbrida, opcional)
+
+Mismo rol que en rutinas (sección 6): Claude elige/ordena entre las comidas candidatas ya filtradas por objetivo y restricciones alimentarias, con el dato adicional de que su elección debe acercarse al objetivo calórico diario dentro de un margen de ±5% — si se desvía más que eso, no está configurado, o falla, el resultado final es el del motor de reglas sin cambios.
 
 ---
 
@@ -318,16 +362,21 @@ Objetivo
 Restricciones
    │
    ▼
-Calcular requerimientos
+Calcular requerimientos (Mifflin-St Jeor)
    │
    ▼
-Seleccionar comidas
+Seleccionar comidas candidatas (motor de reglas)
    │
    ▼
-Construir plan
+¿Hay ANTHROPIC_API_KEY? ── Sí ──▶ Claude elige entre las candidatas (±5% del objetivo calórico)
+   │                                  │ (si falla/se desvía)
+   No                                 ▼
+   │                           Motor de reglas, tal cual
+   ▼                                  │
+Construir plan ◀───────────────────────┘
    │
    ▼
-Guardar plan nutricional
+Guardar plan nutricional (estado_revision = pendiente)
 ```
 
 ---
@@ -392,7 +441,7 @@ clientes inexistentes
 
 ---
 
-## 18. Endpoint
+## 18. Endpoints
 
 ```http
 POST /ia/nutricion/generar/{id_cliente}
@@ -402,6 +451,15 @@ Ejemplo:
 
 ```http
 POST /ia/nutricion/generar/15
+```
+
+Mismo flujo de revisión que las rutinas (sección 11), en `backend/app/routes/nutricion.py`:
+
+```http
+GET  /nutricion/pendientes             — lista las que esperan revisión (ADMIN/ENTRENADOR)
+PUT  /nutricion/{id_plan}/comidas      — editar antes de aprobar (ADMIN/ENTRENADOR)
+POST /nutricion/{id_plan}/aprobar      — aprueba; si se editó antes, queda "aprobada_con_cambios"
+POST /nutricion/{id_plan}/rechazar     — rechaza, exige un motivo
 ```
 
 ---
@@ -437,18 +495,20 @@ Las recomendaciones siguen reglas definidas.
 Actualmente la IA está basada en:
 
 ```text
-Reglas de negocio
+Reglas de negocio (siempre activas, son la base y el respaldo)
 +
-Selección inteligente
+Selección inteligente con un modelo de lenguaje (Claude, de forma híbrida y opcional)
 ```
+
+El modelo LLM (Claude) nunca reemplaza al motor de reglas ni decide solo: únicamente elige/ordena entre candidatos que las reglas ya filtraron (nivel, objetivo, restricciones médicas/alimentarias, presupuesto calórico), y cualquier respuesta fuera de ese catálogo permitido se descarta automáticamente. Si no hay `ANTHROPIC_API_KEY` configurada, si Claude falla, o si se desvía de lo permitido, el sistema sigue funcionando exactamente igual que con el motor de reglas solo.
 
 No utiliza todavía:
 
 ```text
-Machine Learning
+Machine Learning propio / modelos entrenados con los datos del gimnasio
 Deep Learning
-Redes Neuronales
-Modelos LLM
+Redes Neuronales propias
+Fine-tuning de ningún modelo
 ```
 
 ---
@@ -457,7 +517,7 @@ Modelos LLM
 
 Versiones futuras podrán incluir:
 
-- Machine Learning.
+- Modelos de Machine Learning entrenados con los datos propios del gimnasio (no solo un LLM de terceros usado como está).
 - Recomendadores avanzados.
 - Predicción de progreso físico.
 - Ajustes automáticos de rutina.
@@ -475,6 +535,12 @@ Versiones futuras podrán incluir:
 ✅ IA Nutrición
 
 ✅ Generación automática
+
+✅ Integración híbrida con Claude (opcional, con respaldo automático al motor de reglas)
+
+✅ Anonimización de los datos enviados al modelo (nunca nombre/DNI/teléfono/correo)
+
+✅ Flujo de revisión (pendiente → aprobada / aprobada_con_cambios / rechazada) antes de que el cliente vea el resultado
 
 ✅ Persistencia en PostgreSQL
 

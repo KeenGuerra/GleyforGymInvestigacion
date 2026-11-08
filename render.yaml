@@ -36,6 +36,8 @@ services:
         sync: false # Set manually in Render dashboard (ver Pendientes.md P-02)
       - key: ANTHROPIC_API_KEY
         sync: false # Set manually in Render dashboard (integracion hibrida de IA, ver app/ia/claude_client.py)
+      - key: CLAUDE_MODEL_IA
+        value: claude-haiku-5-5 # Mismo default que app/config.py; cambiar aqui para usar otro modelo sin tocar codigo
 
   # Frontend: React Static Site
   - type: web

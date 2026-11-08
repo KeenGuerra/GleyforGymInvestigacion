@@ -20,6 +20,7 @@ from app.main import app
 from app.security import crear_token, encriptar_password
 from app import config, rate_limit
 from app.routes import usuarios
+from app.ia import claude_client
 import app.models as models
 
 HEADERS_WEBHOOK = {"X-Webhook-Secret": config.WEBHOOK_SECRET}
@@ -712,6 +713,133 @@ def test_ia_rutina_generacion():
     assert "No hay ejercicios disponibles" in response.json()["detail"]
 
 
+# Doble del SDK de Anthropic (mismo patrón que test_claude_client.py,
+# duplicado aquí para no depender de un import cruzado entre archivos de
+# test) -- usado para probar el camino "Claude" de punta a punta a través
+# del endpoint HTTP real, algo que test_claude_client.py nunca hace (solo
+# llama a claude_client.py directo) ni test_ia_rutina_generacion/
+# test_ia_nutricion_generacion (corren siempre sin ANTHROPIC_API_KEY, así
+# que siempre caen al motor de reglas). Ver Pendientes.md P-23.
+class _BloqueIA:
+    def __init__(self, tipo, input_=None):
+        self.type = tipo
+        self.input = input_
+
+
+class _RespuestaIA:
+    def __init__(self, content):
+        self.content = content
+
+
+class _FakeMessagesIA:
+    def __init__(self, resultados=None, excepcion=None):
+        self._resultados = resultados or []
+        self._excepcion = excepcion
+        self.llamadas = 0
+
+    def create(self, **kwargs):
+        self.llamadas += 1
+        if self._excepcion:
+            raise self._excepcion
+        indice = min(self.llamadas - 1, len(self._resultados) - 1)
+        return _RespuestaIA(content=[_BloqueIA("tool_use", self._resultados[indice])])
+
+
+def _parchar_anthropic_ia(monkeypatch, fake_messages):
+    class _FakeClientIA:
+        def __init__(self, **kwargs):
+            self.messages = fake_messages
+
+    monkeypatch.setattr(claude_client.anthropic, "Anthropic", _FakeClientIA)
+
+
+def test_ia_rutina_generacion_usa_claude_via_endpoint_cuando_hay_api_key(monkeypatch):
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "sk-ant-test")
+    resultado_valido = {
+        "ejercicios": [
+            {
+                "id_ejercicio": 1, "dia_semana": "Día 1", "series": 4,
+                "repeticiones": "8-12", "descanso_segundos": 60,
+                "justificacion": "Compuesto grande, ideal para ganar masa.",
+            },
+        ],
+    }
+    _parchar_anthropic_ia(monkeypatch, _FakeMessagesIA(resultados=[resultado_valido]))
+
+    response = client.post("/ia/rutina/generar/1", headers=headers)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["origen_ia"] == "claude"
+
+    db = TestingSessionLocal()
+    rutina = db.query(models.Rutina).filter(models.Rutina.id_rutina == res_data["id_rutina"]).first()
+    assert rutina.modelo_ia == config.CLAUDE_MODEL_IA
+    db.close()
+
+
+def test_ia_rutina_generacion_cae_a_reglas_si_claude_falla(monkeypatch):
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "sk-ant-test")
+    _parchar_anthropic_ia(monkeypatch, _FakeMessagesIA(excepcion=RuntimeError("timeout simulado")))
+
+    response = client.post("/ia/rutina/generar/1", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["origen_ia"] == "reglas_respaldo"
+
+
+def test_ia_nutricion_generacion_usa_claude_via_endpoint_cuando_hay_api_key(monkeypatch):
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "sk-ant-test")
+    # Suma = 2700, dentro del +-5% de los 2728 kcal objetivo que ya confirma
+    # test_ia_nutricion_generacion para este mismo cliente (Mifflin-St Jeor
+    # con los defaults documentados en calculos_nutricion.py).
+    resultado_valido = {
+        "comidas": [
+            {"id_comida_catalogo": 1, "tipo_comida": "Desayuno", "porcion": "1 plato", "calorias_estimadas": 550, "justificacion": "x"},
+            {"id_comida_catalogo": 2, "tipo_comida": "Media Mañana", "porcion": "1 porción", "calorias_estimadas": 220, "justificacion": "x"},
+            {"id_comida_catalogo": 3, "tipo_comida": "Almuerzo", "porcion": "1 plato", "calorias_estimadas": 850, "justificacion": "x"},
+            {"id_comida_catalogo": 4, "tipo_comida": "Merienda", "porcion": "1 porción", "calorias_estimadas": 330, "justificacion": "x"},
+            {"id_comida_catalogo": 5, "tipo_comida": "Cena", "porcion": "1 plato", "calorias_estimadas": 750, "justificacion": "x"},
+        ],
+    }
+    _parchar_anthropic_ia(monkeypatch, _FakeMessagesIA(resultados=[resultado_valido]))
+
+    response = client.post("/ia/nutricion/generar/1", headers=headers)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["origen_ia"] == "claude"
+    assert res_data["calorias_reales"] == 2700
+
+    db = TestingSessionLocal()
+    plan = db.query(models.PlanNutricional).filter(models.PlanNutricional.id_plan == res_data["id_plan"]).first()
+    assert plan.modelo_ia == config.CLAUDE_MODEL_IA
+    db.close()
+
+
+def test_ia_nutricion_generacion_cae_a_reglas_si_claude_se_desvia_de_kcal(monkeypatch):
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "sk-ant-test")
+    resultado_desviado = {
+        "comidas": [
+            {"id_comida_catalogo": 1, "tipo_comida": "Desayuno", "porcion": "1 plato", "calorias_estimadas": 200, "justificacion": "x"},
+        ],
+    }
+    _parchar_anthropic_ia(monkeypatch, _FakeMessagesIA(resultados=[resultado_desviado, resultado_desviado]))
+
+    response = client.post("/ia/nutricion/generar/1", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["origen_ia"] == "reglas_respaldo"
+
+
 def test_flujo_revision_rutina():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")
@@ -788,6 +916,9 @@ def test_flujo_revision_plan_nutricional():
 
     assert client.get(f"/nutricion/{id_plan}/pdf", headers=headers_cliente).status_code == 404
     assert client.post(f"/nutricion/{id_plan}/aprobar", headers=headers_cliente).status_code == 403
+    assert client.post(
+        f"/nutricion/{id_plan}/rechazar", json={"motivo": "x"}, headers=headers_cliente
+    ).status_code == 403
 
     client.put(f"/nutricion/{id_plan}", json={"objetivo": "Mantener condición física"}, headers=headers_admin)
     res_aprobar = client.post(f"/nutricion/{id_plan}/aprobar", headers=headers_admin)
@@ -806,6 +937,13 @@ def test_flujo_revision_plan_nutricional():
     )
     assert res_rechazar.status_code == 200
     assert res_rechazar.json()["estado_revision"] == "rechazada"
+
+    # Rechazar sin motivo falla validación (misma regla que rutinas).
+    res3 = client.post("/ia/nutricion/generar/1", headers=headers_admin)
+    id_plan3 = res3.json()["id_plan"]
+    assert client.post(
+        f"/nutricion/{id_plan3}/rechazar", json={"motivo": ""}, headers=headers_admin
+    ).status_code == 422
 
     assert client.get("/nutricion/pendientes", headers=headers_admin).status_code == 200
 
