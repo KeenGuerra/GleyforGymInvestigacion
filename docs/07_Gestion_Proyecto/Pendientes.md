@@ -252,6 +252,21 @@ El despliegue actual usa el plan **free** de Render (`render.yaml`): esto implic
 
 ---
 
+## P-24 Facturación electrónica SUNAT — evaluado y descartado por ahora
+
+El recibo/boleta en PDF (`backend/app/recibos.py`) es un comprobante interno, no un documento tributario válido ante SUNAT — ya lo dice su propio disclaimer. Se evaluaron las rutas disponibles para emitir boletas electrónicas reales:
+
+1. **PDF interno actual** (gratis, ya implementado, sin validez tributaria).
+2. **SEE-SOL de SUNAT**: gratis, SUNAT firma por el contribuyente (no exige certificado), pero es 100% manual vía el portal de SUNAT (Clave SOL) — sin API, no se puede integrar con este sistema sin que el staff digite cada venta dos veces.
+3. **OSE/PSE comercial con API** (ej. NubeFacT): integrable vía backend, pero de pago (~S/70-120/mes por hasta 500 comprobantes, sin plan gratuito con cupo garantizado encontrado).
+4. **Sistema propio ("SEE - Del Contribuyente")**: SUNAT ofrece un Certificado Digital Tributario (CDT) gratuito para esta vía (autorizado hasta el 31/12/2027 según la norma vigente), pero exige construir y mantener XML UBL 2.1 + firma XAdES-BES + envío SOAP (WS-Security) al webservice de SUNAT + decodificación de la CDR + QR + numeración propia de serie/correlativo + resumen diario de boletas — una integración del tamaño de la de Culqi, con mantenimiento perpetuo (SUNAT cambia la norma seguido) y cero margen de error (un XML mal armado no es un bug visual, es un comprobante que legalmente no existió).
+
+**Decisión (2026-11)**: no se implementa ninguna de las opciones 2-4 por ahora. Además de quedar fuera del alcance original de la tesis (sección "Delimitación funcional": *"No incluye... facturación electrónica con SUNAT..."*), el gimnasio ya cobra en persona con un POS físico aparte (ver P-22) que probablemente ya emite boleta real por su cuenta — la "boleta" de este sistema solo cubre los pagos que pasan por Culqi (membresías/tienda online). El costo/riesgo de automatizarla no se justifica para ese volumen.
+
+**Revisar más adelante solo si**: el negocio crece lo suficiente como para que SUNAT exija boleta electrónica real específicamente por las ventas/pagos que procesa este sistema — en ese caso, la ruta recomendada es contratar un OSE barato con API (opción 3), no construir la integración propia (opción 4).
+
+---
+
 # Fuera de este documento
 
 No se repiten aquí las brechas ya resueltas en las tres rondas de revisión anteriores: RBAC completo, motor de IA real (restricciones médicas + fórmula Mifflin-St Jeor), auditoría y trazabilidad, autogestión de contraseñas + reset por admin, Avisos editables desde el panel, KPI de asistencias en el dashboard, y paginación en los listados de mayor volumen.
