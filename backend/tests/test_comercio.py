@@ -456,10 +456,20 @@ def test_checkout_de_comprador_sin_membresia_sobre_su_propia_venta():
 
 class _GatewayRealStub:
     """Simula un gateway real (sin resolver_transaccion) para probar el
-    chequeo de teléfono en iniciar_checkout_venta."""
+    chequeo de teléfono y la idempotencia del checkout en
+    iniciar_checkout_venta."""
+
+    def __init__(self):
+        self.llamadas_crear = 0
+        self.llamadas_obtener = 0
 
     def crear_checkout(self, monto, referencia, cliente):
+        self.llamadas_crear += 1
         return {"id_transaccion_externa": "ext_stub_venta", "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
+
+    def obtener_checkout(self, id_transaccion_externa):
+        self.llamadas_obtener += 1
+        return {"id_transaccion_externa": id_transaccion_externa, "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
 
 
 def test_checkout_venta_con_gateway_real_exige_telefono_valido_del_socio():
@@ -494,6 +504,47 @@ def test_checkout_venta_con_gateway_real_exige_telefono_valido_del_socio():
         res = client.post(f"/ventas/{id_venta}/checkout", headers=headers_socio)
 
     assert res.status_code == 400
+
+
+def test_checkout_venta_repetido_no_vuelve_a_crear_la_orden():
+    """Mismo bug de idempotencia que con pagos de membresia: pedir 'Pagar
+    ahora' dos veces sobre el mismo pedido no debe volver a llamar a
+    crear_checkout() (Culqi rechaza una referencia repetida)."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=51, correo="socio.contelefono@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=51, id_usuario=51, dni="51515151", nombres="Rosa", apellidos="Vera",
+                           estado="ACTIVO", telefono="987654321"))
+    db.commit()
+    db.close()
+
+    headers_socio = get_auth_headers(rol="CLIENTE", id_usuario=51)
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 1}]},
+        headers=headers_socio,
+    ).json()["id_venta"]
+
+    stub = _GatewayRealStub()
+    with patch("app.routes.ventas.gateway", stub):
+        primero = client.post(f"/ventas/{id_venta}/checkout", headers=headers_socio)
+        segundo = client.post(f"/ventas/{id_venta}/checkout", headers=headers_socio)
+
+    assert primero.status_code == 200
+    assert segundo.status_code == 200
+    assert stub.llamadas_crear == 1
+    assert stub.llamadas_obtener == 1
 
 
 def test_venta_rechaza_stock_insuficiente_cuando_el_detalle_repite_el_producto():

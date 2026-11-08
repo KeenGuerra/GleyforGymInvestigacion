@@ -109,10 +109,20 @@ def crear_cliente(id_usuario, id_cliente, headers_admin, telefono=None):
 
 class _GatewayRealStub:
     """Simula un gateway real (sin resolver_transaccion, a diferencia de
-    MockGateway) para probar el chequeo de teléfono en iniciar_checkout_pago."""
+    MockGateway) para probar el chequeo de teléfono en iniciar_checkout_pago
+    y la idempotencia de crear_checkout()/obtener_checkout()."""
+
+    def __init__(self):
+        self.llamadas_crear = 0
+        self.llamadas_obtener = 0
 
     def crear_checkout(self, monto, referencia, cliente):
+        self.llamadas_crear += 1
         return {"id_transaccion_externa": "ext_stub_1", "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
+
+    def obtener_checkout(self, id_transaccion_externa):
+        self.llamadas_obtener += 1
+        return {"id_transaccion_externa": id_transaccion_externa, "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
 
 
 def test_comprar_membresia_crea_pago_y_cliente_membresia_pendientes():
@@ -292,3 +302,30 @@ def test_checkout_con_gateway_real_y_telefono_valido_funciona():
 
     assert res.status_code == 200
     assert res.json()["id_transaccion_externa"] == "ext_stub_1"
+
+
+def test_checkout_repetido_no_vuelve_a_crear_la_orden():
+    """Antes de esta correccion, pedir 'Completar pago' una segunda vez para
+    el mismo Pago (ej. el cliente cierra el modal y lo vuelve a abrir) volvia
+    a llamar a crear_checkout() con la misma referencia -- Culqi real la
+    rechaza (order_number debe ser unico para siempre). Ahora reusa el
+    checkout ya creado via obtener_checkout()."""
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono="987654321")
+
+    pago = client.post(
+        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
+    ).json()
+
+    stub = _GatewayRealStub()
+    with patch("app.routes.pagos.gateway", stub):
+        primero = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
+        segundo = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
+
+    assert primero.status_code == 200
+    assert segundo.status_code == 200
+    assert primero.json()["id_transaccion_externa"] == segundo.json()["id_transaccion_externa"]
+    assert stub.llamadas_crear == 1
+    assert stub.llamadas_obtener == 1

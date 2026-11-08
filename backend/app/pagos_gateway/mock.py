@@ -37,6 +37,17 @@ class MockGateway(GatewayPago):
             transaccion = self._transacciones.get(id_transaccion_externa)
         return transaccion["estado"] if transaccion else "DESCONOCIDO"
 
+    def obtener_checkout(self, id_transaccion_externa: str) -> dict:
+        with self._lock:
+            transaccion = self._transacciones.get(id_transaccion_externa)
+        if not transaccion:
+            raise RuntimeError(f"Transacción no encontrada: {id_transaccion_externa}")
+        return {
+            "id_transaccion_externa": id_transaccion_externa,
+            "url_checkout": f"https://checkout.simulado.local/{id_transaccion_externa}",
+            "estado": transaccion["estado"],
+        }
+
     def resolver_transaccion(self, id_transaccion_externa: str, exito: bool) -> dict | None:
         """Solo existe en el mock: simula que la pasarela ya procesó el cobro
         y está avisando el resultado (lo que en producción haría un webhook

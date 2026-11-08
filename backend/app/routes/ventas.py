@@ -332,14 +332,19 @@ def iniciar_checkout_venta(
             "telefono": None,
         }
 
-    sesion = gateway.crear_checkout(venta.total, referencia=f"venta-{venta.id_venta}", cliente=datos_cliente)
-
-    venta.id_transaccion_externa = sesion["id_transaccion_externa"]
-    db.commit()
+    # Idempotente: si ya se inició un checkout antes para esta venta, no se
+    # vuelve a crear la orden (ver mismo comentario en pagos.py).
+    if venta.id_transaccion_externa:
+        sesion = gateway.obtener_checkout(venta.id_transaccion_externa)
+    else:
+        sesion = gateway.crear_checkout(venta.total, referencia=f"venta-{venta.id_venta}", cliente=datos_cliente)
+        venta.id_transaccion_externa = sesion["id_transaccion_externa"]
+        db.commit()
 
     return {
         "id_venta": venta.id_venta,
         "url_checkout": sesion["url_checkout"],
+        "qr_yape": sesion.get("qr_yape"),
         "id_transaccion_externa": sesion["id_transaccion_externa"],
     }
 

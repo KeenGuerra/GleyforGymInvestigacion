@@ -122,19 +122,26 @@ def iniciar_checkout_pago(
             detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
         )
 
-    sesion = gateway.crear_checkout(
-        pago_db.monto,
-        referencia=f"pago-{pago_db.id_pago}",
-        cliente={
-            "nombres": cliente_db.nombres,
-            "apellidos": cliente_db.apellidos,
-            "correo": cliente_db.usuario.correo,
-            "telefono": cliente_db.telefono,
-        },
-    )
-
-    pago_db.id_transaccion_externa = sesion["id_transaccion_externa"]
-    db.commit()
+    # Si ya se inició un checkout antes para este pago (ej. el cliente cerró
+    # el modal y volvió a pedir "Completar pago"), no se vuelve a crear la
+    # orden: algunos proveedores reales (Culqi incluido) exigen que la
+    # referencia de la orden sea única para siempre, así que una segunda
+    # llamada a crear_checkout() con la misma referencia es rechazada.
+    if pago_db.id_transaccion_externa:
+        sesion = gateway.obtener_checkout(pago_db.id_transaccion_externa)
+    else:
+        sesion = gateway.crear_checkout(
+            pago_db.monto,
+            referencia=f"pago-{pago_db.id_pago}",
+            cliente={
+                "nombres": cliente_db.nombres,
+                "apellidos": cliente_db.apellidos,
+                "correo": cliente_db.usuario.correo,
+                "telefono": cliente_db.telefono,
+            },
+        )
+        pago_db.id_transaccion_externa = sesion["id_transaccion_externa"]
+        db.commit()
 
     return {
         "id_pago": pago_db.id_pago,

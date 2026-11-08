@@ -78,9 +78,12 @@ class CulqiGateway(GatewayPago):
         respuesta.raise_for_status()
         orden = respuesta.json()
 
+        return self._mapear_orden(orden)
+
+    def _mapear_orden(self, orden: dict) -> dict:
         id_orden = orden.get("id")
         if not id_orden:
-            raise RuntimeError(f"Respuesta inesperada de Culqi al crear la orden: {orden}")
+            raise RuntimeError(f"Respuesta inesperada de Culqi: {orden}")
 
         # La orden no tiene una única "checkout_url": el cliente paga con el
         # link de PagoEfectivo o escaneando el QR de Yape.
@@ -90,6 +93,22 @@ class CulqiGateway(GatewayPago):
             "qr_yape": orden.get("qr"),
             "estado": "PENDIENTE",
         }
+
+    def obtener_checkout(self, id_transaccion_externa: str) -> dict:
+        """Recupera la orden ya creada (GET), sin volver a crear una nueva —
+        crear_checkout() con la misma referencia falla porque Culqi exige
+        que `order_number` sea único para siempre (ver RuntimeError de
+        base.py). Necesario para reintentos: el cliente cierra el modal de
+        pago y vuelve a pedir 'Completar pago' sobre el mismo Pago/Venta."""
+        respuesta = httpx.get(
+            f"{CULQI_API_URL}/orders/{id_transaccion_externa}",
+            headers=self._headers(),
+            timeout=15,
+        )
+        respuesta.raise_for_status()
+        orden = respuesta.json()
+
+        return self._mapear_orden(orden)
 
     def consultar_estado(self, id_transaccion_externa: str) -> str:
         respuesta = httpx.get(

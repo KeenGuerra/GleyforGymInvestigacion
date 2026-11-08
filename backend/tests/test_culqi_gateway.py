@@ -139,3 +139,34 @@ def test_consultar_estado_orden_no_encontrada_devuelve_desconocido(monkeypatch):
         assert gateway.consultar_estado("ord_no_existe") == "DESCONOCIDO"
 
     respuesta_404.raise_for_status.assert_not_called()
+
+
+def test_obtener_checkout_recupera_la_orden_sin_crear_una_nueva(monkeypatch):
+    """Culqi exige que order_number sea unico para siempre -- reintentar
+    crear_checkout() para el mismo Pago/Venta falla con 400. obtener_checkout()
+    recupera la orden ya creada (GET) en vez de volver a crearla (POST)."""
+    monkeypatch.setattr("app.config.CULQI_SECRET_KEY", "sk_test_fake")
+    gateway = CulqiGateway()
+
+    respuesta = _mock_respuesta({
+        "id": "ord_test_123",
+        "url_pe": "https://pre1a.payment.pagoefectivo.pe/abc123.html",
+        "qr": "https://niubizqr.pagoefectivo.pe/abc123.png",
+    })
+
+    with patch("app.pagos_gateway.culqi.httpx.get", return_value=respuesta) as mock_get, \
+         patch("app.pagos_gateway.culqi.httpx.post") as mock_post:
+        resultado = gateway.obtener_checkout("ord_test_123")
+
+    mock_post.assert_not_called()
+    mock_get.assert_called_once_with(
+        "https://api.culqi.com/v2/orders/ord_test_123",
+        headers={"Authorization": "Bearer sk_test_fake", "Content-Type": "application/json"},
+        timeout=15,
+    )
+    assert resultado == {
+        "id_transaccion_externa": "ord_test_123",
+        "url_checkout": "https://pre1a.payment.pagoefectivo.pe/abc123.html",
+        "qr_yape": "https://niubizqr.pagoefectivo.pe/abc123.png",
+        "estado": "PENDIENTE",
+    }
