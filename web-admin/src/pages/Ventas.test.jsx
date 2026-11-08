@@ -11,6 +11,10 @@ vi.mock("../api/api", () => ({
   },
 }));
 
+vi.mock("../utils/descargarArchivo", () => ({
+  descargarBlob: vi.fn(),
+}));
+
 const mockProductosDisponibles = [
   { id_producto: 1, nombre: "Proteína Whey", precio_venta: 90, stock_actual: 10 },
 ];
@@ -155,6 +159,47 @@ describe("Ventas Page Component", () => {
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/1/anular");
+    });
+  });
+
+  it("downloads the boleta for a confirmed sale", async () => {
+    const { descargarBlob } = await import("../utils/descargarArchivo");
+    const blobFalso = new Blob(["pdf"]);
+    api.get.mockImplementation((url) => {
+      if (url === "/ventas/") return Promise.resolve({ data: [{ ...mockVentaPendiente, estado: "CONFIRMADA" }] });
+      if (url === "/productos/disponibles") return Promise.resolve({ data: mockProductosDisponibles });
+      if (url === "/clientes/") return Promise.resolve({ data: mockClientes });
+      if (url === "/ventas/resumen") return Promise.resolve({ data: mockResumen });
+      if (url === "/ventas/1/boleta") return Promise.resolve({ data: blobFalso });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Descargar boleta")).toBeDefined());
+    fireEvent.click(screen.getByText("Descargar boleta"));
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/ventas/1/boleta", { responseType: "blob" });
+      expect(descargarBlob).toHaveBeenCalledWith(blobFalso, "boleta-venta-1.pdf");
+    });
+  });
+
+  it("shows an error when downloading the boleta fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/ventas/") return Promise.resolve({ data: [{ ...mockVentaPendiente, estado: "CONFIRMADA" }] });
+      if (url === "/productos/disponibles") return Promise.resolve({ data: mockProductosDisponibles });
+      if (url === "/clientes/") return Promise.resolve({ data: mockClientes });
+      if (url === "/ventas/resumen") return Promise.resolve({ data: mockResumen });
+      if (url === "/ventas/1/boleta") return Promise.reject(new Error("fail"));
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Descargar boleta")).toBeDefined());
+    fireEvent.click(screen.getByText("Descargar boleta"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo descargar la boleta")).toBeDefined();
     });
   });
 

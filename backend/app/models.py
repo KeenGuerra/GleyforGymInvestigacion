@@ -531,6 +531,53 @@ class RegistroAuditoria(Base):
     usuario = relationship("Usuario")
 
 
+class RegistroTiempoSistema(Base):
+    """Instrumentación para el indicador I4 (comportamiento en el tiempo) de
+    la tesis: tiempo de respuesta del sistema en sus operaciones de registro,
+    consulta y generación, medido por el middleware de app/main.py. No mide
+    tiempo de proceso humano (eso se cronometra a mano en el postest para ser
+    comparable con el pretest manual, ver I10/I11/I13/I14/I17/I18)."""
+    __tablename__ = "registro_tiempos_sistema"
+
+    id_registro = Column(Integer, primary_key=True, index=True)
+    metodo = Column(String(10), nullable=False)
+    ruta = Column(String(200), nullable=False)
+    modulo = Column(String(50), nullable=False)
+    duracion_ms = Column(Float, nullable=False)
+    fecha = Column(DateTime, default=datetime.now)
+
+
+class ConteoInventario(Base):
+    """Conteo físico de inventario (soporta la ficha F-16, indicador I16:
+    exactitud del inventario). Cada conteo guarda, por producto, el stock que
+    tenía el sistema en ese momento y el stock que el staff contó físicamente."""
+    __tablename__ = "conteos_inventario"
+
+    id_conteo = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    fecha = Column(DateTime, default=datetime.now)
+    observaciones = Column(Text, nullable=True)
+
+    usuario = relationship("Usuario")
+    detalles = relationship(
+        "DetalleConteoInventario", back_populates="conteo", cascade="all, delete-orphan"
+    )
+
+
+class DetalleConteoInventario(Base):
+    __tablename__ = "detalle_conteos_inventario"
+
+    id_detalle_conteo = Column(Integer, primary_key=True, index=True)
+    id_conteo = Column(Integer, ForeignKey("conteos_inventario.id_conteo"), nullable=False)
+    id_producto = Column(Integer, ForeignKey("productos.id_producto"), nullable=False)
+    stock_sistema = Column(Float, nullable=False)
+    stock_fisico = Column(Float, nullable=False)
+    diferencia = Column(Float, nullable=False)  # stock_sistema - stock_fisico
+
+    conteo = relationship("ConteoInventario", back_populates="detalles")
+    producto = relationship("Producto")
+
+
 class Aviso(Base):
     """Avisos/horarios/comunicados públicos. Antes Avisos.jsx era 100%
     contenido estático hardcodeado en el frontend."""

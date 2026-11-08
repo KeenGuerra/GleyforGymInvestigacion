@@ -150,6 +150,10 @@ La integración híbrida con Claude (`app/ia/claude_client.py`/`orquestador.py`)
 
 ~~Resuelto (2026-11)~~: `DashboardAdmin.jsx` ahora muestra una tarjeta "Membresías por vencer" con las membresías `ACTIVA` cuya `fecha_fin` cae en los próximos 7 días, usando datos que `GET /cliente-membresias/` ya devolvía. Sin cambios de backend. La notificación por correo queda pendiente de P-03.
 
+**Avance (2026-11, continuación)**: se agregó el recordatorio activo que faltaba. Nuevo `GET /reportes/membresias-por-vencer?dias=N` y una sección "Membresías por vencer" en `Reportes.jsx` con un botón "Enviar recordatorio por WhatsApp" por cliente. El envío es manual-asistido: arma un enlace `https://wa.me/51<telefono>?text=<mensaje>` con un mensaje prellenado (editable antes de enviar) y lo abre en una pestaña nueva — el staff solo confirma el envío en su WhatsApp Web/App ya logueado.
+
+Se eligió este canal (y no una API de envío 100% automático como WhatsApp Business API de Meta o Twilio) a propósito: esas requieren crear y verificar una cuenta de negocio aparte (proceso externo, de días/semanas) y pagan por mensaje — el mismo tipo de bloqueo de aprobación que ya se vivió con Culqi en P-02/P-22. El enlace `wa.me` no necesita cuenta ni credenciales y funciona en producción desde el primer deploy. **Queda pendiente como mejora futura**: automatizar el envío (sin intervención del staff) el día que el gimnasio tenga una cuenta de WhatsApp Business API o SMS aprobada — bloqueado por esa aprobación externa, no por código.
+
 ---
 
 ## P-06 Exportación/impresión PDF de rutinas y planes nutricionales
@@ -161,6 +165,20 @@ La integración híbrida con Claude (`app/ia/claude_client.py`/`orquestador.py`)
 ## P-07 Reportes operativos consolidados
 
 ~~Resuelto (2026-11)~~: nuevos `GET /reportes/ingresos` y `GET /reportes/asistencias` (por rango `desde`/`hasta`, agrupados por día). Nueva página `web-admin/src/pages/Reportes.jsx` (ruta `/reportes`, solo ADMIN) con selector de fechas, tablas por día y exportación a CSV reutilizando `exportarCsv.js`.
+
+**Avance (2026-11, continuación)**: tres frentes nuevos, todos en `reportes.py` + `Reportes.jsx` salvo donde se indica:
+
+1. **Reportes de negocio**: `GET /reportes/productos-mas-vendidos` y `GET /reportes/ventas-por-metodo-pago` (mismo patrón por rango de fechas), con su tabla y export CSV.
+2. **Instrumentación para el postest de la tesis** (ver matriz de operacionalización, Anexo 02/04): el sistema ya alimentaba F-07/F-08/F-09 (calidad de la IA); ahora también alimenta:
+   - **I4 (F-04, tiempo de respuesta)**: middleware en `app/main.py` (`medir_tiempo_respuesta`) que guarda en `RegistroTiempoSistema` la duración de cada request de negocio (excluye `/docs` y `/reportes`), expuesto en `GET /reportes/sistema/tiempos-respuesta`.
+   - **I5 (F-05, precisión de registros)**: `GET /reportes/sistema/registros-recientes`, lista acotada (vía `RegistroAuditoria`, ya existente) para que el evaluador verifique solo esos registros contra su documento de origen, en vez de todo el sistema.
+   - **I12 (F-12, duplicidad)**: `GET /reportes/sistema/duplicidad`, hallazgos automáticos (pagos/membresías duplicados, DNIs repetidos, campos obligatorios vacíos) que complementan, no reemplazan, la revisión del evaluador.
+   - **I15 (F-15, seguimiento de progreso)**: `GET /reportes/progreso-fisico`, % de clientes `ACTIVO` con algún `Progreso` registrado en el rango.
+   - **I16 (F-16, exactitud de inventario)**: ver el punto de "Conteo físico de inventario" más abajo (vive en `inventario.py`, no en `reportes.py`).
+
+   Los indicadores I1-I3 (entregables de desarrollo), I6 (pruebas funcionales, ya cubierto por la suite de pytest) e I10/I11/I13/I14/I17/I18 (tiempos de *proceso* humano) se dejan deliberadamente fuera de esta automatización: la metodología de la tesis exige cronometrarlos a mano en uso real, igual que en el pretest manual, para que ambas mediciones sean comparables.
+3. **Boletas de venta** (antes no existía ningún comprobante para una `Venta`, solo para `Pago`): `generar_boleta_venta()` en `recibos.py` (mismo estilo que `generar_recibo_pago()`) + `GET /ventas/{id}/boleta`, con botón "Descargar boleta" en `Ventas.jsx`. De paso, `generar_recibo_pago()` ahora muestra también la membresía y el periodo cubierto cuando el pago está asociado a una.
+4. **Conteo físico de inventario** (nuevo, soporta F-16/I16): tablas `ConteoInventario`/`DetalleConteoInventario`, `POST /inventario/conteos` (toma el stock del sistema como snapshot y lo compara contra lo que el staff cuenta físicamente) y `GET /inventario/conteos/{id}`, con una pestaña "Conteo físico" nueva en `Inventario.jsx` que calcula la diferencia y el % de exactitud automáticamente.
 
 ---
 

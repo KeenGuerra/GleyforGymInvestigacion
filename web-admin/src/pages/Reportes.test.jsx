@@ -24,12 +24,25 @@ const mockAsistencias = {
   por_dia: [{ fecha: "2026-06-05", cantidad: 3 }],
 };
 
+const mockProductosMasVendidos = [
+  { producto: "Proteína", cantidad_vendida: 5, ingresos: 250 },
+];
+
+const mockVentasPorMetodo = {
+  desde: "2026-06-01",
+  hasta: "2026-06-30",
+  total: 250,
+  por_metodo: [{ metodo_pago: "EFECTIVO", monto: 250, cantidad: 5 }],
+};
+
 describe("Reportes Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     api.get.mockImplementation((url) => {
       if (url === "/reportes/ingresos") return Promise.resolve({ data: mockIngresos });
       if (url === "/reportes/asistencias") return Promise.resolve({ data: mockAsistencias });
+      if (url === "/reportes/productos-mas-vendidos") return Promise.resolve({ data: mockProductosMasVendidos });
+      if (url === "/reportes/ventas-por-metodo-pago") return Promise.resolve({ data: mockVentasPorMetodo });
       return Promise.resolve({ data: [] });
     });
   });
@@ -197,5 +210,138 @@ describe("Reportes Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("No se pudo exportar F-07")).toBeDefined();
     });
+  });
+
+  it("exports F-04, F-05, F-12 and F-15 (instrumentación del postest)", async () => {
+    URL.createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
+    URL.revokeObjectURL = vi.fn();
+    const clickSpy = vi.fn();
+    const crearElementoOriginal = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag) => {
+      const el = crearElementoOriginal(tag);
+      el.click = clickSpy;
+      return el;
+    });
+
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/sistema/tiempos-respuesta") {
+        return Promise.resolve({ data: [{ modulo: "clientes", tiempo_promedio_ms: 12.5, n_operaciones: 3 }] });
+      }
+      if (url === "/reportes/sistema/registros-recientes") {
+        return Promise.resolve({
+          data: [{ entidad: "Pago", id_entidad: 1, accion: "CREAR", detalle: "monto=100", fecha: "2026-06-10" }],
+        });
+      }
+      if (url === "/reportes/sistema/duplicidad") {
+        return Promise.resolve({
+          data: [{ tipo_hallazgo: "PAGO_DUPLICADO", entidad: "Pago", id_entidad: "1, 2", detalle: "2 pagos idénticos" }],
+        });
+      }
+      if (url === "/reportes/progreso-fisico") {
+        return Promise.resolve({
+          data: { total_clientes_activos: 1, con_seguimiento: 1, porcentaje: 100, detalle: [{ codigo_cliente: "C-001", tiene_seguimiento: true }] },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+
+    fireEvent.click(screen.getByText("F-04: tiempo de respuesta"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(
+      "/reportes/sistema/tiempos-respuesta", expect.objectContaining({ params: expect.any(Object) })
+    ));
+
+    fireEvent.click(screen.getByText("F-05: registros recientes"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(
+      "/reportes/sistema/registros-recientes", expect.objectContaining({ params: expect.any(Object) })
+    ));
+
+    fireEvent.click(screen.getByText("F-12: duplicidad de registros"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(
+      "/reportes/sistema/duplicidad", expect.objectContaining({ params: expect.any(Object) })
+    ));
+
+    fireEvent.click(screen.getByText("F-15: seguimiento de progreso"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(
+      "/reportes/progreso-fisico", expect.objectContaining({ params: expect.any(Object) })
+    ));
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(4));
+
+    vi.restoreAllMocks();
+  });
+
+  it("shows a 'por vencer' membership and sends a WhatsApp reminder with a prefilled message", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/membresias-por-vencer") {
+        return Promise.resolve({
+          data: [{
+            id_cliente_membresia: 10,
+            id_cliente: 1,
+            nombre_cliente: "Juan Perez",
+            telefono_cliente: "987654321",
+            nombre_membresia: "Plan Mensual",
+            fecha_fin: "2026-06-20",
+            dias_restantes: 3,
+          }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar"));
+
+    await waitFor(() => expect(screen.getByText("Juan Perez")).toBeDefined());
+    expect(screen.getByText("3 día(s)")).toBeDefined();
+
+    fireEvent.click(screen.getByText("Enviar recordatorio por WhatsApp"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const [url, target] = openSpy.mock.calls[0];
+    expect(url).toContain("https://wa.me/51987654321?text=");
+    expect(decodeURIComponent(url.split("text=")[1])).toContain("Plan Mensual");
+    expect(target).toBe("_blank");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("blocks the WhatsApp reminder when the client has no valid 9-digit phone", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/membresias-por-vencer") {
+        return Promise.resolve({
+          data: [{
+            id_cliente_membresia: 11,
+            id_cliente: 2,
+            nombre_cliente: "Ana Torres",
+            telefono_cliente: null,
+            nombre_membresia: "Plan Anual",
+            fecha_fin: "2026-06-25",
+            dias_restantes: 5,
+          }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar"));
+
+    await waitFor(() => expect(screen.getByText("Ana Torres")).toBeDefined());
+    fireEvent.click(screen.getByText("Enviar recordatorio por WhatsApp"));
+
+    expect(openSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText(/no tiene un teléfono válido de 9 dígitos/)).toBeDefined();
+    });
+
+    vi.unstubAllGlobals();
   });
 });

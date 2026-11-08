@@ -12,6 +12,10 @@ function Inventario() {
   const [mostrarAjuste, setMostrarAjuste] = useState(false);
   const [ajuste, setAjuste] = useState({ id_producto: "", cantidad: 0, descripcion: "" });
 
+  const [stockFisico, setStockFisico] = useState({});
+  const [guardandoConteo, setGuardandoConteo] = useState(false);
+  const [resultadoConteo, setResultadoConteo] = useState(null);
+
   const cargar = async () => {
     try {
       const [r1, r2, r3, r4] = await Promise.all([
@@ -22,10 +26,31 @@ function Inventario() {
       ]);
       setInventario(r1.data); setMovimientos(r2.data);
       setAlertasStock(r3.data); setAlertasVencimiento(r4.data);
+
+      const valoresIniciales = {};
+      r1.data.forEach((inv) => { valoresIniciales[inv.id_producto] = inv.stock_actual; });
+      setStockFisico(valoresIniciales);
     } catch { setError("Error al cargar inventario"); }
   };
 
   useEffect(() => { cargar(); }, []);
+
+  const guardarConteo = async () => {
+    setError(""); setGuardandoConteo(true);
+    try {
+      const detalles = inventario.map((inv) => ({
+        id_producto: inv.id_producto,
+        stock_fisico: Number(stockFisico[inv.id_producto] ?? inv.stock_actual),
+      }));
+      const res = await api.post("/inventario/conteos", { detalles });
+      setResultadoConteo(res.data);
+      await cargar();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Error al guardar el conteo");
+    } finally {
+      setGuardandoConteo(false);
+    }
+  };
 
   const aplicarAjuste = async (e) => {
     e.preventDefault(); setError("");
@@ -65,9 +90,9 @@ function Inventario() {
       </section>
 
       <div className="tabs-container" style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        {["inventario", "movimientos", "alertas"].map((t) => (
+        {["inventario", "movimientos", "alertas", "conteo"].map((t) => (
           <button key={t} className={tab === t ? "btn-primary" : "btn-secondary"} onClick={() => setTab(t)}>
-            {t === "inventario" ? "Inventario" : t === "movimientos" ? "Movimientos" : "Alertas"}
+            {t === "inventario" ? "Inventario" : t === "movimientos" ? "Movimientos" : t === "alertas" ? "Alertas" : "Conteo físico"}
           </button>
         ))}
       </div>
@@ -194,6 +219,85 @@ function Inventario() {
                 </>
               )}
             </>
+          )}
+        </section>
+      )}
+
+      {tab === "conteo" && (
+        <section className="table-card">
+          <div className="card-header">
+            <div>
+              <h2>Conteo físico de inventario</h2>
+              <p>Ingresa el stock físico contado por producto; el sistema calcula la diferencia y la exactitud (F-16).</p>
+            </div>
+          </div>
+
+          {inventario.length === 0 ? <p className="empty-message">Sin datos de inventario.</p> : (
+            <>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Stock en sistema</th>
+                    <th>Stock físico contado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventario.map((inv) => (
+                    <tr key={inv.id_producto}>
+                      <td>{inv.nombre_producto}</td>
+                      <td>{inv.stock_actual}</td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={stockFisico[inv.id_producto] ?? inv.stock_actual}
+                          onChange={(e) => setStockFisico({ ...stockFisico, [inv.id_producto]: e.target.value })}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="form-actions">
+                <button className="btn-primary" disabled={guardandoConteo} onClick={guardarConteo}>
+                  {guardandoConteo ? "Guardando..." : "Guardar conteo"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {resultadoConteo && (
+            <div className="form-card" style={{ marginTop: "1rem" }}>
+              <h3>
+                Resultado del conteo #{resultadoConteo.id_conteo} — Exactitud:{" "}
+                <strong>{resultadoConteo.exactitud_pct ?? "-"}%</strong>{" "}
+                ({resultadoConteo.productos_correctos}/{resultadoConteo.total_productos} productos correctos)
+              </h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Stock sistema</th>
+                    <th>Stock físico</th>
+                    <th>Diferencia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resultadoConteo.detalles.map((d) => (
+                    <tr key={d.id_detalle_conteo}>
+                      <td>{d.nombre_producto}</td>
+                      <td>{d.stock_sistema}</td>
+                      <td>{d.stock_fisico}</td>
+                      <td style={{ color: d.diferencia !== 0 ? "var(--danger)" : "var(--success)" }}>
+                        {d.diferencia}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       )}

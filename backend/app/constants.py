@@ -177,4 +177,6 @@ MSG_CANTIDAD_INVALIDA = "La cantidad debe ser mayor a cero"
 MSG_PRECIO_INVALIDO = "El precio debe ser mayor o igual a cero"
 MSG_DETALLE_VACIO = "La venta debe incluir al menos un producto"
 MSG_SIN_PERMISO_VENTAS = "No tiene permisos para realizar ventas"
+MSG_CONTEO_NO_ENCONTRADO = "Conteo de inventario no encontrado"
+MSG_CONTEO_SIN_PRODUCTOS = "El conteo debe incluir al menos un producto"
 

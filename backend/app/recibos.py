@@ -29,15 +29,92 @@ def generar_recibo_pago(pago, cliente) -> bytes:
     c.drawCentredString(ancho / 2, alto - 2.7 * cm, "Recibo de pago")
 
     y = alto - 4 * cm
-    y = _linea(c, y, "N° de pago:", f"#{pago.id_pago}")
+    y = _linea(c, y, "N° de recibo:", f"RECIBO-{pago.id_pago:06d}")
     y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
     y = _linea(c, y, "DNI:", cliente.dni or "-")
     y = _linea(c, y, "Fecha de pago:", str(pago.fecha_pago))
     y = _linea(c, y, "Método de pago:", pago.metodo_pago)
+
+    # Si el pago corresponde a una membresía, se muestra el plan y el
+    # periodo que cubre -- antes el recibo no decía qué se había pagado.
+    cliente_membresia = getattr(pago, "cliente_membresia", None)
+    if cliente_membresia:
+        nombre_plan = cliente_membresia.membresia.nombre if cliente_membresia.membresia else None
+        if nombre_plan:
+            y = _linea(c, y, "Membresía:", nombre_plan)
+        if cliente_membresia.fecha_inicio and cliente_membresia.fecha_fin:
+            y = _linea(
+                c, y, "Periodo cubierto:",
+                f"{cliente_membresia.fecha_inicio} al {cliente_membresia.fecha_fin}",
+            )
+
     y = _linea(c, y, "Monto:", f"S/ {pago.monto:.2f}")
     y = _linea(c, y, "Estado:", pago.estado)
     if pago.observacion:
         y = _linea(c, y, "Observación:", pago.observacion)
+
+    c.setFont("Helvetica-Oblique", 8)
+    c.drawCentredString(ancho / 2, 1.5 * cm, "Comprobante interno, no válido como boleta o factura electrónica.")
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer.read()
+
+
+def generar_boleta_venta(venta, cliente) -> bytes:
+    """Comprobante en PDF para una venta de productos (suplementos). Mismo
+    estilo y mismo disclaimer que generar_recibo_pago; antes no existía
+    ningún comprobante descargable para una Venta."""
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A5)
+    ancho, alto = A5
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(ancho / 2, alto - 2 * cm, "GLEYFORGYM")
+    c.setFont("Helvetica", 11)
+    c.drawCentredString(ancho / 2, alto - 2.7 * cm, "Boleta de venta")
+
+    y = alto - 4 * cm
+    y = _linea(c, y, "N° de boleta:", f"BOLETA-{venta.id_venta:06d}")
+    if cliente:
+        y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
+        y = _linea(c, y, "DNI:", cliente.dni or "-")
+    else:
+        y = _linea(c, y, "Cliente:", "Venta general (sin cliente registrado)")
+    y = _linea(c, y, "Fecha:", str(venta.fecha_venta))
+    y = _linea(c, y, "Método de pago:", venta.metodo_pago)
+    y -= 0.3 * cm
+
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2 * cm, y, "Producto")
+    c.drawString(9.5 * cm, y, "Cant.")
+    c.drawString(11.5 * cm, y, "P. unit.")
+    c.drawString(14 * cm, y, "Subtotal")
+    y -= 0.6 * cm
+    c.setFont("Helvetica", 9)
+
+    for detalle in venta.detalles:
+        y = _nueva_pagina_si_hace_falta(c, y, alto)
+        nombre = detalle.producto.nombre if detalle.producto else f"Producto #{detalle.id_producto}"
+        c.drawString(2 * cm, y, nombre[:40])
+        c.drawString(9.5 * cm, y, f"{detalle.cantidad:g}")
+        c.drawString(11.5 * cm, y, f"S/ {detalle.precio_unitario:.2f}")
+        c.drawString(14 * cm, y, f"S/ {detalle.subtotal:.2f}")
+        y -= 0.55 * cm
+
+    y -= 0.3 * cm
+    c.setFont("Helvetica", 10)
+    y = _linea(c, y, "Subtotal:", f"S/ {venta.subtotal:.2f}")
+    y = _linea(c, y, "Descuento:", f"S/ {venta.descuento:.2f}")
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(2 * cm, y, "Total:")
+    c.drawString(6 * cm, y, f"S/ {venta.total:.2f}")
+    y -= 0.7 * cm
+
+    if venta.observaciones:
+        c.setFont("Helvetica", 9)
+        y = _linea(c, y, "Observaciones:", venta.observaciones)
 
     c.setFont("Helvetica-Oblique", 8)
     c.drawCentredString(ancho / 2, 1.5 * cm, "Comprobante interno, no válido como boleta o factura electrónica.")

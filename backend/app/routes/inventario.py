@@ -12,7 +12,8 @@ from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import (
     MSG_INVENTARIO_NO_ENCONTRADO, MSG_PRODUCTO_NO_ENCONTRADO,
-    MSG_CANTIDAD_INVALIDA, MSG_LOTE_NO_ENCONTRADO
+    MSG_CANTIDAD_INVALIDA, MSG_LOTE_NO_ENCONTRADO,
+    MSG_CONTEO_NO_ENCONTRADO, MSG_CONTEO_SIN_PRODUCTOS,
 )
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
@@ -291,6 +292,113 @@ def listar_lotes(
             nombre_producto=prod.nombre if prod else None
         ))
     return resultado
+
+
+def _conteo_con_detalles(db: Session, conteo: models.ConteoInventario) -> schemas.ConteoInventarioResponse:
+    detalles_resp = []
+    correctos = 0
+    for d in conteo.detalles:
+        if d.diferencia == 0:
+            correctos += 1
+        prod = db.query(models.Producto).filter(models.Producto.id_producto == d.id_producto).first()
+        detalles_resp.append(schemas.DetalleConteoResponse(
+            id_detalle_conteo=d.id_detalle_conteo,
+            id_producto=d.id_producto,
+            nombre_producto=prod.nombre if prod else None,
+            stock_sistema=d.stock_sistema,
+            stock_fisico=d.stock_fisico,
+            diferencia=d.diferencia,
+        ))
+
+    total = len(detalles_resp)
+    return schemas.ConteoInventarioResponse(
+        id_conteo=conteo.id_conteo,
+        id_usuario=conteo.id_usuario,
+        fecha=conteo.fecha,
+        observaciones=conteo.observaciones,
+        total_productos=total,
+        productos_correctos=correctos,
+        exactitud_pct=round(correctos / total * 100, 1) if total else None,
+        detalles=detalles_resp,
+    )
+
+
+@router.post(
+    "/conteos",
+    response_model=schemas.ConteoInventarioResponse,
+    responses={401: {"description": "Token inválido o expirado"}},
+)
+def crear_conteo_inventario(
+    conteo_in: schemas.ConteoInventarioCreate,
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(requerir_roles("ADMIN")),
+):
+    """Registra un conteo físico de inventario (F-16, indicador I16:
+    exactitud del inventario). Toma el stock_actual del sistema en este
+    momento como snapshot y lo compara contra lo que el staff contó
+    físicamente por producto; la diferencia y la exactitud quedan
+    calculadas y guardadas, no solo mostradas."""
+    if not conteo_in.detalles:
+        raise HTTPException(status_code=400, detail=MSG_CONTEO_SIN_PRODUCTOS)
+
+    nuevo_conteo = models.ConteoInventario(
+        id_usuario=usuario.get("id_usuario"),
+        observaciones=conteo_in.observaciones,
+    )
+    db.add(nuevo_conteo)
+    db.flush()
+
+    for detalle in conteo_in.detalles:
+        inv = db.query(models.Inventario).filter(
+            models.Inventario.id_producto == detalle.id_producto
+        ).first()
+        if not inv:
+            raise HTTPException(status_code=404, detail=f"{MSG_PRODUCTO_NO_ENCONTRADO} (id={detalle.id_producto})")
+
+        stock_sistema = inv.stock_actual
+        db.add(models.DetalleConteoInventario(
+            id_conteo=nuevo_conteo.id_conteo,
+            id_producto=detalle.id_producto,
+            stock_sistema=stock_sistema,
+            stock_fisico=detalle.stock_fisico,
+            diferencia=stock_sistema - detalle.stock_fisico,
+        ))
+
+    db.commit()
+    db.refresh(nuevo_conteo)
+
+    return _conteo_con_detalles(db, nuevo_conteo)
+
+
+@router.get(
+    "/conteos/",
+    response_model=list[schemas.ConteoInventarioResponse],
+    dependencies=[Depends(requerir_roles("ADMIN"))],
+    responses={401: {"description": "Token inválido o expirado"}},
+)
+def listar_conteos_inventario(db: Annotated[Session, Depends(get_db)]):
+    conteos = db.query(models.ConteoInventario).order_by(
+        models.ConteoInventario.id_conteo.desc()
+    ).all()
+    return [_conteo_con_detalles(db, c) for c in conteos]
+
+
+@router.get(
+    "/conteos/{id_conteo}",
+    response_model=schemas.ConteoInventarioResponse,
+    dependencies=[Depends(requerir_roles("ADMIN"))],
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Conteo no encontrado"},
+    },
+)
+def obtener_conteo_inventario(id_conteo: int, db: Annotated[Session, Depends(get_db)]):
+    conteo = db.query(models.ConteoInventario).filter(
+        models.ConteoInventario.id_conteo == id_conteo
+    ).first()
+    if not conteo:
+        raise HTTPException(status_code=404, detail=MSG_CONTEO_NO_ENCONTRADO)
+    return _conteo_con_detalles(db, conteo)
 
 
 @router.get(

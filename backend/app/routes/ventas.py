@@ -1,6 +1,8 @@
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException
 # pyrefly: ignore [missing-import]
+from fastapi.responses import Response
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 # pyrefly: ignore [missing-import]
 from sqlalchemy import func
@@ -14,6 +16,7 @@ from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
 from app.pagos_gateway import gateway
+from app.recibos import generar_boleta_venta
 from app.constants import (
     MSG_VENTA_NO_ENCONTRADA, MSG_VENTA_YA_CONFIRMADA,
     MSG_VENTA_NO_PENDIENTE, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -389,6 +392,38 @@ def obtener_venta(
         raise HTTPException(status_code=404, detail=MSG_VENTA_NO_ENCONTRADA)
 
     return _venta_con_detalles(db, venta)
+
+
+@router.get(
+    "/{id_venta}/boleta",
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Venta no encontrada"},
+    },
+)
+def descargar_boleta_venta(
+    id_venta: int,
+    db: Annotated[Session, Depends(get_db)],
+):
+    venta = db.query(models.Venta).filter(models.Venta.id_venta == id_venta).first()
+
+    if not venta:
+        raise HTTPException(status_code=404, detail=MSG_VENTA_NO_ENCONTRADA)
+
+    cliente = None
+    if venta.id_cliente:
+        cliente = db.query(models.Cliente).filter(
+            models.Cliente.id_cliente == venta.id_cliente
+        ).first()
+
+    pdf_bytes = generar_boleta_venta(venta, cliente)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=boleta-venta-{venta.id_venta}.pdf"},
+    )
 
 
 @router.post(

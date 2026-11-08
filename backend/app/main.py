@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -78,6 +79,58 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Rutas que no se miden: documentación (no son operaciones del negocio) y
+# /reportes (si no, cada vez que alguien exporta el reporte F-04 inflaría su
+# propio resultado).
+_PREFIJOS_SIN_MEDIR_TIEMPO = ("/docs", "/openapi.json", "/redoc", "/reportes")
+
+
+@app.middleware("http")
+async def medir_tiempo_respuesta(request: Request, call_next):
+    """Instrumentación del indicador I4 de la tesis (ficha F-04,
+    "comportamiento en el tiempo"): tiempo de respuesta del sistema en sus
+    operaciones de registro, consulta y generación. Deliberadamente NO mide
+    los tiempos de *proceso* (I10/I11/I13/I14/I17/I18, que exigen cronómetro
+    en uso real para ser comparables con el pretest manual) — ver
+    RegistroTiempoSistema en app/models.py."""
+    inicio = time.perf_counter()
+    response = await call_next(request)
+    duracion_ms = (time.perf_counter() - inicio) * 1000
+
+    ruta = request.url.path
+    if ruta != "/" and not ruta.startswith(_PREFIJOS_SIN_MEDIR_TIEMPO):
+        _registrar_tiempo_respuesta(request.method, ruta, duracion_ms)
+
+    return response
+
+
+def _registrar_tiempo_respuesta(metodo: str, ruta: str, duracion_ms: float) -> None:
+    """Separado del middleware para resolver la sesión de BD igual que
+    cualquier ruta -- respeta un override de get_db (ej. el que usan los
+    tests, con su propio motor SQLite) en vez de ir siempre a la BD de
+    producción -- y para que una falla al guardar nunca tumbe la respuesta
+    real que sí le importa al usuario."""
+    try:
+        from app.database import SessionLocal, get_db
+        from app import models
+
+        modulo = ruta.strip("/").split("/")[0] or "raiz"
+        override = app.dependency_overrides.get(get_db)
+        db = next(override()) if override else SessionLocal()
+        try:
+            db.add(models.RegistroTiempoSistema(
+                metodo=metodo,
+                ruta=ruta,
+                modulo=modulo,
+                duracion_ms=round(duracion_ms, 2),
+            ))
+            db.commit()
+        finally:
+            db.close()
+    except Exception:
+        logger.exception("No se pudo registrar el tiempo de respuesta de %s %s", metodo, ruta)
 
 
 @app.exception_handler(Exception)

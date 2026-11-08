@@ -9,6 +9,7 @@ TestClient de FastAPI con override de get_db, y un usuario ADMIN sembrado para
 generar tokens.
 """
 import sys
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -764,3 +765,158 @@ def test_ajuste_manual_de_inventario():
     )
     assert res_ajuste_negativo.status_code == 200
     assert res_ajuste_negativo.json()["stock_actual"] == 20
+
+
+# ── F-16: conteo físico de inventario (indicador I16) ────────────────────────
+def test_conteo_inventario_calcula_diferencia_y_exactitud():
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto_ok = crear_producto_con_categoria(headers)
+
+    # Segundo producto con una categoría distinta -- crear_producto_con_categoria
+    # siempre usa el nombre "Suplementos", que ya quedó creado arriba.
+    id_categoria_2 = client.post("/categorias/", json={"nombre": "Snacks"}, headers=headers).json()["id_categoria"]
+    id_producto_falta = client.post(
+        "/productos/",
+        data={
+            "nombre": "Barra energética",
+            "id_categoria": str(id_categoria_2),
+            "precio_compra": "10",
+            "precio_venta": "20",
+            "unidad_medida": "UNIDAD",
+            "stock_minimo": "5",
+            "stock_inicial": "0",
+        },
+        headers=headers,
+    ).json()["id_producto"]
+
+    client.post("/inventario/ajustes", json={"id_producto": id_producto_ok, "cantidad": 10}, headers=headers)
+    client.post("/inventario/ajustes", json={"id_producto": id_producto_falta, "cantidad": 10}, headers=headers)
+
+    res_conteo = client.post(
+        "/inventario/conteos",
+        json={
+            "observaciones": "Conteo mensual",
+            "detalles": [
+                {"id_producto": id_producto_ok, "stock_fisico": 10},
+                {"id_producto": id_producto_falta, "stock_fisico": 8},
+            ],
+        },
+        headers=headers,
+    )
+    assert res_conteo.status_code == 200, res_conteo.text
+    conteo = res_conteo.json()
+    assert conteo["total_productos"] == 2
+    assert conteo["productos_correctos"] == 1
+    assert conteo["exactitud_pct"] == 50.0
+
+    detalle_falta = next(d for d in conteo["detalles"] if d["id_producto"] == id_producto_falta)
+    assert detalle_falta["stock_sistema"] == 10
+    assert detalle_falta["diferencia"] == 2  # 10 sistema - 8 físico
+
+    # El conteo se puede volver a consultar por id y en el listado.
+    res_obtener = client.get(f"/inventario/conteos/{conteo['id_conteo']}", headers=headers)
+    assert res_obtener.status_code == 200
+    assert res_obtener.json()["id_conteo"] == conteo["id_conteo"]
+
+    res_listar = client.get("/inventario/conteos/", headers=headers)
+    assert res_listar.status_code == 200
+    assert any(c["id_conteo"] == conteo["id_conteo"] for c in res_listar.json())
+
+    # Un conteo inexistente da 404, no 500.
+    assert client.get("/inventario/conteos/999999", headers=headers).status_code == 404
+
+
+def test_conteo_inventario_rechaza_vacio_y_producto_inexistente():
+    populate_comercio()
+    headers = get_auth_headers()
+
+    assert client.post("/inventario/conteos", json={"detalles": []}, headers=headers).status_code == 400
+
+    res = client.post(
+        "/inventario/conteos",
+        json={"detalles": [{"id_producto": 999999, "stock_fisico": 1}]},
+        headers=headers,
+    )
+    assert res.status_code == 404
+
+
+# ── Boleta de venta (antes no existía ningún comprobante para una Venta) ─────
+def test_descargar_boleta_venta():
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers, precio_venta=50.0)
+    id_proveedor = crear_proveedor(headers)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers)
+
+    id_venta = client.post(
+        "/ventas/",
+        json={"metodo_pago": "EFECTIVO", "detalles": [{"id_producto": id_producto, "cantidad": 2}]},
+        headers=headers,
+    ).json()["id_venta"]
+
+    res = client.get(f"/ventas/{id_venta}/boleta", headers=headers)
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/pdf"
+    assert res.content[:4] == b"%PDF"
+
+    assert client.get("/ventas/999999/boleta", headers=headers).status_code == 404
+
+
+# ── Reportes operativos adicionales (negocio) ────────────────────────────────
+def test_reporte_productos_mas_vendidos_y_ventas_por_metodo_pago():
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers, precio_venta=50.0)
+    id_proveedor = crear_proveedor(headers)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers)
+
+    client.post(
+        "/ventas/",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 3}]},
+        headers=headers,
+    )
+
+    hoy = date.today().isoformat()
+    res_productos = client.get(
+        f"/reportes/productos-mas-vendidos?desde={hoy}&hasta={hoy}", headers=headers
+    )
+    assert res_productos.status_code == 200
+    filas = res_productos.json()
+    assert len(filas) == 1
+    assert filas[0]["cantidad_vendida"] == 3
+    assert filas[0]["ingresos"] == 150.0
+
+    res_metodo = client.get(
+        f"/reportes/ventas-por-metodo-pago?desde={hoy}&hasta={hoy}", headers=headers
+    )
+    assert res_metodo.status_code == 200
+    data = res_metodo.json()
+    assert data["total"] == 150.0
+    assert data["por_metodo"] == [{"metodo_pago": "YAPE", "monto": 150.0, "cantidad": 1}]
+
+
+def test_reporte_tiempos_respuesta_registra_llamadas_reales():
+    """El middleware de app/main.py (I4/F-04) debe escribir en la misma BD
+    que usan los tests (vía el override de get_db), no en la de producción."""
+    populate_comercio()
+    headers = get_auth_headers()
+
+    # Cualquier llamada normal (no /reportes, no /docs) debe quedar registrada.
+    client.get("/productos/disponibles", headers=headers)
+
+    hoy = date.today().isoformat()
+    res = client.get(f"/reportes/sistema/tiempos-respuesta?desde={hoy}&hasta={hoy}", headers=headers)
+    assert res.status_code == 200
+    filas = res.json()
+    assert any(f["modulo"] == "productos" and f["n_operaciones"] >= 1 for f in filas)

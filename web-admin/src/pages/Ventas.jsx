@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
+import { descargarBlob } from "../utils/descargarArchivo";
 
 const VENTAS_POR_PAGINA = 20;
 
@@ -105,6 +106,15 @@ function Ventas() {
     try { setProcesando(id); await api.post(`/ventas/${id}/confirmar`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al confirmar"); }
     finally { setProcesando(null); }
+  };
+
+  const descargarBoleta = async (id) => {
+    try {
+      const res = await api.get(`/ventas/${id}/boleta`, { responseType: "blob" });
+      descargarBlob(res.data, `boleta-venta-${id}.pdf`);
+    } catch {
+      setError("No se pudo descargar la boleta");
+    }
   };
 
   const filtradas = ventas.filter((v) => {
@@ -257,9 +267,14 @@ function Ventas() {
                     </button>
                   )}
                   {v.estado === "CONFIRMADA" && (
-                    <button className="btn-danger" disabled={procesando === v.id_venta} onClick={() => anular(v.id_venta)}>
-                      {procesando === v.id_venta ? "Anulando..." : "Anular"}
-                    </button>
+                    <>
+                      <button className="btn-secondary" onClick={() => descargarBoleta(v.id_venta)}>
+                        Descargar boleta
+                      </button>
+                      <button className="btn-danger" disabled={procesando === v.id_venta} onClick={() => anular(v.id_venta)}>
+                        {procesando === v.id_venta ? "Anulando..." : "Anular"}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

@@ -139,4 +139,56 @@ describe("Inventario Page Component", () => {
       expect(screen.getByText("No hay alertas activas.")).toBeDefined();
     });
   });
+
+  it("saves a physical inventory count and shows the calculated accuracy (F-16)", async () => {
+    api.post.mockResolvedValue({
+      data: {
+        id_conteo: 1,
+        fecha: "2026-11-01T10:00:00Z",
+        observaciones: null,
+        total_productos: 1,
+        productos_correctos: 0,
+        exactitud_pct: 0,
+        detalles: [
+          { id_detalle_conteo: 1, id_producto: 1, nombre_producto: "Proteína Whey", stock_sistema: 20, stock_fisico: 18, diferencia: 2 },
+        ],
+      },
+    });
+
+    const { container } = render(<Inventario />);
+    await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Conteo físico"));
+    await waitFor(() => expect(screen.getByText("Conteo físico de inventario")).toBeDefined());
+
+    const inputStockFisico = container.querySelector('.table input[type="number"]');
+    expect(inputStockFisico.value).toBe("20");
+    fireEvent.change(inputStockFisico, { target: { value: "18" } });
+
+    fireEvent.click(screen.getByText("Guardar conteo"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/inventario/conteos", {
+        detalles: [{ id_producto: 1, stock_fisico: 18 }],
+      });
+      expect(screen.getByText(/Resultado del conteo #1/)).toBeDefined();
+      expect(screen.getByText("0%")).toBeDefined();
+    });
+  });
+
+  it("shows an error when saving the physical count fails", async () => {
+    api.post.mockRejectedValue({ response: { data: { detail: "Producto no encontrado" } } });
+
+    render(<Inventario />);
+    await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Conteo físico"));
+    await waitFor(() => expect(screen.getByText("Guardar conteo")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Guardar conteo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Producto no encontrado")).toBeDefined();
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -1398,6 +1398,172 @@ def test_reporte_ia_restricciones():
 
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     assert client.get("/reportes/ia/restricciones", headers=headers_cliente).status_code == 403
+
+
+# =========================
+# INSTRUMENTACIÓN PARA EL POSTEST (I4, I5, I12, I15)
+# =========================
+
+def test_reporte_progreso_fisico():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    # Sin ningún Progreso registrado todavía -> 0% de seguimiento.
+    res_vacio = client.get(
+        "/reportes/progreso-fisico?desde=2026-06-01&hasta=2026-06-30", headers=headers_admin
+    )
+    assert res_vacio.status_code == 200
+    data_vacio = res_vacio.json()
+    assert data_vacio["total_clientes_activos"] == 1
+    assert data_vacio["con_seguimiento"] == 0
+    assert data_vacio["detalle"] == [{"codigo_cliente": "C-001", "tiene_seguimiento": False}]
+
+    client.post(
+        "/progreso/",
+        json={"id_cliente": 1, "peso": 70.0, "fecha_registro": "2026-06-10"},
+        headers=headers_admin,
+    )
+
+    res = client.get(
+        "/reportes/progreso-fisico?desde=2026-06-01&hasta=2026-06-30", headers=headers_admin
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_clientes_activos"] == 1
+    assert data["con_seguimiento"] == 1
+    assert data["porcentaje"] == 100.0
+    assert data["detalle"] == [{"codigo_cliente": "C-001", "tiene_seguimiento": True}]
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(
+        "/reportes/progreso-fisico?desde=2026-06-01&hasta=2026-06-30", headers=headers_cliente
+    ).status_code == 403
+
+
+def test_reporte_registros_recientes():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 100.0,
+            "metodo_pago": "EFECTIVO", "fecha_pago": "2026-06-10", "estado": "PAGADO",
+        },
+        headers=headers_admin,
+    )
+
+    hoy = str(date.today())
+    res = client.get(
+        f"/reportes/sistema/registros-recientes?desde=2020-01-01&hasta={hoy}", headers=headers_admin
+    )
+    assert res.status_code == 200
+    filas = res.json()
+    assert any(f["entidad"] == "Pago" and f["accion"] == "CREAR" for f in filas)
+    assert any(f["entidad"] == "ClienteMembresia" and f["accion"] == "CREAR" for f in filas)
+
+    res_filtrado = client.get(
+        f"/reportes/sistema/registros-recientes?desde=2020-01-01&hasta={hoy}&entidad=Pago",
+        headers=headers_admin,
+    )
+    assert res_filtrado.status_code == 200
+    assert all(f["entidad"] == "Pago" for f in res_filtrado.json())
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(
+        f"/reportes/sistema/registros-recientes?desde=2020-01-01&hasta={hoy}", headers=headers_cliente
+    ).status_code == 403
+
+
+def test_reporte_duplicidad():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    cuerpo_pago = {
+        "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 100.0,
+        "metodo_pago": "EFECTIVO", "fecha_pago": "2026-06-10", "estado": "PAGADO",
+    }
+    # El mismo pago registrado "sin querer" dos veces (doble clic del staff).
+    client.post("/pagos/", json=cuerpo_pago, headers=headers_admin)
+    client.post("/pagos/", json=cuerpo_pago, headers=headers_admin)
+
+    # Dato heredado con campos obligatorios vacíos (no se puede crear así vía
+    # la API, se simula un registro antiguo directamente en la BD).
+    db = TestingSessionLocal()
+    usuario_legacy = models.Usuario(
+        id_usuario=50, correo="legacy@gleyforgym.com",
+        password_hash=encriptar_password("x"), rol="CLIENTE", estado="ACTIVO",
+    )
+    db.add(usuario_legacy)
+    db.commit()
+    cliente_incompleto = models.Cliente(
+        id_cliente=99, id_usuario=50, dni="87654321", nombres="", apellidos="",
+        estado="ACTIVO",
+    )
+    db.add(cliente_incompleto)
+    db.commit()
+    db.close()
+
+    res = client.get(
+        "/reportes/sistema/duplicidad?desde=2020-01-01&hasta=2027-01-01", headers=headers_admin
+    )
+    assert res.status_code == 200
+    hallazgos = res.json()
+
+    tipos = [h["tipo_hallazgo"] for h in hallazgos]
+    assert "PAGO_DUPLICADO" in tipos
+    assert "CAMPO_OBLIGATORIO_VACIO" in tipos
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(
+        "/reportes/sistema/duplicidad?desde=2020-01-01&hasta=2027-01-01", headers=headers_cliente
+    ).status_code == 403
+
+
+def test_reporte_membresias_por_vencer():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+
+    db = TestingSessionLocal()
+    cm = db.query(models.ClienteMembresia).filter(
+        models.ClienteMembresia.id_cliente_membresia == id_cm
+    ).first()
+    cm.fecha_fin = date.today() + timedelta(days=3)
+    db.commit()
+    db.close()
+
+    res = client.get("/reportes/membresias-por-vencer?dias=7", headers=headers_admin)
+    assert res.status_code == 200
+    filas = res.json()
+    assert len(filas) == 1
+    assert filas[0]["id_cliente_membresia"] == id_cm
+    assert filas[0]["nombre_cliente"] == "Juan Perez"
+    assert filas[0]["telefono_cliente"] == "999999999"
+    assert filas[0]["dias_restantes"] == 3
+
+    # Fuera de la ventana de días -> no aparece.
+    res_corto = client.get("/reportes/membresias-por-vencer?dias=1", headers=headers_admin)
+    assert res_corto.json() == []
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(
+        "/reportes/membresias-por-vencer?dias=7", headers=headers_cliente
+    ).status_code == 403
 
 
 def test_verificar_correo():

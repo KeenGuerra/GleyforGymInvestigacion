@@ -788,6 +788,44 @@ class AjusteInventarioCreate(BaseModel):
 
 
 # =========================
+# CONTEO FÍSICO DE INVENTARIO (soporta F-16 / I16: exactitud del inventario)
+# =========================
+
+class DetalleConteoCreate(BaseModel):
+    id_producto: int
+    stock_fisico: float
+
+
+class ConteoInventarioCreate(BaseModel):
+    observaciones: Optional[str] = None
+    detalles: List[DetalleConteoCreate]
+
+
+class DetalleConteoResponse(BaseModel):
+    id_detalle_conteo: int
+    id_producto: int
+    nombre_producto: Optional[str] = None
+    stock_sistema: float
+    stock_fisico: float
+    diferencia: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConteoInventarioResponse(BaseModel):
+    id_conteo: int
+    id_usuario: Optional[int] = None
+    fecha: datetime
+    observaciones: Optional[str] = None
+    total_productos: int = 0
+    productos_correctos: int = 0
+    exactitud_pct: Optional[float] = None
+    detalles: List[DetalleConteoResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =========================
 # LOTES
 # =========================
 
