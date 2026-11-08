@@ -55,11 +55,19 @@ En autorrevisión antes de la primera prueba real se corrigieron dos bugs: `Culq
 2. Culqi exige que `order_number` sea único **para siempre en toda la cuenta** (no solo en nuestra BD) — reintentar "Completar pago" sobre el mismo Pago/Venta volvía a llamar a `crear_checkout()` con la misma referencia y Culqi la rechazaba. Se agregó `GatewayPago.obtener_checkout()` para recuperar la orden ya creada en vez de crear una nueva (checkout idempotente).
 3. La referencia (`pago-<id>`/`venta-<id>`) se arma solo con el ID autoincremental de nuestra BD, que no es único entre entornos/pruebas distintas contra la misma cuenta de Culqi — chocó con una orden de pruebas anteriores. Se agregó un sufijo aleatorio a la referencia.
 
+**Avance (2026-11, continuación 4) — el pago de prueba de punta a punta en sandbox NO es posible, descubierto intentándolo de verdad**: se intentó completar un pago real contra una orden de prueba (QR de Yape) escaneándolo con una app de Yape real — el resultado fue un monto sin sentido (ninguna relación con el monto real de la orden), señal de que el QR de sandbox no es una transacción Yape válida. Se confirmó contra la documentación oficial de Culqi (`docs.culqi.com`):
+
+- La página "Integración vs Producción" dice literalmente que el entorno de Integración (sandbox) **"te permite simular ventas usando nuestras tarjetas de prueba"** y que **"el entorno de Integración solo acepta tarjetas de prueba"** — no dice en ningún lado que Yape o PagoEfectivo funcionen en sandbox.
+- El número de prueba `900 000 001` + código de 6 dígitos (documentado en "Tarjetas de prueba") es para el **"botón de pago Yape"** de Cargo Único (un checkout con campo de teléfono), no para el QR de la API de Órdenes que usa este backend.
+- Ni la página de Webhooks ni la de Órdenes documentan ningún botón o endpoint para forzar manualmente una orden a estado "pagada" en sandbox.
+
+**Conclusión**: el flujo de Yape/PagoEfectivo vía Órdenes que usa este sistema **no se puede probar de punta a punta en sandbox, solo en la cuenta real de producción**. Confirmar con tarjetas de prueba tampoco serviría — los cargos con tarjeta son síncronos (Culqi responde al toque, sin webhook) y necesitarían una integración nueva completa (tokenización con Culqi.js + endpoint de Cargos), que no existe hoy y no probaría el camino asíncrono (`order.status.changed`) que es justamente lo que hay que confirmar.
+
 Falta:
 
-1. Completar un pago de prueba real de punta a punta (QR de Yape sandbox, número de prueba `900 000 001` + cualquier código de 6 dígitos, o PagoEfectivo) contra el backend desplegado, y confirmar que el webhook real de Culqi llega con un formato que `_extraer_id_transaccion()` reconoce. **Sigue siendo lo único sin confirmar** — ya se corrigieron los bugs que impedían siquiera llegar a generar la orden de pago (ver arriba), pero aún no se completó un pago hasta el final (escanear el QR/pagar y que el webhook confirme).
+1. **Ya no es posible confirmarlo en sandbox.** La única confirmación posible es la prueba real de producción descrita en P-22 (punto 4) — queda fusionado con ese pendiente, bloqueado por la misma causa (aprobación KYC de la cuenta real de Culqi).
 
-Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
+Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito para tarjetas, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
 
 ---
 
@@ -81,7 +89,7 @@ Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yap
 
 En el frontend, `MiMembresia.jsx` ahora muestra los planes disponibles con botón "Comprar" cuando el socio no tiene membresía, y "Completar pago" (reutilizando `CheckoutModal.jsx` ya existente) cuando hay un pago pendiente. Backend: 142→149 pruebas (7 nuevas en `test_compra_membresia.py`). Frontend: 48→50 archivos / 277→288 pruebas.
 
-Sigue pendiente de la misma confirmación que P-02: un pago real de punta a punta todavía no se ha completado para este flujo.
+Sigue pendiente de la misma confirmación que P-02: un pago real de punta a punta todavía no se ha completado para este flujo. **Actualización (2026-11)**: se confirmó que esto no se puede probar en sandbox (ver detalle en P-02) — queda bloqueado junto con P-22, a la espera de la cuenta real de Culqi.
 
 ---
 
@@ -109,6 +117,12 @@ El gimnasio pagará en persona con un POS físico aparte (no integrado a este si
 4. **Probar con un monto real pequeño** (mínimo S/ 6.00 — confirmado contra la API real de Culqi, que rechaza montos menores) antes de anunciarlo a los socios, para confirmar que el webhook llega y activa correctamente con dinero de verdad — mismo patrón que se usó en sandbox (ver P-02), pero esta vez si se cobra.
 
 No se resuelve nada de esto todavía — queda anotado para cuando el gimnasio tenga lista su cuenta real de Culqi (KYC/verificación de negocio aprobada por Culqi, que es un trámite del lado del gimnasio, no de este código).
+
+**Avance (2026-11)**: se verificó directamente en el panel de Culqi (pestaña Producción) que la cuenta real (RUC `10763338041`) sigue en proceso de verificación — mensaje "Tu comercio está en proceso de creación", sin llaves `sk_live_`/`pk_live_` disponibles todavía. Se confirmó además (ver P-02) que **el paso 4 de esta lista es ahora la única forma de confirmar el flujo de Yape/PagoEfectivo de punta a punta** — ya no es posible hacerlo gratis en sandbox, así que esta prueba resuelve a la vez P-02 y P-19.
+
+Se preparó el terreno para cuando aprueben la cuenta: se creó una membresía temporal **"Plan de Prueba Culqi S/6"** (`id_membresia=2`, estado ACTIVO) en producción, pensada exactamente para el paso 4 — comprarla desde "Mi Membresía" cuesta el mínimo que acepta Culqi. También se limpió, cumpliendo el paso 3, una `ClienteMembresia`/`Pago` que había quedado activa de pruebas anteriores de sandbox (orden `ord_test_2wZ4teloKHHAFsDS`, pago ya `ANULADO`) para que no bloqueara la compra de prueba.
+
+**Bloqueado** a la espera de que Culqi apruebe el KYC del comercio — sin fecha estimada, depende de Culqi, no de este proyecto.
 
 ---
 
