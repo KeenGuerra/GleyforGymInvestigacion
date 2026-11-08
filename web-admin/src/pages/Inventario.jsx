@@ -38,10 +38,16 @@ function Inventario() {
   const guardarConteo = async () => {
     setError(""); setGuardandoConteo(true);
     try {
-      const detalles = inventario.map((inv) => ({
-        id_producto: inv.id_producto,
-        stock_fisico: Number(stockFisico[inv.id_producto] ?? inv.stock_actual),
-      }));
+      const detalles = inventario.map((inv) => {
+        const valor = stockFisico[inv.id_producto];
+        // "" (input vacío mientras el staff retipea el número) no debe
+        // enviarse como 0 -- Number("") es 0, no "sin cambio". Con el campo
+        // vacío se usa el stock del sistema, igual que el valor por defecto.
+        const stockFisicoFinal = valor === "" || valor === undefined || valor === null
+          ? inv.stock_actual
+          : Number(valor);
+        return { id_producto: inv.id_producto, stock_fisico: stockFisicoFinal };
+      });
       const res = await api.post("/inventario/conteos", { detalles });
       setResultadoConteo(res.data);
       await cargar();

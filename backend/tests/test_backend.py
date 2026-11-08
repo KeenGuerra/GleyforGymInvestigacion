@@ -1497,6 +1497,12 @@ def test_reporte_duplicidad():
     client.post("/pagos/", json=cuerpo_pago, headers=headers_admin)
     client.post("/pagos/", json=cuerpo_pago, headers=headers_admin)
 
+    # Anular un pago mal registrado y volver a crear el correcto (mismos
+    # datos) NO es una duplicidad -- es una corrección legítima del staff.
+    cuerpo_pago_corregido = {**cuerpo_pago, "monto": 80.0, "estado": "ANULADO"}
+    client.post("/pagos/", json=cuerpo_pago_corregido, headers=headers_admin)
+    client.post("/pagos/", json={**cuerpo_pago_corregido, "estado": "PAGADO"}, headers=headers_admin)
+
     # Dato heredado con campos obligatorios vacíos (no se puede crear así vía
     # la API, se simula un registro antiguo directamente en la BD).
     db = TestingSessionLocal()
@@ -1523,6 +1529,10 @@ def test_reporte_duplicidad():
     tipos = [h["tipo_hallazgo"] for h in hallazgos]
     assert "PAGO_DUPLICADO" in tipos
     assert "CAMPO_OBLIGATORIO_VACIO" in tipos
+
+    # El par anulado+corregido (monto=80.0) no debe aparecer como duplicado.
+    pagos_duplicados = [h for h in hallazgos if h["tipo_hallazgo"] == "PAGO_DUPLICADO"]
+    assert all("monto=80.0" not in h["detalle"] for h in pagos_duplicados)
 
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     assert client.get(

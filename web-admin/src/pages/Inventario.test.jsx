@@ -176,6 +176,31 @@ describe("Inventario Page Component", () => {
     });
   });
 
+  it("falls back to the system stock (not 0) when the physical count input is cleared", async () => {
+    api.post.mockResolvedValue({
+      data: { id_conteo: 2, fecha: "2026-11-01T10:00:00Z", observaciones: null, total_productos: 1, productos_correctos: 1, exactitud_pct: 100, detalles: [] },
+    });
+
+    const { container } = render(<Inventario />);
+    await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Conteo físico"));
+    await waitFor(() => expect(screen.getByText("Conteo físico de inventario")).toBeDefined());
+
+    const inputStockFisico = container.querySelector('.table input[type="number"]');
+    // El staff borra el campo para retipear (queda "" un momento) y guarda
+    // antes de escribir el nuevo número -- no debe mandarse 0.
+    fireEvent.change(inputStockFisico, { target: { value: "" } });
+
+    fireEvent.click(screen.getByText("Guardar conteo"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/inventario/conteos", {
+        detalles: [{ id_producto: 1, stock_fisico: 20 }],
+      });
+    });
+  });
+
   it("shows an error when saving the physical count fails", async () => {
     api.post.mockRejectedValue({ response: { data: { detail: "Producto no encontrado" } } });
 

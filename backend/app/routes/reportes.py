@@ -321,10 +321,14 @@ def reporte_duplicidad(db: Annotated[Session, Depends(get_db)], desde: date, has
     ni duplicidad)."""
     hallazgos = []
 
-    # 1. Pagos idénticos registrados más de una vez el mismo día.
+    # 1. Pagos idénticos registrados más de una vez el mismo día. Se excluyen
+    # los ANULADO: anular un pago mal registrado y volver a crear el correcto
+    # (mismo cliente/monto/fecha/método) es una corrección legítima del
+    # staff, no una duplicidad.
     pagos_en_rango = db.query(models.Pago).filter(
         models.Pago.fecha_pago >= desde,
         models.Pago.fecha_pago <= hasta,
+        models.Pago.estado != "ANULADO",
     ).all()
     vistos_pago: dict[tuple, list[int]] = {}
     for p in pagos_en_rango:
@@ -401,15 +405,20 @@ def reporte_progreso_fisico(db: Annotated[Session, Depends(get_db)], desde: date
     periodo (I15), con el detalle por cliente anonimizado."""
     clientes_activos = db.query(models.Cliente).filter(models.Cliente.estado == "ACTIVO").all()
 
+    # Un solo query con los clientes que SÍ tienen progreso en el rango, en
+    # vez de un query por cliente activo (N+1) -- importante porque este
+    # reporte crece con la cantidad de socios, no es un dato de una sola vez.
+    ids_con_progreso = {
+        fila[0] for fila in db.query(models.Progreso.id_cliente).filter(
+            models.Progreso.fecha_registro >= desde,
+            models.Progreso.fecha_registro <= hasta,
+        ).distinct().all()
+    }
+
     detalle = []
     con_seguimiento = 0
     for cliente in clientes_activos:
-        tiene = db.query(models.Progreso).filter(
-            models.Progreso.id_cliente == cliente.id_cliente,
-            models.Progreso.fecha_registro >= desde,
-            models.Progreso.fecha_registro <= hasta,
-        ).first() is not None
-
+        tiene = cliente.id_cliente in ids_con_progreso
         if tiene:
             con_seguimiento += 1
         detalle.append({

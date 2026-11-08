@@ -4,6 +4,7 @@ import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -101,7 +102,12 @@ async def medir_tiempo_respuesta(request: Request, call_next):
 
     ruta = request.url.path
     if ruta != "/" and not ruta.startswith(_PREFIJOS_SIN_MEDIR_TIEMPO):
-        _registrar_tiempo_respuesta(request.method, ruta, duracion_ms)
+        # run_in_threadpool: esta es una función sync (la sesión de SQLAlchemy
+        # es síncrona) llamada desde un middleware async -- sin esto bloquea
+        # el event loop completo mientras dura el INSERT/commit, afectando a
+        # TODAS las requests concurrentes, no solo a esta (a diferencia de una
+        # ruta sync normal, que FastAPI ya corre en threadpool por su cuenta).
+        await run_in_threadpool(_registrar_tiempo_respuesta, request.method, ruta, duracion_ms)
 
     return response
 
