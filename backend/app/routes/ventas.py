@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Annotated, Optional
 from datetime import datetime, date
+import uuid
 
 from app.database import get_db
 from app import models, schemas
@@ -337,7 +338,10 @@ def iniciar_checkout_venta(
     if venta.id_transaccion_externa:
         sesion = gateway.obtener_checkout(venta.id_transaccion_externa)
     else:
-        sesion = gateway.crear_checkout(venta.total, referencia=f"venta-{venta.id_venta}", cliente=datos_cliente)
+        # Sufijo aleatorio: ver mismo comentario en pagos.py (evita chocar
+        # con una orden de otro entorno/prueba contra la misma cuenta Culqi).
+        referencia = f"venta-{venta.id_venta}-{uuid.uuid4().hex[:8]}"
+        sesion = gateway.crear_checkout(venta.total, referencia=referencia, cliente=datos_cliente)
         venta.id_transaccion_externa = sesion["id_transaccion_externa"]
         db.commit()
 

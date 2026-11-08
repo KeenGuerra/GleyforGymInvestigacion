@@ -5,6 +5,7 @@ from fastapi.responses import Response
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
+import uuid
 
 from app.database import get_db
 from app import models, schemas
@@ -130,9 +131,13 @@ def iniciar_checkout_pago(
     if pago_db.id_transaccion_externa:
         sesion = gateway.obtener_checkout(pago_db.id_transaccion_externa)
     else:
+        # El sufijo aleatorio evita que la referencia choque con una orden de
+        # OTRO entorno/prueba contra la misma cuenta de Culqi: el id_pago por
+        # sí solo no es único para siempre (se reinicia en cada BD nueva),
+        # pero Culqi exige que order_number sí lo sea en toda la cuenta.
         sesion = gateway.crear_checkout(
             pago_db.monto,
-            referencia=f"pago-{pago_db.id_pago}",
+            referencia=f"pago-{pago_db.id_pago}-{uuid.uuid4().hex[:8]}",
             cliente={
                 "nombres": cliente_db.nombres,
                 "apellidos": cliente_db.apellidos,
