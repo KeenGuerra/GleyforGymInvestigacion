@@ -28,6 +28,7 @@ import MiRutina from "./pages/MiRutina";
 import MiNutricion from "./pages/MiNutricion";
 import MiProgreso from "./pages/MiProgreso";
 import MiMembresia from "./pages/MiMembresia";
+import HazteSocio from "./pages/HazteSocio";
 import MisPagos from "./pages/MisPagos";
 import DetalleCliente from "./pages/DetalleCliente";
 import Categorias from "./pages/Categorias";
@@ -328,6 +329,15 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["CLIENTE"]} requiereCliente>
                 <MiMembresia />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/hazte-socio"
+            element={
+              <ProtectedRoute rolesPermitidos={["CLIENTE"]}>
+                <HazteSocio />
               </ProtectedRoute>
             }
           />

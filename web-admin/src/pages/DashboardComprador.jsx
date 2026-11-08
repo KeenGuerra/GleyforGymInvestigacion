@@ -45,11 +45,13 @@ function DashboardComprador() {
         <span className="badge">¿Quieres ser socio?</span>
         <h2>Accede a rutinas, plan nutricional y más</h2>
         <p>
-          Para entrenar con nosotros, generar rutinas con IA y acceder a tu
-          plan nutricional, acércate al gimnasio para adquirir una
-          membresía — tu cuenta actual seguirá funcionando igual, solo se le
-          suman esas funciones.
+          Completa tus datos de socio y elige un plan de membresía — tu
+          cuenta actual seguirá funcionando igual, solo se le suman esas
+          funciones.
         </p>
+        <button className="btn-primary" onClick={() => navigate("/hazte-socio")}>
+          Hazte socio ahora
+        </button>
       </section>
     </div>
   );

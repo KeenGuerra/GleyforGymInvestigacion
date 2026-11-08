@@ -11,6 +11,7 @@ from app.database import get_db
 from app import models, schemas
 from app.security import encriptar_password, obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.correo import enviar_verificacion_correo
+from app.auditoria import registrar as registrar_auditoria
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -218,6 +219,89 @@ def crear_cliente(
         "correo": nuevo_usuario.correo,
         "edad": nuevo_cliente.edad,
         "estado": nuevo_cliente.estado
+    }
+
+
+# =========================
+# HAZTE SOCIO (autoservicio)
+# =========================
+@router.post(
+    "/hazte-socio",
+    responses={
+        400: {"description": "El DNI ya está registrado"},
+        401: {"description": "Token inválido o expirado"},
+        403: {"description": "Verifica tu correo antes de continuar"},
+        409: {"description": "Ya tienes un perfil de socio"},
+    }
+)
+def hazte_socio(
+    datos: schemas.ClienteBase,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    """Permite a una cuenta de comprador (autoregistro público, sin ficha de
+    Cliente) crear su propia ficha de socio, sin pasar por el staff. A
+    diferencia de crear_cliente(), id_usuario se toma siempre del token, nunca
+    del body — no se puede crear un Cliente para otra cuenta."""
+    usuario_db = db.query(models.Usuario).filter(
+        models.Usuario.id_usuario == usuario_actual.get("id_usuario")
+    ).first()
+
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail=MSG_CLIENTE_NO_ENCONTRADO_USUARIO)
+
+    if usuario_db.cliente is not None:
+        raise HTTPException(status_code=409, detail="Ya tienes un perfil de socio")
+
+    if not usuario_db.correo_verificado:
+        raise HTTPException(status_code=403, detail="Verifica tu correo antes de continuar")
+
+    existe_dni = db.query(models.Cliente).filter(
+        models.Cliente.dni == datos.dni
+    ).first()
+
+    if existe_dni:
+        raise HTTPException(status_code=400, detail=MSG_DNI_REGISTRADO)
+
+    nuevo_cliente = models.Cliente(
+        id_usuario=usuario_db.id_usuario,
+        dni=datos.dni,
+        nombres=datos.nombres,
+        apellidos=datos.apellidos,
+        telefono=datos.telefono,
+        fecha_nacimiento=datos.fecha_nacimiento,
+        sexo=datos.sexo,
+        direccion=datos.direccion,
+        edad=calcular_edad(datos.fecha_nacimiento),
+        peso=datos.peso,
+        estatura=datos.estatura,
+        objetivo=datos.objetivo,
+        nivel=datos.nivel,
+        restricciones_medicas=datos.restricciones_medicas,
+        restricciones_otras=datos.restricciones_otras,
+        nivel_actividad=datos.nivel_actividad,
+        restricciones_alimentarias=datos.restricciones_alimentarias,
+        peso_actualizado_en=datetime.now() if datos.peso is not None else None,
+        estado=ESTADO_ACTIVO,
+    )
+
+    db.add(nuevo_cliente)
+    db.commit()
+    db.refresh(nuevo_cliente)
+
+    registrar_auditoria(
+        db, usuario_actual, "HAZTE_SOCIO", "Cliente", nuevo_cliente.id_cliente,
+        f"dni={nuevo_cliente.dni}",
+    )
+
+    return {
+        "mensaje": "Ahora eres socio de GleyforGym",
+        "id_cliente": nuevo_cliente.id_cliente,
+        "id_usuario": nuevo_cliente.id_usuario,
+        "dni": nuevo_cliente.dni,
+        "nombres": nuevo_cliente.nombres,
+        "apellidos": nuevo_cliente.apellidos,
+        "estado": nuevo_cliente.estado,
     }
 
 
