@@ -1312,6 +1312,29 @@ def test_reporte_asistencias():
     assert res_cliente.status_code == 403
 
 
+def test_plan_nutricional_ia_muestra_el_nombre_real_de_la_comida():
+    """El plan generado debe mostrar comida.nombre (el plato real que el
+    admin registró, ej. "Desayuno Test"), no comida.descripcion (una
+    etiqueta corta genérica, "Desc" en el fixture) -- si no, el cliente ve
+    una categoría genérica en vez de saber qué va a comer."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    res_plan = client.post("/ia/nutricion/generar/1", headers=headers)
+    assert res_plan.status_code == 200
+    id_plan = res_plan.json()["id_plan"]
+
+    res_detalle = client.get(f"/nutricion/{id_plan}", headers=headers)
+    assert res_detalle.status_code == 200
+    comidas = res_detalle.json()["comidas"]
+    assert len(comidas) > 0
+
+    nombres_catalogo = {"Desayuno Test", "Media Mañana Test", "Almuerzo Test", "Merienda Test", "Cena Test"}
+    for comida in comidas:
+        assert comida["descripcion"] != "Desc"
+        assert any(comida["descripcion"].startswith(nombre) for nombre in nombres_catalogo), comida["descripcion"]
+
+
 def test_reporte_ia_kcal():
     populate_db_for_coverage()
     headers = get_auth_headers()

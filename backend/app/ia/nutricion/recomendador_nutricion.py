@@ -96,7 +96,10 @@ def seleccionar_comidas_para_plan(cliente, comidas, progresos=None):
 
         plan.append({
             "tipo_comida": comida.tipo_comida,
-            "descripcion": comida.descripcion,
+            # El plato real registrado en el catálogo (comida.nombre), no la
+            # etiqueta corta de comida.descripcion -- el cliente debe ver qué
+            # va a comer, no una categoría genérica tipo "Snack proteico".
+            "descripcion": comida.nombre,
             "calorias_aprox": comida.calorias,
             "hora_recomendada": obtener_hora(tipo),
             "id_comida_catalogo": comida.id_comida_catalogo,

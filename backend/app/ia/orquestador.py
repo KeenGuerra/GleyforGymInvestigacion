@@ -135,7 +135,11 @@ def generar_plan_hibrido(db, cliente: models.Cliente, comidas: list, progresos: 
             tipo_comida = item["tipo_comida"] or comida.tipo_comida
             plan.append({
                 "tipo_comida": tipo_comida,
-                "descripcion": f"{comida.descripcion or comida.nombre} ({item['porcion']})",
+                # El plato real registrado en el catálogo (comida.nombre), no
+                # la etiqueta corta de comida.descripcion -- el cliente debe
+                # ver qué va a comer, no una categoría genérica tipo "Snack
+                # proteico". La porción la sigue sugiriendo Claude.
+                "descripcion": f"{comida.nombre} ({item['porcion']})",
                 "calorias_aprox": item["calorias_estimadas"],
                 "hora_recomendada": obtener_hora(tipo_comida.upper()),
                 "id_comida_catalogo": comida.id_comida_catalogo,
