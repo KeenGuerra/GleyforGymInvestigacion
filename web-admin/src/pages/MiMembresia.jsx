@@ -159,15 +159,28 @@ function MiMembresia() {
           ) : (
             <section className="cards-grid">
               {planesDisponibles.map((p) => (
-                <article className="card item-card" key={p.id_membresia}>
+                <article
+                  className="card item-card"
+                  key={p.id_membresia}
+                  style={{ display: "flex", flexDirection: "column" }}
+                >
+                  <div className="item-card-top">
+                    <span className="badge">{p.duracion_dias} días</span>
+                  </div>
+
                   <h3>{p.nombre}</h3>
-                  <p>{p.descripcion || "Sin descripción"}</p>
+                  <p className="item-description">{p.descripcion || "Sin descripción"}</p>
+
+                  {p.beneficios && <p className="item-description">{p.beneficios}</p>}
+
                   <div className="price-box">
                     <strong>S/ {Number(p.precio).toFixed(2)}</strong>
                     <span>{p.duracion_dias} días</span>
                   </div>
+
                   <button
                     className="btn-primary"
+                    style={{ marginTop: "16px", width: "100%" }}
                     disabled={comprandoId === p.id_membresia}
                     onClick={() => comprarPlan(p.id_membresia)}
                   >

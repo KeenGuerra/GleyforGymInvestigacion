@@ -81,7 +81,10 @@ describe("MiMembresia Page Component", () => {
       }
       if (url.includes("/membresias/")) {
         return Promise.resolve({
-          data: [{ id_membresia: 7, nombre: "Plan Mensual", precio: 100, duracion_dias: 30, estado: "ACTIVO" }],
+          data: [{
+            id_membresia: 7, nombre: "Plan Mensual", precio: 100, duracion_dias: 30, estado: "ACTIVO",
+            beneficios: "Pesas, Cardio, Sauna",
+          }],
         });
       }
       if (url.includes("/pagos/cliente/")) {
@@ -94,6 +97,7 @@ describe("MiMembresia Page Component", () => {
     render(<MiMembresia />);
     await waitFor(() => {
       expect(screen.getByText("Plan Mensual")).toBeDefined();
+      expect(screen.getByText("Pesas, Cardio, Sauna")).toBeDefined();
     });
 
     fireEvent.click(screen.getByText("Comprar"));
