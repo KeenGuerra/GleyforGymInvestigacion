@@ -132,3 +132,44 @@ def test_hazte_socio_bloquea_dni_duplicado():
 
     res2 = client.post("/clientes/hazte-socio", json=DATOS_SOCIO, headers=headers2)
     assert res2.status_code == 400
+
+
+def test_reenviar_verificacion_cuando_no_esta_verificado():
+    populate()
+    # id_usuario propio (100+) para no compartir la clave del rate limit en
+    # memoria (reenviar-verificacion:<id_usuario>) con otros tests de este
+    # archivo, ya que ese contador no se resetea entre tests.
+    crear_comprador(100, "sinverificar2@gleyforgym.com", verificado=False)
+    headers = get_auth_headers(100, "sinverificar2@gleyforgym.com")
+
+    res = client.post("/usuarios/reenviar-verificacion", headers=headers)
+    assert res.status_code == 200
+    assert "correo" in res.json()["mensaje"].lower()
+
+    db = TestingSessionLocal()
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == 100).first()
+    assert usuario.token_verificacion is not None
+    db.close()
+
+
+def test_reenviar_verificacion_si_ya_esta_verificado_no_reenvia():
+    populate()
+    crear_comprador(101, "yaverificado@gleyforgym.com", verificado=True)
+    headers = get_auth_headers(101, "yaverificado@gleyforgym.com")
+
+    res = client.post("/usuarios/reenviar-verificacion", headers=headers)
+    assert res.status_code == 200
+    assert "ya está verificado" in res.json()["mensaje"]
+
+
+def test_reenviar_verificacion_respeta_el_limite_de_intentos():
+    populate()
+    crear_comprador(102, "limitereenvio@gleyforgym.com", verificado=False)
+    headers = get_auth_headers(102, "limitereenvio@gleyforgym.com")
+
+    for _ in range(3):
+        res = client.post("/usuarios/reenviar-verificacion", headers=headers)
+        assert res.status_code == 200
+
+    res_bloqueado = client.post("/usuarios/reenviar-verificacion", headers=headers)
+    assert res_bloqueado.status_code == 429

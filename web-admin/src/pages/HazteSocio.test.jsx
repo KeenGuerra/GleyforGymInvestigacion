@@ -70,5 +70,34 @@ describe("HazteSocio Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Ya tienes un perfil de socio")).toBeDefined();
     });
+    expect(screen.queryByText("Reenviar correo de verificación")).toBeNull();
+  });
+
+  it("offers to resend the verification email on a 403 and sends it when clicked", async () => {
+    localStorage.setItem("tiene_cliente", "false");
+    api.post.mockImplementation((url) => {
+      if (url === "/clientes/hazte-socio") {
+        return Promise.reject({ response: { status: 403, data: { detail: "Verifica tu correo antes de continuar" } } });
+      }
+      if (url === "/usuarios/reenviar-verificacion") {
+        return Promise.resolve({ data: { mensaje: "Te enviamos un nuevo correo de verificación." } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<HazteSocio />);
+    llenarFormulario();
+    fireEvent.click(screen.getByText("Hazte socio"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Reenviar correo de verificación")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Reenviar correo de verificación"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/usuarios/reenviar-verificacion");
+      expect(screen.getByText("Te enviamos un nuevo correo de verificación.")).toBeDefined();
+    });
   });
 });

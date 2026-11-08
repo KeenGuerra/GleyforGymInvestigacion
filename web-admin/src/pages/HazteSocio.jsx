@@ -6,6 +6,9 @@ function HazteSocio() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [correoSinVerificar, setCorreoSinVerificar] = useState(false);
+  const [mensajeReenvio, setMensajeReenvio] = useState("");
+  const [reenviando, setReenviando] = useState(false);
 
   const [form, setForm] = useState({
     dni: "",
@@ -29,6 +32,8 @@ function HazteSocio() {
   const enviar = async (e) => {
     e.preventDefault();
     setError("");
+    setMensajeReenvio("");
+    setCorreoSinVerificar(false);
     setEnviando(true);
 
     try {
@@ -43,8 +48,23 @@ function HazteSocio() {
       navigate("/mi-membresia");
     } catch (err) {
       setError(err.response?.data?.detail || "No se pudo completar tu registro como socio");
+      setCorreoSinVerificar(err.response?.status === 403);
     } finally {
       setEnviando(false);
+    }
+  };
+
+  const reenviarCorreo = async () => {
+    setMensajeReenvio("");
+    setReenviando(true);
+
+    try {
+      const res = await api.post("/usuarios/reenviar-verificacion");
+      setMensajeReenvio(res.data.mensaje);
+    } catch (err) {
+      setMensajeReenvio(err.response?.data?.detail || "No se pudo reenviar el correo");
+    } finally {
+      setReenviando(false);
     }
   };
 
@@ -64,6 +84,16 @@ function HazteSocio() {
       </section>
 
       {error && <p className="error-message">{error}</p>}
+
+      {correoSinVerificar && (
+        <div className="card" style={{ padding: "16px 20px", marginBottom: "16px" }}>
+          <p className="muted-text">¿No te llegó el correo de verificación?</p>
+          <button type="button" className="btn-secondary" onClick={reenviarCorreo} disabled={reenviando}>
+            {reenviando ? "Enviando..." : "Reenviar correo de verificación"}
+          </button>
+          {mensajeReenvio && <p className="muted-text">{mensajeReenvio}</p>}
+        </div>
+      )}
 
       <form onSubmit={enviar} className="card" style={{ padding: "24px", maxWidth: "640px" }}>
         <div className="form-grid">

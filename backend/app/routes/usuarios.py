@@ -363,6 +363,45 @@ def verificar_correo(
     return {"mensaje": "Correo verificado correctamente"}
 
 
+@router.post(
+    "/reenviar-verificacion",
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        429: {"description": "Ya se reenvió el correo varias veces, intenta más tarde"},
+    }
+)
+def reenviar_verificacion(
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    """Genera un nuevo enlace y reenvía el correo de verificación (mismo
+    correo() que al registrarse) — para cuentas que nunca lo recibieron o lo
+    perdieron, ya que hoy no hay otra forma de desbloquear
+    POST /clientes/hazte-socio sin él."""
+    clave = f"reenviar-verificacion:{usuario_actual.get('id_usuario')}"
+
+    if excedio_intentos(clave, maximo=3):
+        raise HTTPException(
+            status_code=429,
+            detail="Ya se reenvió el correo varias veces. Espera unos minutos e intenta de nuevo.",
+        )
+
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.id_usuario == usuario_actual.get("id_usuario")
+    ).first()
+
+    if not usuario:
+        raise HTTPException(status_code=404, detail=MSG_USUARIO_NO_ENCONTRADO)
+
+    if usuario.correo_verificado:
+        return {"mensaje": "Tu correo ya está verificado."}
+
+    registrar_intento_fallido(clave)
+    enviar_verificacion_correo(usuario, db)
+
+    return {"mensaje": "Te enviamos un nuevo correo de verificación."}
+
+
 # =========================
 # REGISTRO PÚBLICO (comprador sin membresía)
 # =========================
