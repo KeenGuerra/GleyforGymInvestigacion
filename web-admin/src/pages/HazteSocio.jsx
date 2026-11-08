@@ -124,10 +124,15 @@ function HazteSocio() {
             <input
               id="telefono"
               name="telefono"
+              type="tel"
+              inputMode="numeric"
+              placeholder="9 dígitos"
               value={form.telefono}
               onChange={cambiar}
-              minLength={6}
-              maxLength={15}
+              pattern="[0-9]{9}"
+              title="Debe tener 9 dígitos"
+              minLength={9}
+              maxLength={9}
               required
             />
           </div>

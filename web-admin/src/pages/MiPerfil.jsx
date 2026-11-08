@@ -219,8 +219,14 @@ function MiPerfil() {
                 <label htmlFor="telefono">Teléfono</label>
                 <input
                   id="telefono"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="9 dígitos"
                   value={form.telefono}
                   onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                  pattern="[0-9]{9}"
+                  title="Debe tener 9 dígitos"
+                  maxLength={9}
                 />
               </div>
 

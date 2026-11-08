@@ -112,13 +112,14 @@ def iniciar_checkout_pago(
     cliente_db = pago_db.cliente
 
     # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
-    # (lo rechaza con 400 si llega vacío) — con MockGateway no importa.
-    if not hasattr(gateway, "resolver_transaccion") and (
-        not cliente_db.telefono or len(cliente_db.telefono) < 6
+    # (lo rechaza con 400 si llega vacío) — con MockGateway no importa. Perú:
+    # celulares son siempre 9 dígitos.
+    if not hasattr(gateway, "resolver_transaccion") and not (
+        cliente_db.telefono and cliente_db.telefono.isdigit() and len(cliente_db.telefono) == 9
     ):
         raise HTTPException(
             status_code=400,
-            detail="Registra un teléfono válido en tu perfil antes de pagar.",
+            detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
         )
 
     sesion = gateway.crear_checkout(

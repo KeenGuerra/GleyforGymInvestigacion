@@ -366,9 +366,14 @@ function Clientes() {
               <input
                 id="telefono"
                 name="telefono"
-                placeholder="Teléfono"
+                type="tel"
+                inputMode="numeric"
+                placeholder="9 dígitos"
                 value={form.telefono}
                 onChange={cambiar}
+                pattern="[0-9]{9}"
+                title="Debe tener 9 dígitos"
+                maxLength={9}
               />
             </div>
 
