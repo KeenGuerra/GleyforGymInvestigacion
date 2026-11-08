@@ -99,7 +99,12 @@ describe("Rutinas Page Component", () => {
       expect(screen.getByText("Generar rutina IA", { selector: "button" })).toBeDefined();
     });
 
-    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
+    const select = screen.getByLabelText("Cliente");
+    fireEvent.change(select, { target: { value: "1" } });
+    // Evita una condición de carrera: sin esto, el click puede dispararse
+    // antes de que React procese el cambio del select (ver el mismo fix en
+    // Nutricion.test.jsx, que sí llegó a fallar en CI).
+    await waitFor(() => expect(select.value).toBe("1"));
     fireEvent.click(screen.getByText("Generar rutina IA", { selector: "button" }));
 
     await waitFor(() => {

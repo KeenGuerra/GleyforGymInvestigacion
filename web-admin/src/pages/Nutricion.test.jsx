@@ -102,7 +102,13 @@ describe("Nutricion Page Component", () => {
 
     await waitFor(() => expect(screen.getByText("Generar plan con IA")).toBeDefined());
 
-    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
+    const select = screen.getByLabelText("Cliente");
+    fireEvent.change(select, { target: { value: "1" } });
+    // Evita una condición de carrera: sin esto, el click puede dispararse
+    // antes de que React procese el cambio del select, dejando idClienteIA
+    // todavía vacío (pasa en máquinas rápidas la mayoría de las veces, pero
+    // es justo el tipo de flake que apareció en CI).
+    await waitFor(() => expect(select.value).toBe("1"));
     fireEvent.click(screen.getByText("Generar plan con IA"));
 
     await waitFor(() => {
@@ -116,7 +122,9 @@ describe("Nutricion Page Component", () => {
 
     await waitFor(() => expect(screen.getByText("Generar plan con IA")).toBeDefined());
 
-    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
+    const select = screen.getByLabelText("Cliente");
+    fireEvent.change(select, { target: { value: "1" } });
+    await waitFor(() => expect(select.value).toBe("1"));
     fireEvent.click(screen.getByText("Generar plan con IA"));
 
     await waitFor(() => {
