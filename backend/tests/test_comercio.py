@@ -9,7 +9,7 @@ TestClient de FastAPI con override de get_db, y un usuario ADMIN sembrado para
 generar tokens.
 """
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -920,3 +920,48 @@ def test_reporte_tiempos_respuesta_registra_llamadas_reales():
     assert res.status_code == 200
     filas = res.json()
     assert any(f["modulo"] == "productos" and f["n_operaciones"] >= 1 for f in filas)
+
+
+def test_limpiar_tiempos_respuesta_elimina_solo_lo_anterior_al_corte():
+    """DELETE /reportes/sistema/tiempos-respuesta?antes_de=... (purga manual
+    de I4/F-04, la tabla que más rápido crece de todo el sistema) borra solo
+    las filas con fecha anterior al corte, y solo lo puede hacer ADMIN -- no
+    ENTRENADOR, aunque el resto del router de reportes sí lo deje entrar, por
+    ser una eliminación física, no un soft-delete."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    headers_entrenador = get_auth_headers(rol="ENTRENADOR")
+
+    db = TestingSessionLocal()
+    db.query(models.RegistroTiempoSistema).delete()
+    db.add_all([
+        models.RegistroTiempoSistema(
+            metodo="GET", ruta="/productos/", modulo="productos", duracion_ms=5.0,
+            fecha=datetime.now() - timedelta(days=40),
+        ),
+        models.RegistroTiempoSistema(
+            metodo="GET", ruta="/productos/", modulo="productos", duracion_ms=5.0,
+            fecha=datetime.now() - timedelta(days=1),
+        ),
+    ])
+    db.commit()
+    db.close()
+
+    corte = (date.today() - timedelta(days=10)).isoformat()
+
+    res_entrenador = client.delete(
+        f"/reportes/sistema/tiempos-respuesta?antes_de={corte}", headers=headers_entrenador
+    )
+    assert res_entrenador.status_code == 403
+
+    res_admin = client.delete(
+        f"/reportes/sistema/tiempos-respuesta?antes_de={corte}", headers=headers_admin
+    )
+    assert res_admin.status_code == 200
+    assert res_admin.json()["eliminados"] == 1
+
+    db = TestingSessionLocal()
+    restantes = db.query(models.RegistroTiempoSistema).all()
+    db.close()
+    assert len(restantes) == 1
+    assert restantes[0].fecha.date() == (datetime.now() - timedelta(days=1)).date()

@@ -7,6 +7,7 @@ import api from "../api/api";
 vi.mock("../api/api", () => ({
   default: {
     get: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -270,6 +271,55 @@ describe("Reportes Page Component", () => {
     await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(4));
 
     vi.restoreAllMocks();
+  });
+
+  it("deletes old response-time records on confirm and shows how many were removed", async () => {
+    api.get.mockResolvedValue({ data: [] });
+    api.delete.mockResolvedValue({ data: { eliminados: 42 } });
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+    render(<Reportes />);
+    await waitFor(() => expect(screen.getByText("Eliminar registros antiguos")).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText("Eliminar registros anteriores a"), {
+      target: { value: "2026-10-01" },
+    });
+    fireEvent.click(screen.getByText("Eliminar registros antiguos"));
+
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith("/reportes/sistema/tiempos-respuesta", {
+        params: { antes_de: "2026-10-01" },
+      });
+      expect(screen.getByText("Se eliminaron 42 registros.")).toBeDefined();
+    });
+  });
+
+  it("does not delete old response-time records if the user cancels the confirmation", async () => {
+    api.get.mockResolvedValue({ data: [] });
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+
+    render(<Reportes />);
+    await waitFor(() => expect(screen.getByText("Eliminar registros antiguos")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Eliminar registros antiguos"));
+
+    expect(globalThis.confirm).toHaveBeenCalled();
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it("shows an error when deleting old response-time records fails", async () => {
+    api.get.mockResolvedValue({ data: [] });
+    api.delete.mockRejectedValue(new Error("delete failed"));
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+    render(<Reportes />);
+    await waitFor(() => expect(screen.getByText("Eliminar registros antiguos")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Eliminar registros antiguos"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo limpiar los registros de tiempo de respuesta")).toBeDefined();
+    });
   });
 
   it("shows a 'por vencer' membership and sends a WhatsApp reminder with a prefilled message", async () => {

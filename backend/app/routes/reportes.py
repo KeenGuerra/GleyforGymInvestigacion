@@ -10,6 +10,7 @@ from typing import Annotated, Optional
 from app.database import get_db
 from app import models
 from app.security import obtener_usuario_actual, requerir_roles
+from app.auditoria import registrar as registrar_auditoria
 from app.constants import ESTADO_REVISION_PENDIENTE
 from app.ia.anonimizacion import codigo_cliente as _codigo_cliente
 
@@ -276,6 +277,41 @@ def reporte_tiempos_respuesta(db: Annotated[Session, Depends(get_db)], desde: da
         }
         for modulo, promedio, n in filas
     ]
+
+
+@router.delete(
+    "/sistema/tiempos-respuesta",
+    dependencies=[Depends(requerir_roles("ADMIN"))],
+)
+def limpiar_tiempos_respuesta(
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+    antes_de: date,
+):
+    """Purga manual de RegistroTiempoSistema (I4/F-04): es la tabla que más
+    rápido crece de todo el sistema -- guarda una fila por cada request de
+    negocio, sin ningún otro uso una vez medido el indicador del postest de
+    la tesis. No hay ningún cron/scheduler en este proyecto (ni Render Cron
+    está disponible en el plan gratuito actual), así que esto se dispara a
+    mano desde Reportes.jsx cuando el ADMIN decide que ya no necesita los
+    registros anteriores a una fecha -- normalmente, después de haber hecho
+    la medición. Restringido a ADMIN (no ENTRENADOR, aunque el resto del
+    router sí lo permite) por ser una eliminación física, no un soft-delete."""
+    inicio_corte = datetime.combine(antes_de, datetime.min.time())
+
+    eliminados = (
+        db.query(models.RegistroTiempoSistema)
+        .filter(models.RegistroTiempoSistema.fecha < inicio_corte)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+
+    registrar_auditoria(
+        db, usuario_actual, "ELIMINAR", "RegistroTiempoSistema",
+        detalle=f"{eliminados} registros anteriores a {antes_de.isoformat()}",
+    )
+
+    return {"eliminados": eliminados}
 
 
 @router.get("/sistema/registros-recientes")

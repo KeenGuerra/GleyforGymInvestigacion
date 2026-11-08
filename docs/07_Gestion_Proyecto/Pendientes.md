@@ -252,6 +252,14 @@ El despliegue actual usa el plan **free** de Render (`render.yaml`): esto implic
 
 ---
 
+## P-25 Purga manual de `RegistroTiempoSistema` (crece más rápido que cualquier otra tabla)
+
+~~Resuelto (2026-11)~~: revisando qué podía llenar la base de datos más rápido de lo necesario, se confirmó en producción que `RegistroTiempoSistema` (instrumentación del indicador I4/F-04 — una fila por cada request de negocio) ya tenía ~1,185 filas solo con uso de desarrollo/pruebas, muy por encima de `RegistroAuditoria` (17 filas en el mismo rango), que solo registra escrituras. Es la única tabla del sistema sin ningún valor histórico/de negocio una vez medido el indicador del postest — a diferencia de los registros de auditoría, movimientos de stock o entidades con soft-delete (rutinas, pagos, ventas, etc.), que sí alimentan reportes de la tesis o el historial del cliente y no deben borrarse.
+
+Se agregó `DELETE /reportes/sistema/tiempos-respuesta?antes_de=YYYY-MM-DD` (solo ADMIN, a diferencia del resto del router de reportes que también permite ENTRENADOR, por ser una eliminación física) y un control en `Reportes.jsx` ("Mantenimiento: limpiar tiempos de respuesta") con selector de fecha y confirmación antes de borrar. **Deliberadamente manual, no automático**: este proyecto no tiene ningún cron/scheduler (ni Render Cron está disponible en el plan gratuito actual), así que agregar uno solo para esto sería invertir en infraestructura que ya se decidió posponer hasta la migración a Hostinger (ver P-10/P-15/P-16). El momento natural para usarlo es después de medir el indicador I4 del postest de la tesis (previsto para enero 2027) — a partir de ahí, los registros anteriores ya no sirven para nada.
+
+---
+
 ## P-24 Facturación electrónica SUNAT — evaluado y descartado por ahora
 
 El recibo/boleta en PDF (`backend/app/recibos.py`) es un comprobante interno, no un documento tributario válido ante SUNAT — ya lo dice su propio disclaimer. Se evaluaron las rutas disponibles para emitir boletas electrónicas reales:

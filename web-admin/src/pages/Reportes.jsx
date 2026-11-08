@@ -23,6 +23,14 @@ function Reportes() {
   const [cargandoVencimiento, setCargandoVencimiento] = useState(false);
   const [mensajes, setMensajes] = useState({});
 
+  const [corteTiempos, setCorteTiempos] = useState(() => {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() - 30);
+    return fecha.toISOString().slice(0, 10);
+  });
+  const [limpiandoTiempos, setLimpiandoTiempos] = useState(false);
+  const [resultadoLimpieza, setResultadoLimpieza] = useState("");
+
   const generarReporte = async () => {
     if (!desde || !hasta) {
       setError("Selecciona una fecha de inicio y de fin");
@@ -168,6 +176,35 @@ function Reportes() {
       setError("No se pudo exportar F-04");
     } finally {
       setExportandoTesis("");
+    }
+  };
+
+  const limpiarTiemposRespuesta = async () => {
+    if (!corteTiempos) {
+      setError("Selecciona una fecha de corte");
+      return;
+    }
+    if (
+      !globalThis.confirm(
+        `Esto elimina para siempre los registros de tiempo de respuesta (F-04) anteriores al ${corteTiempos}. No se puede deshacer. ¿Continuar?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setLimpiandoTiempos(true);
+      setError("");
+      setResultadoLimpieza("");
+      const res = await api.delete("/reportes/sistema/tiempos-respuesta", {
+        params: { antes_de: corteTiempos },
+      });
+      setResultadoLimpieza(`Se eliminaron ${res.data.eliminados} registros.`);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo limpiar los registros de tiempo de respuesta");
+    } finally {
+      setLimpiandoTiempos(false);
     }
   };
 
@@ -588,6 +625,38 @@ function Reportes() {
             {exportandoTesis === "F-15" ? "Exportando..." : "F-15: seguimiento de progreso"}
           </button>
         </div>
+      </section>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Mantenimiento: limpiar tiempos de respuesta (F-04)</h2>
+            <p>
+              Es el registro que más rápido crece de todo el sistema (una fila por cada
+              petición al backend). Úsalo solo cuando ya no necesites los datos anteriores
+              a una fecha -- normalmente, después de haber hecho la medición para la tesis.
+              Esto elimina los registros para siempre, no los desactiva.
+            </p>
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <div className="form-field">
+            <label htmlFor="corte-tiempos">Eliminar registros anteriores a</label>
+            <input
+              id="corte-tiempos"
+              type="date"
+              value={corteTiempos}
+              onChange={(e) => setCorteTiempos(e.target.value)}
+            />
+          </div>
+
+          <button className="btn-danger" disabled={limpiandoTiempos} onClick={limpiarTiemposRespuesta}>
+            {limpiandoTiempos ? "Eliminando..." : "Eliminar registros antiguos"}
+          </button>
+        </div>
+
+        {resultadoLimpieza && <p className="empty-message">{resultadoLimpieza}</p>}
       </section>
     </div>
   );
