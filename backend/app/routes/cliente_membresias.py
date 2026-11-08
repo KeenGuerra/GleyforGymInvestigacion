@@ -2,6 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
+# pyrefly: ignore [missing-import]
+from sqlalchemy.exc import IntegrityError
 from datetime import date, timedelta
 from typing import Annotated
 
@@ -156,7 +158,16 @@ def comprar_membresia(
         precio_asignado=membresia.precio,
     )
     db.add(nueva_cm)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # Red de seguridad para la ventana de carrera que el SELECT de
+        # arriba no cierra por sí solo (dos clics casi simultáneos): el
+        # índice único uq_cliente_membresia_activa_o_pendiente (ver
+        # create_db.py/models.py) es lo que realmente evita dos membresías
+        # activas/pendientes para el mismo cliente.
+        db.rollback()
+        raise HTTPException(status_code=409, detail=MSG_MEMBRESIA_YA_ACTIVA)
 
     nuevo_pago = models.Pago(
         id_cliente=cliente.id_cliente,
@@ -165,6 +176,7 @@ def comprar_membresia(
         metodo_pago="TARJETA",
         fecha_pago=hoy,
         estado=ESTADO_PENDIENTE,
+        origen="AUTOSERVICIO",
     )
     db.add(nuevo_pago)
     db.commit()

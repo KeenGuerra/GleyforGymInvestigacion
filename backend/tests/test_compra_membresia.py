@@ -9,6 +9,7 @@ Aísla su propio motor SQLite para no interferir con los otros archivos de
 test que también usan membresías/pagos (test_crud.py, test_backend.py).
 """
 import sys
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -20,6 +21,8 @@ import pytest
 from fastapi.testclient import TestClient
 # pyrefly: ignore [missing-import]
 from sqlalchemy import create_engine
+# pyrefly: ignore [missing-import]
+from sqlalchemy.exc import IntegrityError
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import sessionmaker
 
@@ -329,3 +332,160 @@ def test_checkout_repetido_no_vuelve_a_crear_la_orden():
     assert primero.json()["id_transaccion_externa"] == segundo.json()["id_transaccion_externa"]
     assert stub.llamadas_crear == 1
     assert stub.llamadas_obtener == 1
+
+
+def test_indice_unico_impide_dos_membresias_activas_o_pendientes_para_el_mismo_cliente():
+    """El chequeo SELECT de comprar_membresia() por si solo no cierra la
+    condicion de carrera de dos clics casi simultaneos -- la red de
+    seguridad real es este indice unico de la BD (ver create_db.py para la
+    migracion equivalente sobre una tabla de produccion ya existente)."""
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.ClienteMembresia(
+        id_cliente=1, id_membresia=id_membresia, fecha_inicio=date.today(),
+        fecha_fin=date.today(), estado="PENDIENTE",
+    ))
+    db.commit()
+
+    db.add(models.ClienteMembresia(
+        id_cliente=1, id_membresia=id_membresia, fecha_inicio=date.today(),
+        fecha_fin=date.today(), estado="PENDIENTE",
+    ))
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
+    db.close()
+
+
+def test_comprar_membresia_condicion_de_carrera_devuelve_409_no_500():
+    """Si el indice unico de arriba se dispara (ej. dos requests casi
+    simultaneos que ambos pasaron el SELECT antes de que cualquiera
+    confirmara), comprar_membresia() debe devolver 409 -- no un 500
+    generico -- gracias al try/except IntegrityError."""
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin)
+
+    # Se inserta la fila "ganadora" directo en la BD (sin pasar por la ruta),
+    # simulando que otra request ya gano la carrera justo antes del commit.
+    db = TestingSessionLocal()
+    db.add(models.ClienteMembresia(
+        id_cliente=1, id_membresia=id_membresia, fecha_inicio=date.today(),
+        fecha_fin=date.today(), estado="PENDIENTE",
+    ))
+    db.commit()
+    db.close()
+
+    res = client.post("/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente)
+    assert res.status_code == 409
+
+
+def test_checkout_con_orden_vencida_crea_una_nueva_en_vez_de_quedar_inutilizable():
+    """Antes de esta correccion, si obtener_checkout() fallaba (orden vencida
+    o eliminada en el proveedor), la excepcion llegaba sin control al 500
+    generico, y como id_transaccion_externa seguia seteado, CADA reintento
+    futuro volveria a fallar igual -- el pago quedaba inutilizable para
+    siempre. Ahora se limpia la referencia vieja y se crea una nueva."""
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono="987654321")
+
+    pago = client.post(
+        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
+    ).json()
+
+    db = TestingSessionLocal()
+    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == pago["id_pago"]).first()
+    pago_db.id_transaccion_externa = "ord_vencida_de_antes"
+    db.commit()
+    db.close()
+
+    class _GatewayOrdenVencidaStub:
+        def obtener_checkout(self, id_transaccion_externa):
+            raise RuntimeError("orden vencida o no encontrada")
+
+        def crear_checkout(self, monto, referencia, cliente):
+            return {"id_transaccion_externa": "ord_nueva", "url_checkout": "https://pago.simulado/2", "estado": "PENDIENTE"}
+
+    with patch("app.routes.pagos.gateway", _GatewayOrdenVencidaStub()):
+        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
+
+    assert res.status_code == 200
+    assert res.json()["id_transaccion_externa"] == "ord_nueva"
+
+
+def test_checkout_de_orden_vencida_no_exige_telefono_para_recuperarla():
+    """El chequeo de telefono solo debe aplicar al CREAR una orden nueva, no
+    al intentar recuperar una ya existente."""
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    # Sin telefono -- antes esto bloqueaba incluso el intento de recuperar
+    # una orden ya creada.
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono=None)
+
+    pago = client.post(
+        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
+    ).json()
+
+    db = TestingSessionLocal()
+    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == pago["id_pago"]).first()
+    pago_db.id_transaccion_externa = "ord_ya_creada"
+    db.commit()
+    db.close()
+
+    with patch("app.routes.pagos.gateway", _GatewayRealStub()):
+        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
+
+    assert res.status_code == 200
+
+
+def test_webhook_fallido_despues_de_pagado_no_revierte_la_membresia():
+    """Antes de esta correccion, un webhook FALLIDO que llegara DESPUES de
+    uno PAGADO ya procesado (reintento del proveedor, o fuera de orden)
+    revertia pago.estado a FALLIDO sin deshacer la activacion de la
+    membresia -- quedaba una membresia ACTIVA con un pago marcado FALLIDO."""
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin)
+
+    pago = client.post(
+        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
+    ).json()
+    id_pago = pago["id_pago"]
+    id_cliente_membresia = pago["id_cliente_membresia"]
+
+    checkout = client.post(f"/pagos/{id_pago}/checkout", headers=headers_cliente)
+    id_transaccion = checkout.json()["id_transaccion_externa"]
+
+    res_pagado = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+        headers=HEADERS_WEBHOOK,
+    )
+    assert res_pagado.status_code == 200
+
+    # Webhook FALLIDO repetido/fuera de orden para la MISMA transaccion ya
+    # confirmada -- no debe hacer nada.
+    res_fallido = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "FALLIDO"},
+        headers=HEADERS_WEBHOOK,
+    )
+    assert res_fallido.status_code == 200
+
+    db = TestingSessionLocal()
+    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+    cm = db.query(models.ClienteMembresia).filter(
+        models.ClienteMembresia.id_cliente_membresia == id_cliente_membresia
+    ).first()
+    assert pago_db.estado == "PAGADO"
+    assert cm.estado == "ACTIVA"
+    db.close()

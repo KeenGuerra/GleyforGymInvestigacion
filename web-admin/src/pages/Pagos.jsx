@@ -377,6 +377,11 @@ function Pagos() {
                 <td>{formatearFecha(p.fecha_pago)}</td>
                 <td>
                   <span className="badge">{p.estado}</span>
+                  {p.origen === "AUTOSERVICIO" && p.estado === "PENDIENTE" && (
+                    <span className="badge" title="El cliente va a pagarlo él mismo en línea (Culqi) — no hace falta que lo cobres.">
+                      En línea
+                    </span>
+                  )}
                 </td>
                 <td className="table-actions">
                   <button onClick={() => editarPago(p)}>Editar</button>
@@ -384,8 +389,17 @@ function Pagos() {
                     <button
                       disabled={cobrandoId === p.id_pago}
                       onClick={() => cobrarPago(p.id_pago)}
+                      title={
+                        p.origen === "AUTOSERVICIO"
+                          ? "El cliente ya tiene este pago para completar él mismo — este botón solo te muestra el mismo enlace/QR, no es necesario que lo uses."
+                          : undefined
+                      }
                     >
-                      {cobrandoId === p.id_pago ? "Generando..." : "Cobrar"}
+                      {cobrandoId === p.id_pago
+                        ? "Generando..."
+                        : p.origen === "AUTOSERVICIO"
+                        ? "Ver estado"
+                        : "Cobrar"}
                     </button>
                   )}
                   <button onClick={() => descargarRecibo(p.id_pago)}>Recibo</button>

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Annotated, Optional
 from datetime import datetime, date
+import logging
 import uuid
 
 from app.database import get_db
@@ -19,6 +20,8 @@ from app.constants import (
     MSG_STOCK_INSUFICIENTE, MSG_DETALLE_VACIO, MSG_CANTIDAD_INVALIDA,
     MSG_PRODUCTO_INACTIVO
 )
+
+logger = logging.getLogger("gleyforgym")
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 
@@ -308,17 +311,6 @@ def iniciar_checkout_venta(
         raise HTTPException(status_code=400, detail="La venta no está en estado PENDIENTE")
 
     if venta.cliente:
-        # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
-        # (lo rechaza con 400 si llega vacío) — con MockGateway no importa. Perú:
-        # celulares son siempre 9 dígitos.
-        if not hasattr(gateway, "resolver_transaccion") and not (
-            venta.cliente.telefono and venta.cliente.telefono.isdigit() and len(venta.cliente.telefono) == 9
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
-            )
-
         datos_cliente = {
             "nombres": venta.cliente.nombres,
             "apellidos": venta.cliente.apellidos,
@@ -336,8 +328,31 @@ def iniciar_checkout_venta(
     # Idempotente: si ya se inició un checkout antes para esta venta, no se
     # vuelve a crear la orden (ver mismo comentario en pagos.py).
     if venta.id_transaccion_externa:
-        sesion = gateway.obtener_checkout(venta.id_transaccion_externa)
-    else:
+        try:
+            sesion = gateway.obtener_checkout(venta.id_transaccion_externa)
+        except Exception:
+            # La orden pudo vencer o ya no existir en el proveedor -- se
+            # trata como si nunca se hubiera creado (ver mismo comentario en
+            # pagos.py), para no dejar esta venta inutilizable para siempre.
+            logger.warning(
+                "No se pudo recuperar el checkout %s de la venta %s, se crea uno nuevo",
+                venta.id_transaccion_externa, venta.id_venta,
+            )
+            venta.id_transaccion_externa = None
+
+    if not venta.id_transaccion_externa:
+        # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
+        # (lo rechaza con 400 si llega vacío) — con MockGateway no importa.
+        # Perú: celulares son siempre 9 dígitos. Solo aplica al crear una
+        # orden nueva, no al recuperar una ya creada arriba.
+        if venta.cliente and not hasattr(gateway, "resolver_transaccion") and not (
+            venta.cliente.telefono and venta.cliente.telefono.isdigit() and len(venta.cliente.telefono) == 9
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
+            )
+
         # Sufijo aleatorio: ver mismo comentario en pagos.py (evita chocar
         # con una orden de otro entorno/prueba contra la misma cuenta Culqi).
         referencia = f"venta-{venta.id_venta}-{uuid.uuid4().hex[:8]}"

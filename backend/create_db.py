@@ -92,6 +92,10 @@ def initialize_tables():
         ("planes_nutricionales", "modelo_ia", "VARCHAR(50)"),
         ("planes_nutricionales", "tiempo_respuesta_ms", "INTEGER"),
         ("planes_nutricionales", "justificacion_ia", "TEXT"),
+        # STAFF (POST /pagos/) o AUTOSERVICIO (POST /cliente-membresias/comprar)
+        # -- para que el panel admin distinga un pago que el staff debe cobrar
+        # de uno que el propio cliente ya va a pagar online (ver Pendientes.md).
+        ("pagos", "origen", "VARCHAR(20)"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:
@@ -122,6 +126,24 @@ def initialize_tables():
                         conn.commit()
                 except Exception as e:
                     print(f"  Skipping type alteration for {table}.{column} (not supported on this DB): {e}")
+
+    # Indice unico parcial: un cliente no puede tener mas de una
+    # ClienteMembresia ACTIVA/PAUSADA/PENDIENTE a la vez -- cierra a nivel de
+    # BD la condicion de carrera de POST /cliente-membresias/comprar (dos
+    # clics rapidos no deben poder crear dos membresias/cobros duplicados).
+    # Misma sintaxis de indice parcial en PostgreSQL y SQLite.
+    if "cliente_membresias" in existing_tables:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_cliente_membresia_activa_o_pendiente "
+                    "ON cliente_membresias (id_cliente) "
+                    "WHERE estado IN ('ACTIVA', 'PAUSADA', 'PENDIENTE')"
+                ))
+                conn.commit()
+        except Exception as e:
+            print(f"  No se pudo crear uq_cliente_membresia_activa_o_pendiente: {e}")
+
     print("Schema migration completed.")
 
 def migrar_restricciones_medicas():

@@ -26,6 +26,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
 from app.security import crear_token, encriptar_password
+from app import config
 import app.models as models
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_comercio.db"
@@ -52,6 +53,8 @@ def setup_db_override():
 
 
 client = TestClient(app)
+
+HEADERS_WEBHOOK = {"X-Webhook-Secret": config.WEBHOOK_SECRET}
 
 
 def get_auth_headers(rol="ADMIN", id_usuario=1):
@@ -545,6 +548,112 @@ def test_checkout_venta_repetido_no_vuelve_a_crear_la_orden():
     assert segundo.status_code == 200
     assert stub.llamadas_crear == 1
     assert stub.llamadas_obtener == 1
+
+
+def test_checkout_venta_con_orden_vencida_crea_una_nueva_en_vez_de_quedar_inutilizable():
+    """Mismo bug que con pagos de membresia: si obtener_checkout() falla
+    (orden vencida o eliminada en Culqi), antes la venta quedaba inutilizable
+    para siempre (todo reintento futuro repetia el mismo error). Ahora se
+    limpia la referencia vieja y se crea una orden nueva."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=52, correo="socio.ordenvencida@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=52, id_usuario=52, dni="52525252", nombres="Rosa", apellidos="Vera",
+                           estado="ACTIVO", telefono="987654321"))
+    db.commit()
+    db.close()
+
+    headers_socio = get_auth_headers(rol="CLIENTE", id_usuario=52)
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 1}]},
+        headers=headers_socio,
+    ).json()["id_venta"]
+
+    db = TestingSessionLocal()
+    venta = db.query(models.Venta).filter(models.Venta.id_venta == id_venta).first()
+    venta.id_transaccion_externa = "ord_vencida_de_antes"
+    db.commit()
+    db.close()
+
+    class _GatewayOrdenVencidaStub:
+        def obtener_checkout(self, id_transaccion_externa):
+            raise RuntimeError("orden vencida o no encontrada")
+
+        def crear_checkout(self, monto, referencia, cliente):
+            return {"id_transaccion_externa": "ord_nueva_venta", "url_checkout": "https://pago.simulado/4", "estado": "PENDIENTE"}
+
+    with patch("app.routes.ventas.gateway", _GatewayOrdenVencidaStub()):
+        res = client.post(f"/ventas/{id_venta}/checkout", headers=headers_socio)
+
+    assert res.status_code == 200
+    assert res.json()["id_transaccion_externa"] == "ord_nueva_venta"
+
+
+def test_webhook_venta_fallido_despues_de_pagado_no_revierte_la_confirmacion():
+    """Mismo bug que con pagos de membresia: un webhook FALLIDO que llega
+    DESPUES de uno PAGADO ya procesado no debe revertir la venta ni
+    descontar el stock dos veces."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=53, correo="socio.webhookfallido@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=53, id_usuario=53, dni="53535353", nombres="Rosa", apellidos="Vera",
+                           estado="ACTIVO", telefono="987654321"))
+    db.commit()
+    db.close()
+    headers_socio = get_auth_headers(rol="CLIENTE", id_usuario=53)
+
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 2}]},
+        headers=headers_socio,
+    ).json()["id_venta"]
+
+    checkout = client.post(f"/ventas/{id_venta}/checkout", headers=headers_socio)
+    id_transaccion = checkout.json()["id_transaccion_externa"]
+
+    res_pagado = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
+        headers=HEADERS_WEBHOOK,
+    )
+    assert res_pagado.status_code == 200
+    assert client.get(f"/inventario/{id_producto}", headers=headers_admin).json()["stock_actual"] == 8
+
+    res_fallido = client.post(
+        "/webhooks/pagos",
+        json={"id_transaccion_externa": id_transaccion, "resultado": "FALLIDO"},
+        headers=HEADERS_WEBHOOK,
+    )
+    assert res_fallido.status_code == 200
+
+    db = TestingSessionLocal()
+    venta = db.query(models.Venta).filter(models.Venta.id_venta == id_venta).first()
+    assert venta.estado == "CONFIRMADA"
+    db.close()
+    assert client.get(f"/inventario/{id_producto}", headers=headers_admin).json()["stock_actual"] == 8
 
 
 def test_venta_rechaza_stock_insuficiente_cuando_el_detalle_repite_el_producto():

@@ -134,7 +134,7 @@ function MiMembresia() {
       {(errorCliente || error) && <p className="error-message">{errorCliente || error}</p>}
 
       {membresiaPendiente && pagoPendiente && (
-        <section className="card promo-card">
+        <section className="card promo-card" style={{ display: "flex", flexDirection: "column" }}>
           <span className="badge">PAGO PENDIENTE</span>
           <h2>{membresiaPendiente.plan?.nombre || `Plan #${membresiaPendiente.id_membresia}`}</h2>
           <p>Completa el pago para activar tu membresía.</p>
@@ -143,6 +143,7 @@ function MiMembresia() {
           </div>
           <button
             className="btn-primary"
+            style={{ marginTop: "16px", width: "100%" }}
             disabled={pagandoId === pagoPendiente.id_pago}
             onClick={() => pagarPendiente(pagoPendiente.id_pago)}
           >

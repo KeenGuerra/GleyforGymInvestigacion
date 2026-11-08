@@ -236,6 +236,39 @@ describe("ClienteMembresias Page Component", () => {
     });
   });
 
+  it("hides Editar/Pausar for a PENDIENTE (self-service) row and only shows Cancelar", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/cliente-membresias/")) {
+        return Promise.resolve({
+          data: [
+            {
+              id_cliente_membresia: 30,
+              id_cliente: 1,
+              id_membresia: 5,
+              fecha_inicio: "2026-06-01",
+              fecha_fin: "2026-09-01",
+              estado: "PENDIENTE",
+            },
+          ],
+        });
+      }
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/membresias/")) return Promise.resolve({ data: mockMembresias });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<ClienteMembresias />);
+
+    await waitFor(() => {
+      expect(screen.getByText("PENDIENTE")).toBeDefined();
+    });
+
+    expect(screen.getByText("PENDIENTE").className).toContain("badge-warning");
+    expect(screen.queryByText("Editar")).toBeNull();
+    expect(screen.queryByText("Pausar")).toBeNull();
+    expect(screen.getByText("Cancelar", { selector: "button" })).toBeDefined();
+  });
+
   it("shows error if membership assignment creation fails", async () => {
     api.post.mockRejectedValue({
       response: { data: { detail: "Cliente ya tiene membresía activa" } }

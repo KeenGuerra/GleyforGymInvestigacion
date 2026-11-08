@@ -313,6 +313,24 @@ describe("Pagos Page Component", () => {
     expect(screen.queryByText("Completar pago")).toBeNull();
   });
 
+  it("shows a distinct badge and label for a self-service (AUTOSERVICIO) pending payment", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
+      return Promise.resolve({
+        data: [{ ...mockPagos[0], estado: "PENDIENTE", origen: "AUTOSERVICIO" }],
+      });
+    });
+
+    render(<Pagos />);
+
+    await waitFor(() => {
+      expect(screen.getByText("En línea")).toBeDefined();
+      expect(screen.getByText("Ver estado")).toBeDefined();
+      expect(screen.queryByText("Cobrar")).toBeNull();
+    });
+  });
+
   it("shows an error when starting a checkout fails", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });

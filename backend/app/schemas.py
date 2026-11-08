@@ -277,6 +277,7 @@ class PagoUpdate(BaseModel):
 class PagoResponse(PagoCreate):
     id_pago: int
     id_transaccion_externa: Optional[str] = None
+    origen: Optional[str] = None  # "STAFF" o "AUTOSERVICIO", ver models.Pago.origen
 
     model_config = ConfigDict(from_attributes=True)
 

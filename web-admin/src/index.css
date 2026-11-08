@@ -619,7 +619,8 @@ select option {
 
 .form-actions,
 .table-actions,
-.card-actions {
+.card-actions,
+.item-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -645,7 +646,13 @@ select option {
   align-items: center;
 }
 
-.table-header-actions select {
+/* .table-header y .table-filters envuelven el mismo tipo de <select> de
+   filtro (ej. "Todos los estados" en Clientes.jsx, el filtro de RevisionIA.jsx)
+   pero antes solo .table-header-actions tenía esta regla -- se agregan aquí
+   para que no se vean con el estilo crudo del navegador. */
+.table-header-actions select,
+.table-header select,
+.table-filters select {
   border: 1px solid rgba(33, 27, 20, 0.12);
   outline: none;
   border-radius: 14px;
@@ -753,10 +760,34 @@ tr:hover td {
   color: var(--danger);
 }
 
-.badge-pendiente {
+.badge-pendiente,
+.badge-warning {
   background: var(--warning-soft);
   border: 1px solid rgba(180, 83, 9, 0.25);
   color: var(--warning);
+}
+
+/* .badge-success/.badge-danger: usadas en Compras/Inventario/RevisionIA/
+   Tienda/Ventas.jsx, pero nunca tuvieron regla CSS -- se veían con el badge
+   genérico naranja sin importar el estado (CONFIRMADA/ANULADA, aprobada/
+   rechazada, etc. todas del mismo color). .badge-neutral: usada por
+   ClienteMembresias.jsx para TERMINADA, misma falta. */
+.badge-success {
+  background: var(--success-soft);
+  border: 1px solid rgba(21, 128, 61, 0.25);
+  color: var(--success);
+}
+
+.badge-danger {
+  background: var(--danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--danger);
+}
+
+.badge-neutral {
+  background: rgba(119, 109, 98, 0.12);
+  border: 1px solid rgba(119, 109, 98, 0.25);
+  color: var(--muted);
 }
 
 /* =========================
@@ -1801,13 +1832,15 @@ tr:hover td {
   .form-actions,
   .table-actions,
   .card-actions,
+  .item-actions,
   .password-field {
     flex-direction: column;
   }
 
   .form-actions button,
   .table-actions button,
-  .card-actions button {
+  .card-actions button,
+  .item-actions button {
     width: 100%;
   }
 

@@ -216,13 +216,14 @@ function ClienteMembresias() {
   const claseEstado = (estado) => {
     switch (estado) {
       case "ACTIVA":
-        return "badge success";
+        return "badge badge-success";
+      case "PENDIENTE":
       case "PAUSADA":
-        return "badge warning";
+        return "badge badge-warning";
       case "TERMINADA":
-        return "badge neutral";
+        return "badge badge-neutral";
       case "CANCELADA":
-        return "badge danger";
+        return "badge badge-danger";
       default:
         return "badge";
     }
@@ -427,14 +428,17 @@ function ClienteMembresias() {
 
                     <td>
                       <div className="table-actions">
-                        <button
-                          className="btn-secondary"
-                          onClick={() => editar(a)}
-                        >
-                          Editar
-                        </button>
+                        {a.estado !== "PENDIENTE" && (
+                          <button
+                            className="btn-secondary"
+                            onClick={() => editar(a)}
+                          >
+                            Editar
+                          </button>
+                        )}
 
-                        {a.estado !== "TERMINADA" &&
+                        {a.estado !== "PENDIENTE" &&
+                          a.estado !== "TERMINADA" &&
                           a.estado !== "CANCELADA" && (
                             <button
                               className="btn-secondary"

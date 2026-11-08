@@ -145,26 +145,33 @@ async def webhook_pagos(
         models.Pago.id_transaccion_externa == id_transaccion
     ).first()
     if pago:
-        pago.estado = nuevo_estado
-        if nuevo_estado == "PAGADO":
-            aplicar_confirmacion_pago(db, pago)
-        elif nuevo_estado == "FALLIDO" and pago.cliente_membresia and pago.cliente_membresia.estado == "PENDIENTE":
-            pago.cliente_membresia.estado = "CANCELADA"
-            db.commit()
-        else:
-            db.commit()
+        # Igual que con la venta de abajo: solo se aplica si todavía está
+        # PENDIENTE. Antes el camino FALLIDO no tenía este guard -- un
+        # webhook repetido o fuera de orden (ej. FALLIDO llegando después de
+        # un PAGADO ya procesado) podía revertir un pago ya confirmado sin
+        # deshacer sus efectos (membresía ya activada).
+        if pago.estado == "PENDIENTE":
+            pago.estado = nuevo_estado
+            if nuevo_estado == "PAGADO":
+                aplicar_confirmacion_pago(db, pago)
+            elif nuevo_estado == "FALLIDO" and pago.cliente_membresia and pago.cliente_membresia.estado == "PENDIENTE":
+                pago.cliente_membresia.estado = "CANCELADA"
+                db.commit()
+            else:
+                db.commit()
         registrar_auditoria(db, None, "WEBHOOK_PAGO", "Pago", pago.id_pago, detalle_auditoria)
-        return {"mensaje": f"Pago actualizado a {nuevo_estado}", "id_pago": pago.id_pago}
+        return {"mensaje": f"Pago actualizado a {pago.estado}", "id_pago": pago.id_pago}
 
     venta = db.query(models.Venta).filter(
         models.Venta.id_transaccion_externa == id_transaccion
     ).first()
     if venta:
-        if nuevo_estado == "PAGADO" and venta.estado == "PENDIENTE":
-            aplicar_confirmacion_venta(db, venta, id_usuario=venta.id_usuario)
-        elif nuevo_estado == "FALLIDO":
-            venta.estado = "FALLIDA"
-            db.commit()
+        if venta.estado == "PENDIENTE":
+            if nuevo_estado == "PAGADO":
+                aplicar_confirmacion_venta(db, venta, id_usuario=venta.id_usuario)
+            elif nuevo_estado == "FALLIDO":
+                venta.estado = "FALLIDA"
+                db.commit()
         registrar_auditoria(db, None, "WEBHOOK_PAGO", "Venta", venta.id_venta, detalle_auditoria)
         return {"mensaje": f"Venta actualizada a {venta.estado}", "id_venta": venta.id_venta}
 

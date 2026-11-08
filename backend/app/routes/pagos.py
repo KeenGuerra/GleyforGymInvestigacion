@@ -5,6 +5,7 @@ from fastapi.responses import Response
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
+import logging
 import uuid
 
 from app.database import get_db
@@ -21,6 +22,8 @@ from app.constants import (
     ESTADO_ACTIVO,
     MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA
 )
+
+logger = logging.getLogger("gleyforgym")
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 
@@ -68,7 +71,7 @@ def crear_pago(
             detail="La membresía no pertenece a este cliente"
         )
 
-    nuevo_pago = models.Pago(**pago.model_dump())
+    nuevo_pago = models.Pago(**pago.model_dump(), origen="STAFF")
 
     db.add(nuevo_pago)
     db.commit()
@@ -112,25 +115,37 @@ def iniciar_checkout_pago(
 
     cliente_db = pago_db.cliente
 
-    # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
-    # (lo rechaza con 400 si llega vacío) — con MockGateway no importa. Perú:
-    # celulares son siempre 9 dígitos.
-    if not hasattr(gateway, "resolver_transaccion") and not (
-        cliente_db.telefono and cliente_db.telefono.isdigit() and len(cliente_db.telefono) == 9
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
-        )
-
     # Si ya se inició un checkout antes para este pago (ej. el cliente cerró
     # el modal y volvió a pedir "Completar pago"), no se vuelve a crear la
     # orden: algunos proveedores reales (Culqi incluido) exigen que la
     # referencia de la orden sea única para siempre, así que una segunda
     # llamada a crear_checkout() con la misma referencia es rechazada.
     if pago_db.id_transaccion_externa:
-        sesion = gateway.obtener_checkout(pago_db.id_transaccion_externa)
-    else:
+        try:
+            sesion = gateway.obtener_checkout(pago_db.id_transaccion_externa)
+        except Exception:
+            # La orden pudo vencer (Culqi expira a las 24h) o ya no existir en
+            # el proveedor -- se trata como si nunca se hubiera creado, para
+            # no dejar este pago inutilizable para siempre en cada reintento.
+            logger.warning(
+                "No se pudo recuperar el checkout %s del pago %s, se crea uno nuevo",
+                pago_db.id_transaccion_externa, pago_db.id_pago,
+            )
+            pago_db.id_transaccion_externa = None
+
+    if not pago_db.id_transaccion_externa:
+        # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
+        # (lo rechaza con 400 si llega vacío) — con MockGateway no importa.
+        # Perú: celulares son siempre 9 dígitos. Solo aplica al crear una
+        # orden nueva, no al recuperar una ya creada arriba.
+        if not hasattr(gateway, "resolver_transaccion") and not (
+            cliente_db.telefono and cliente_db.telefono.isdigit() and len(cliente_db.telefono) == 9
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
+            )
+
         # El sufijo aleatorio evita que la referencia choque con una orden de
         # OTRO entorno/prueba contra la misma cuenta de Culqi: el id_pago por
         # sí solo no es único para siempre (se reinicia en cada BD nueva),

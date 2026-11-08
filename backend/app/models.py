@@ -1,6 +1,6 @@
 from .database import Base
 # pyrefly: ignore [missing-import]
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Boolean, Time, Text
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Boolean, Time, Text, Index, text
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -115,6 +115,20 @@ class ClienteMembresia(Base):
     def nombre_membresia(self):
         return self.membresia.nombre if self.membresia else None
 
+    # Un cliente no puede tener mas de una membresia ACTIVA/PAUSADA/PENDIENTE
+    # a la vez -- cierra a nivel de BD la condicion de carrera de
+    # POST /cliente-membresias/comprar (ver create_db.py para la migracion
+    # equivalente sobre una tabla de produccion ya existente).
+    __table_args__ = (
+        Index(
+            "uq_cliente_membresia_activa_o_pendiente",
+            "id_cliente",
+            unique=True,
+            sqlite_where=text("estado IN ('ACTIVA', 'PAUSADA', 'PENDIENTE')"),
+            postgresql_where=text("estado IN ('ACTIVA', 'PAUSADA', 'PENDIENTE')"),
+        ),
+    )
+
 
 class Pago(Base):
     __tablename__ = "pagos"
@@ -129,6 +143,7 @@ class Pago(Base):
     estado = Column(String(30), default="PAGADO")  # PAGADO, PENDIENTE, ANULADO, FALLIDO, REEMBOLSADO
     observacion = Column(String, nullable=True)
     id_transaccion_externa = Column(String(100), nullable=True)  # referencia de la pasarela de pago (ver app/pagos_gateway)
+    origen = Column(String(20), nullable=True)  # STAFF (POST /pagos/) o AUTOSERVICIO (POST /cliente-membresias/comprar)
 
     cliente = relationship("Cliente", back_populates="pagos")
     cliente_membresia = relationship("ClienteMembresia", back_populates="pagos")
