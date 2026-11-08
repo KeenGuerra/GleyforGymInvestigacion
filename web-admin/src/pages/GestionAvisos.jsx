@@ -253,6 +253,7 @@ function GestionAvisos() {
                   <th>Título</th>
                   <th>Tipo</th>
                   <th>Contenido</th>
+                  <th>Fecha evento</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -263,6 +264,7 @@ function GestionAvisos() {
                     <td>{a.titulo}</td>
                     <td><span className="badge">{a.tipo}</span></td>
                     <td>{a.contenido}</td>
+                    <td>{a.fecha_evento ? new Date(a.fecha_evento).toLocaleDateString("es-PE") : "—"}</td>
                     <td><span className="badge">{a.estado}</span></td>
                     <td>
                       <div className="table-actions">

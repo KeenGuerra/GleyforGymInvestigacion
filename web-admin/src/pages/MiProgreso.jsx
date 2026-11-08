@@ -138,32 +138,44 @@ function MiProgreso() {
         fecha_registro: form.fecha_registro,
         observacion: form.observacion || null,
       });
-
-      await api.put(`/clientes/${cliente.id_cliente}`, {
-        peso: Number(form.peso),
-      });
-
-      setMensaje("Progreso registrado correctamente ✔");
-      setMostrarFormulario(false);
-
-      setForm({
-        peso: form.peso,
-        porcentaje_grasa: "",
-        medida_pecho: "",
-        medida_cintura: "",
-        medida_brazo_izquierdo: "",
-        medida_brazo_derecho: "",
-        medida_pierna_izquierda: "",
-        medida_pierna_derecha: "",
-        fecha_registro: hoy,
-        observacion: "",
-      });
-
-      cargarProgreso(cliente.id_cliente);
     } catch (error) {
       console.error("Error registrando progreso:", error);
       setError(
         error.response?.data?.detail || "No se pudo registrar el progreso."
+      );
+      return;
+    }
+
+    // El progreso ya quedó guardado en este punto -- lo que sigue (sincronizar
+    // el peso del perfil del cliente) es secundario. Si falla, no se debe
+    // mostrar como si el registro hubiera fallado por completo (eso llevaba a
+    // reintentar y crear un progreso duplicado).
+    setMensaje("Progreso registrado correctamente ✔");
+    setMostrarFormulario(false);
+
+    setForm({
+      peso: form.peso,
+      porcentaje_grasa: "",
+      medida_pecho: "",
+      medida_cintura: "",
+      medida_brazo_izquierdo: "",
+      medida_brazo_derecho: "",
+      medida_pierna_izquierda: "",
+      medida_pierna_derecha: "",
+      fecha_registro: hoy,
+      observacion: "",
+    });
+
+    cargarProgreso(cliente.id_cliente);
+
+    try {
+      await api.put(`/clientes/${cliente.id_cliente}`, {
+        peso: Number(form.peso),
+      });
+    } catch (error) {
+      console.error("Error sincronizando el peso del perfil:", error);
+      setMensaje(
+        "Progreso registrado correctamente ✔ (no se pudo actualizar el peso del perfil)"
       );
     }
   };

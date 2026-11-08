@@ -67,6 +67,11 @@ function Avisos() {
                       <div key={aviso.id_aviso}>
                         <strong style={{ color: "var(--text)" }}>{aviso.titulo}</strong>
                         <p className="item-description" style={{ margin: 0 }}>{aviso.contenido}</p>
+                        {aviso.tipo === "EVENTO" && aviso.fecha_evento && (
+                          <p className="item-description" style={{ margin: 0, fontWeight: 600 }}>
+                            {new Date(aviso.fecha_evento).toLocaleDateString("es-PE")}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -38,6 +38,25 @@ describe("Avisos Page Component", () => {
     });
   });
 
+  it("shows the event date for an EVENTO aviso", async () => {
+    api.get.mockResolvedValue({
+      data: [
+        { id_aviso: 3, titulo: "Noche de retos", contenido: "Trae a un amigo", tipo: "EVENTO", fecha_evento: "2026-12-15", estado: "ACTIVO" },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <Avisos />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Noche de retos")).toBeDefined();
+      expect(screen.getByText(new Date("2026-12-15").toLocaleDateString("es-PE"))).toBeDefined();
+    });
+  });
+
   it("shows an empty message when there are no avisos", async () => {
     api.get.mockResolvedValue({ data: [] });
 

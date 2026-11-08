@@ -90,6 +90,7 @@ describe("Layout Component", () => {
     expect(screen.getByText("Asistencias")).toBeDefined();
     expect(screen.getByText("Progreso")).toBeDefined();
     expect(screen.getByText("Ejercicios")).toBeDefined();
+    expect(screen.getByText("Reportes")).toBeDefined();
     expect(screen.getAllByText("ENTRENADOR").length).toBeGreaterThan(0);
   });
 

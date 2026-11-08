@@ -77,22 +77,49 @@ def obtener_clientes(
 
     clientes = query.order_by(models.Cliente.id_cliente).offset(skip).limit(limit).all()
 
+    ids_clientes = [cliente.id_cliente for cliente in clientes]
+
+    # Una sola consulta en lote para todos los clientes de esta página, en vez
+    # de 2 consultas por cliente dentro del loop (antes: hasta 200 consultas
+    # extra con el límite por defecto de 100). Se recorre ya ordenado por
+    # fecha descendente, así que el primer registro que se encuentra por
+    # cliente es el más reciente (de ahí el setdefault).
+    membresias_activas_por_cliente: dict[int, models.ClienteMembresia] = {}
+    membresias_recientes_por_cliente: dict[int, models.ClienteMembresia] = {}
+    ultimos_pagos_por_cliente: dict[int, models.Pago] = {}
+
+    if ids_clientes:
+        for fila in (
+            db.query(models.ClienteMembresia)
+            .filter(models.ClienteMembresia.id_cliente.in_(ids_clientes))
+            .order_by(models.ClienteMembresia.id_cliente, desc(models.ClienteMembresia.fecha_fin))
+            .all()
+        ):
+            membresias_recientes_por_cliente.setdefault(fila.id_cliente, fila)
+            if fila.estado == "ACTIVA":
+                membresias_activas_por_cliente.setdefault(fila.id_cliente, fila)
+
+        for fila in (
+            db.query(models.Pago)
+            .filter(models.Pago.id_cliente.in_(ids_clientes))
+            .order_by(models.Pago.id_cliente, desc(models.Pago.fecha_pago))
+            .all()
+        ):
+            ultimos_pagos_por_cliente.setdefault(fila.id_cliente, fila)
+
     resultado = []
 
     for cliente in clientes:
-        membresia_actual = (
-            db.query(models.ClienteMembresia)
-            .filter(models.ClienteMembresia.id_cliente == cliente.id_cliente)
-            .order_by(desc(models.ClienteMembresia.fecha_fin))
-            .first()
+        # Preferir la membresía ACTIVA más reciente; si no hay ninguna activa,
+        # mostrar la más reciente de cualquier estado (para no perder el
+        # historial) — antes se mostraba la más reciente sin importar el
+        # estado, por lo que una membresía ya CANCELADA podía aparecer como
+        # "actual".
+        membresia_actual = membresias_activas_por_cliente.get(
+            cliente.id_cliente, membresias_recientes_por_cliente.get(cliente.id_cliente)
         )
 
-        ultimo_pago = (
-            db.query(models.Pago)
-            .filter(models.Pago.id_cliente == cliente.id_cliente)
-            .order_by(desc(models.Pago.fecha_pago))
-            .first()
-        )
+        ultimo_pago = ultimos_pagos_por_cliente.get(cliente.id_cliente)
 
         resultado.append({
             "id_cliente": cliente.id_cliente,
@@ -481,12 +508,23 @@ def obtener_detalle_cliente(
     if not cliente:
         raise HTTPException(status_code=404, detail=MSG_CLIENTE_NO_ENCONTRADO)
 
+    # Preferir la membresía ACTIVA más reciente; si no hay ninguna activa,
+    # mostrar la más reciente de cualquier estado (para no perder el
+    # historial) — antes se mostraba la más reciente sin importar el estado,
+    # por lo que una membresía ya CANCELADA podía aparecer como "actual".
     membresia_actual = (
         db.query(models.ClienteMembresia)
-        .filter(models.ClienteMembresia.id_cliente == id_cliente)
+        .filter(models.ClienteMembresia.id_cliente == id_cliente, models.ClienteMembresia.estado == "ACTIVA")
         .order_by(desc(models.ClienteMembresia.fecha_fin))
         .first()
     )
+    if not membresia_actual:
+        membresia_actual = (
+            db.query(models.ClienteMembresia)
+            .filter(models.ClienteMembresia.id_cliente == id_cliente)
+            .order_by(desc(models.ClienteMembresia.fecha_fin))
+            .first()
+        )
 
     ultimo_pago = (
         db.query(models.Pago)

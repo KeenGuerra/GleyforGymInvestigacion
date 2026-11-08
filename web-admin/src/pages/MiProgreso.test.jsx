@@ -131,6 +131,36 @@ describe("MiProgreso Page Component", () => {
     });
   });
 
+  it("still shows success when the progress saves but syncing the profile weight fails", async () => {
+    api.post.mockResolvedValue({ data: {} });
+    api.put.mockRejectedValue(new Error("sync error"));
+    render(<MiProgreso />);
+
+    await waitFor(() => {
+      expect(screen.getByText("+ Nuevo registro")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("+ Nuevo registro"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Nuevo registro", { selector: "h2" })).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Peso actual/i), { target: { value: "85" } });
+
+    fireEvent.click(screen.getByText("Guardar progreso", { selector: "button" }));
+
+    // El progreso sí se guardó (api.post tuvo éxito): debe verse el mensaje
+    // de éxito, no el de error, aunque la sincronización del peso del perfil
+    // (api.put) haya fallado -- si no, el usuario cree que todo falló y
+    // reintenta, creando un registro duplicado.
+    await waitFor(() => {
+      expect(screen.getByText(/Progreso registrado correctamente/)).toBeDefined();
+      expect(screen.getByText(/no se pudo actualizar el peso del perfil/)).toBeDefined();
+    });
+    expect(screen.queryByText("No se pudo registrar el progreso.")).toBeNull();
+  });
+
   it("handles client progress load failure", async () => {
     api.get.mockRejectedValue(new Error("Load Error"));
     render(<MiProgreso />);

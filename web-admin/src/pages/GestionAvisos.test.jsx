@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import GestionAvisos from "./GestionAvisos";
 import api from "../api/api";
 
@@ -29,6 +29,26 @@ describe("GestionAvisos Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Deyvi")).toBeDefined();
     });
+  });
+
+  it("shows the event date for EVENTO avisos and a dash for the rest", async () => {
+    api.get.mockResolvedValue({
+      data: [
+        ...mockAvisos,
+        { id_aviso: 2, titulo: "Noche de retos", contenido: "Trae a un amigo", tipo: "EVENTO", fecha_evento: "2026-12-15", estado: "ACTIVO" },
+      ],
+    });
+    render(<GestionAvisos />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Noche de retos")).toBeDefined();
+    });
+
+    const filaEvento = screen.getByText("Noche de retos").closest("tr");
+    expect(within(filaEvento).getByText(new Date("2026-12-15").toLocaleDateString("es-PE"))).toBeDefined();
+
+    const filaSinFecha = screen.getByText("Deyvi").closest("tr");
+    expect(within(filaSinFecha).getByText("—")).toBeDefined();
   });
 
   it("creates a new aviso", async () => {

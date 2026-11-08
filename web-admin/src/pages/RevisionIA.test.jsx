@@ -124,6 +124,45 @@ describe("RevisionIA Page Component", () => {
     });
   });
 
+  it("adds a catalog meal using its real name, not its short description tag", async () => {
+    const mockComidas = [
+      { id_comida_catalogo: 5, nombre: "Yogur griego con frutos secos", descripcion: "Snack proteico", tipo_comida: "SNACK", calorias: 220 },
+    ];
+    api.get.mockImplementation((url) => {
+      if (url === "/clientes/") return Promise.resolve({ data: mockClientes });
+      if (url === "/rutinas/pendientes") return Promise.resolve({ data: [mockRutinaPendiente] });
+      if (url === "/nutricion/pendientes") return Promise.resolve({ data: [mockPlanPendiente] });
+      if (url === "/comidas/") return Promise.resolve({ data: mockComidas });
+      return Promise.resolve({ data: [] });
+    });
+    api.put.mockResolvedValue({ data: { mensaje: "ok" } });
+
+    render(<RevisionIA />);
+    await waitFor(() => expect(screen.getByText("Plan nutricional #20")).toBeDefined());
+
+    const filaPlan = screen.getByText("Plan nutricional #20").closest("tr");
+    fireEvent.click(within(filaPlan).getByText("Editar"));
+
+    await waitFor(() => expect(screen.getByText("Editando plan nutricional")).toBeDefined());
+
+    const selectComida = screen
+      .getByText("Agregar comida del catálogo")
+      .parentElement.querySelector("select");
+    fireEvent.change(selectComida, { target: { value: "5" } });
+
+    fireEvent.click(screen.getByText("Guardar cambios"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/nutricion/20/comidas", {
+        comidas: [
+          { tipo_comida: "DESAYUNO", descripcion: "Avena", calorias_aprox: 400, hora_recomendada: "08:00", id_comida_catalogo: 1 },
+          { tipo_comida: "SNACK", descripcion: "Yogur griego con frutos secos", calorias_aprox: 220, hora_recomendada: "", id_comida_catalogo: 5 },
+        ],
+        observaciones_revision: null,
+      });
+    });
+  });
+
   it("shows an error when loading the review tray fails", async () => {
     api.get.mockRejectedValue(new Error("fail"));
 

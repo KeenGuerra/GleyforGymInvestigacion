@@ -1870,6 +1870,84 @@ def test_clientes_extra_coverage():
     assert res_det.json()["ultimo_progreso"] is None
 
 
+def test_clientes_membresia_actual_prioriza_la_activa_sobre_la_mas_reciente():
+    """membresia_actual (listado y detalle) debe mostrar la membresía ACTIVA
+    más reciente, no la fila con fecha_fin más reciente sin importar su
+    estado -- si no, una membresía ya CANCELADA puede aparecer como
+    "actual" solo porque su fecha_fin es posterior a la de la activa real."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+    db = TestingSessionLocal()
+
+    cancelada_mas_reciente = models.ClienteMembresia(
+        id_cliente_membresia=101,
+        id_cliente=1,
+        id_membresia=1,
+        fecha_inicio=date.today() - timedelta(days=5),
+        fecha_fin=date.today() + timedelta(days=60),
+        precio_asignado=100.0,
+        estado="CANCELADA",
+    )
+    activa_mas_antigua = models.ClienteMembresia(
+        id_cliente_membresia=102,
+        id_cliente=1,
+        id_membresia=1,
+        fecha_inicio=date.today() - timedelta(days=90),
+        fecha_fin=date.today() + timedelta(days=10),
+        precio_asignado=100.0,
+        estado="ACTIVA",
+    )
+    db.add_all([cancelada_mas_reciente, activa_mas_antigua])
+    db.commit()
+    db.close()
+
+    res_detalle = client.get("/clientes/1/detalle", headers=headers)
+    assert res_detalle.status_code == 200
+    membresia_detalle = res_detalle.json()["membresia_actual"]
+    assert membresia_detalle is not None
+    assert membresia_detalle["id_cliente_membresia"] == 102
+    assert membresia_detalle["estado"] == "ACTIVA"
+
+    res_listado = client.get("/clientes/", headers=headers)
+    assert res_listado.status_code == 200
+    cliente_1 = next(c for c in res_listado.json() if c["id_cliente"] == 1)
+    assert cliente_1["estado_membresia"] == "ACTIVA"
+
+
+def test_clientes_membresia_actual_cae_a_la_mas_reciente_si_ninguna_esta_activa():
+    """Si el cliente no tiene ninguna membresía ACTIVA, se debe seguir
+    mostrando la más reciente de cualquier estado (no perder el historial),
+    igual que antes de este fix."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+    db = TestingSessionLocal()
+
+    terminada = models.ClienteMembresia(
+        id_cliente_membresia=103,
+        id_cliente=1,
+        id_membresia=1,
+        fecha_inicio=date.today() - timedelta(days=90),
+        fecha_fin=date.today() - timedelta(days=30),
+        precio_asignado=100.0,
+        estado="TERMINADA",
+    )
+    db.add(terminada)
+    db.commit()
+    db.close()
+
+    res_detalle = client.get("/clientes/1/detalle", headers=headers)
+    assert res_detalle.status_code == 200
+    membresia_detalle = res_detalle.json()["membresia_actual"]
+    assert membresia_detalle is not None
+    assert membresia_detalle["id_cliente_membresia"] == 103
+    assert membresia_detalle["estado"] == "TERMINADA"
+
+    res_listado = client.get("/clientes/", headers=headers)
+    assert res_listado.status_code == 200
+    cliente_1 = next(c for c in res_listado.json() if c["id_cliente"] == 1)
+    assert cliente_1["estado_membresia"] == "TERMINADA"
+
+
 def test_avisos_crud_y_visibilidad_publica():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")

@@ -221,7 +221,10 @@ function RevisionIA() {
         ...prev.lista,
         {
           tipo_comida: comida.tipo_comida,
-          descripcion: comida.descripcion || comida.nombre,
+          // El plato real del catálogo (comida.nombre), no la etiqueta corta
+          // de comida.descripcion -- mismo bug ya corregido en
+          // orquestador.py/recomendador_nutricion.py.
+          descripcion: comida.nombre || comida.descripcion,
           calorias_aprox: comida.calorias,
           hora_recomendada: "",
           id_comida_catalogo: comida.id_comida_catalogo,
