@@ -250,37 +250,47 @@ function MiMembresia() {
 
                     <div>
                       <span>Inicio</span>
-                      <strong>{formatearFecha(item.fecha_inicio)}</strong>
+                      <strong>
+                        {item.estado === "PENDIENTE" ? "Por confirmar" : formatearFecha(item.fecha_inicio)}
+                      </strong>
                     </div>
 
                     <div>
                       <span>Fin</span>
-                      <strong>{formatearFecha(item.fecha_fin)}</strong>
+                      <strong>
+                        {item.estado === "PENDIENTE" ? "Por confirmar" : formatearFecha(item.fecha_fin)}
+                      </strong>
                     </div>
                   </div>
 
-                  <div className="progress-block">
-                    <div className="progress-info">
-                      <span>
-                        {obtenerTextoEstado(item.estado)}
-                      </span>
+                  {item.estado === "PENDIENTE" ? (
+                    <p className="item-description">
+                      Esperando confirmación de pago. Las fechas se calculan recién cuando se confirme.
+                    </p>
+                  ) : (
+                    <div className="progress-block">
+                      <div className="progress-info">
+                        <span>
+                          {obtenerTextoEstado(item.estado)}
+                        </span>
 
-                      <strong>{diasRestantes} días</strong>
-                    </div>
+                        <strong>{diasRestantes} días</strong>
+                      </div>
 
-                    <div className="progress-bar">
-                      <div
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (diasRestantes /
-                              Number(item.plan?.duracion_dias || 1)) *
-                              100
-                          )}%`,
-                        }}
-                      ></div>
+                      <div className="progress-bar">
+                        <div
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (diasRestantes /
+                                Number(item.plan?.duracion_dias || 1)) *
+                                100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </article>
               );
             })}

@@ -147,6 +147,13 @@ describe("MiMembresia Page Component", () => {
       expect(screen.getByText("Completar pago")).toBeDefined();
     });
 
+    // El historial de abajo también lista la membresía PENDIENTE (misma
+    // compra, por si el Pago asociado llegara a faltar) pero no debe mostrar
+    // fechas/días restantes falsos -- fecha_inicio/fecha_fin son solo un
+    // placeholder ("hoy") hasta que el webhook confirme el pago.
+    expect(screen.getAllByText("Por confirmar").length).toBe(2);
+    expect(screen.queryByText("Días restantes")).toBeNull();
+
     fireEvent.click(screen.getByText("Completar pago"));
 
     await waitFor(() => {
