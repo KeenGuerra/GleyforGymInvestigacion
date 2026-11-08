@@ -40,7 +40,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 def crear_pago(
     pago: schemas.PagoCreate,
     db: Annotated[Session, Depends(get_db)],
-    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
 ):
     if pago.monto <= 0:
         raise HTTPException(status_code=400, detail="El monto debe ser mayor a 0")
@@ -174,7 +174,7 @@ def iniciar_checkout_pago(
 @router.get(
     "/",
     response_model=list[schemas.PagoResponse],
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -213,7 +213,7 @@ def listar_pagos_cliente(
 @router.put(
     "/{id_pago}",
     response_model=schemas.PagoResponse,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         400: {"description": "La membresía no pertenece a este cliente"},
         401: {"description": "Token inválido o expirado"},
@@ -272,7 +272,7 @@ def actualizar_pago(
 def eliminar_pago(
     id_pago: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
 ):
 
     pago_db = db.query(models.Pago).filter(

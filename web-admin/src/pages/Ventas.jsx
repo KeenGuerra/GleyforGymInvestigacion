@@ -5,6 +5,7 @@ import { descargarBlob } from "../utils/descargarArchivo";
 const VENTAS_POR_PAGINA = 20;
 
 function Ventas() {
+  const rol = localStorage.getItem("rol");
   const [ventas, setVentas] = useState([]);
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -261,7 +262,7 @@ function Ventas() {
                   </div>
                 )}
                 <div className="item-actions">
-                  {v.estado === "PENDIENTE" && (
+                  {v.estado === "PENDIENTE" && rol === "ADMIN" && (
                     <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => confirmar(v.id_venta)}>
                       {procesando === v.id_venta ? "Confirmando..." : "Confirmar"}
                     </button>

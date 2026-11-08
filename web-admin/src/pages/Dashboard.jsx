@@ -1,6 +1,7 @@
 import React from "react";
 import DashboardAdmin from "./DashboardAdmin";
 import DashboardEntrenador from "./DashboardEntrenador";
+import DashboardRecepcionista from "./DashboardRecepcionista";
 import DashboardCliente from "./DashboardCliente";
 import DashboardComprador from "./DashboardComprador";
 
@@ -13,6 +14,7 @@ function Dashboard() {
 
   if (rol === "ADMIN") return <DashboardAdmin />;
   if (rol === "ENTRENADOR") return <DashboardEntrenador />;
+  if (rol === "RECEPCIONISTA") return <DashboardRecepcionista />;
   if (rol === "CLIENTE") return tieneCliente ? <DashboardCliente /> : <DashboardComprador />;
 
   return (

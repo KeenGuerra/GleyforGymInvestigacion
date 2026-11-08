@@ -18,6 +18,8 @@ export default function Layout() {
     inicial = "A";
   } else if (rol === "ENTRENADOR") {
     inicial = "E";
+  } else if (rol === "RECEPCIONISTA") {
+    inicial = "R";
   }
 
   let tituloPanel = tieneCliente ? "Panel cliente" : "Panel de compras";
@@ -25,6 +27,8 @@ export default function Layout() {
     tituloPanel = "Panel administrativo";
   } else if (rol === "ENTRENADOR") {
     tituloPanel = "Panel entrenador";
+  } else if (rol === "RECEPCIONISTA") {
+    tituloPanel = "Panel de recepción";
   }
 
   return (
@@ -120,6 +124,17 @@ export default function Layout() {
                 <NavLink to="/rutinas">Rutinas IA</NavLink>
                 <NavLink to="/nutricion">Nutrición IA</NavLink>
                 <NavLink to="/revision-ia">Revisión de IA</NavLink>
+              </>
+            )}
+
+            {rol === "RECEPCIONISTA" && (
+              <>
+                <p className="menu-label">Recepción</p>
+                <NavLink to="/clientes">Clientes</NavLink>
+                <NavLink to="/asistencias">Asistencias</NavLink>
+                <NavLink to="/cliente-membresias">Asignar membresía</NavLink>
+                <NavLink to="/pagos">Pagos</NavLink>
+                <NavLink to="/ventas">Ventas</NavLink>
               </>
             )}
 

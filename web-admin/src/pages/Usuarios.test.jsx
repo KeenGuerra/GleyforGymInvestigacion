@@ -52,6 +52,25 @@ describe("Usuarios Page Component", () => {
     });
   });
 
+  it("allows creating a user with the RECEPCIONISTA role and counts it in the stats", async () => {
+    api.get.mockResolvedValue({
+      data: [...mockUsuarios, { id_usuario: 2, correo: "recepcion@gym.com", rol: "RECEPCIONISTA", estado: "ACTIVO", fecha_creacion: "2026-06-01T12:00:00Z" }],
+    });
+    render(<Usuarios />);
+
+    await waitFor(() => {
+      expect(screen.getByText("recepcion@gym.com")).toBeDefined();
+    });
+    expect(screen.getByText("Recepcionistas")).toBeDefined();
+
+    fireEvent.click(screen.getByText("+ Crear usuario"));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Rol")).toBeDefined();
+    });
+
+    expect(screen.getByRole("option", { name: "RECEPCIONISTA" })).toBeDefined();
+  });
+
   it("shows form and calls post on submitting a new user", async () => {
     api.post.mockResolvedValue({ data: {} });
     render(<Usuarios />);

@@ -55,7 +55,7 @@ def actualizar_membresias_vencidas(db: Session):
 def asignar_membresia(
     data: schemas.ClienteMembresiaCreate,
     db: Annotated[Session, Depends(get_db)],
-    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
 ):
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == data.id_cliente
@@ -193,7 +193,7 @@ def comprar_membresia(
 @router.get(
     "/",
     response_model=list[schemas.ClienteMembresiaResponse],
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -248,7 +248,7 @@ def actualizar_cliente_membresia(
     id_cliente_membresia: int,
     data: schemas.ClienteMembresiaUpdate,
     db: Annotated[Session, Depends(get_db)],
-    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
 ):
     cliente_membresia = db.query(models.ClienteMembresia).filter(
         models.ClienteMembresia.id_cliente_membresia == id_cliente_membresia
@@ -297,7 +297,7 @@ def actualizar_cliente_membresia(
 
 @router.delete(
     "/{id_cliente_membresia}",
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Membresía del cliente no encontrada"}

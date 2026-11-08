@@ -127,7 +127,7 @@ export default function App() {
           <Route
             path="/cliente-membresias"
             element={
-              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+              <ProtectedRoute rolesPermitidos={["ADMIN", "RECEPCIONISTA"]}>
                 <ClienteMembresias />
               </ProtectedRoute>
             }
@@ -136,7 +136,7 @@ export default function App() {
           <Route
             path="/pagos"
             element={
-              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+              <ProtectedRoute rolesPermitidos={["ADMIN", "RECEPCIONISTA"]}>
                 <Pagos />
               </ProtectedRoute>
             }
@@ -227,7 +227,7 @@ export default function App() {
           <Route
             path="/ventas"
             element={
-              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+              <ProtectedRoute rolesPermitidos={["ADMIN", "RECEPCIONISTA"]}>
                 <Ventas />
               </ProtectedRoute>
             }
@@ -237,7 +237,7 @@ export default function App() {
           <Route
             path="/clientes"
             element={
-              <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR"]}>
+              <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR", "RECEPCIONISTA"]}>
                 <Clientes />
               </ProtectedRoute>
             }
@@ -246,7 +246,7 @@ export default function App() {
           <Route
             path="/clientes/:id/detalle"
             element={
-              <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR"]}>
+              <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR", "RECEPCIONISTA"]}>
                 <DetalleCliente />
               </ProtectedRoute>
             }
@@ -255,7 +255,7 @@ export default function App() {
           <Route
             path="/asistencias"
             element={
-              <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR"]}>
+              <ProtectedRoute rolesPermitidos={["ADMIN", "ENTRENADOR", "RECEPCIONISTA"]}>
                 <Asistencias />
               </ProtectedRoute>
             }

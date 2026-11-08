@@ -11,6 +11,9 @@ vi.mock("./DashboardAdmin", () => ({
 vi.mock("./DashboardEntrenador", () => ({
   default: () => <div>Entrenador Dashboard Content</div>,
 }));
+vi.mock("./DashboardRecepcionista", () => ({
+  default: () => <div>Recepcionista Dashboard Content</div>,
+}));
 vi.mock("./DashboardCliente", () => ({
   default: () => <div>Cliente Dashboard Content</div>,
 }));
@@ -33,6 +36,12 @@ describe("Dashboard Page Routing Component", () => {
     localStorage.setItem("rol", "ENTRENADOR");
     render(<MemoryRouter><Dashboard /></MemoryRouter>);
     expect(screen.getByText("Entrenador Dashboard Content")).toBeDefined();
+  });
+
+  it("renders Recepcionista Dashboard when role is RECEPCIONISTA", () => {
+    localStorage.setItem("rol", "RECEPCIONISTA");
+    render(<MemoryRouter><Dashboard /></MemoryRouter>);
+    expect(screen.getByText("Recepcionista Dashboard Content")).toBeDefined();
   });
 
   it("renders Client Dashboard when role is CLIENTE", () => {

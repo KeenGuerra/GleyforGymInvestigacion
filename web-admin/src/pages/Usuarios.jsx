@@ -217,6 +217,13 @@ function Usuarios() {
             {usuariosInternos.filter((u) => u.rol === "ENTRENADOR").length}
           </strong>
         </div>
+
+        <div className="stat-card">
+          <span>Recepcionistas</span>
+          <strong>
+            {usuariosInternos.filter((u) => u.rol === "RECEPCIONISTA").length}
+          </strong>
+        </div>
       </section>
 
       {idResetPassword && (
@@ -304,6 +311,7 @@ function Usuarios() {
               <label htmlFor="rol">Rol</label>
               <select id="rol" name="rol" value={form.rol} onChange={cambiar}>
                 <option value="ENTRENADOR">ENTRENADOR</option>
+                <option value="RECEPCIONISTA">RECEPCIONISTA</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
             </div>

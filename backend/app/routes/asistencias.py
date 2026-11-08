@@ -20,7 +20,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 @router.post(
     "/",
     response_model=schemas.AsistenciaResponse,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         400: {"description": "El cliente no está activo o la hora de salida es menor a la de entrada"},
         401: {"description": "Token inválido o expirado"},
@@ -59,7 +59,7 @@ def registrar_asistencia(
 @router.get(
     "/",
     response_model=list[schemas.AsistenciaResponse],
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -107,7 +107,7 @@ def listar_asistencias_cliente(
 @router.put(
     "/{id_asistencia}",
     response_model=schemas.AsistenciaResponse,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         400: {"description": "La hora de salida no puede ser menor que la hora de entrada"},
         401: {"description": "Token inválido o expirado"},
@@ -148,7 +148,7 @@ def actualizar_asistencia(
 
 @router.delete(
     "/{id_asistencia}",
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Asistencia no encontrada"}

@@ -49,7 +49,7 @@ def calcular_edad(fecha_nacimiento: date | datetime | None) -> int | None:
 # =========================
 @router.get(
     "/",
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"}
     }
@@ -128,7 +128,7 @@ def obtener_clientes(
 # =========================
 @router.post(
     "/",
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         400: {"description": "El correo o DNI ya está registrado"},
         401: {"description": "Token inválido o expirado"}
@@ -373,7 +373,7 @@ def actualizar_cliente(
 # =========================
 @router.delete(
     "/{id_cliente}",
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Cliente no encontrado"}

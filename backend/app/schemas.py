@@ -8,7 +8,7 @@ from typing import Optional, List, Literal
 # TIPOS / ESTADOS
 # =========================
 
-RolUsuario = Literal["ADMIN", "ENTRENADOR", "CLIENTE"]
+RolUsuario = Literal["ADMIN", "ENTRENADOR", "RECEPCIONISTA", "CLIENTE"]
 EstadoUsuario = Literal["ACTIVO", "INACTIVO"]
 
 EstadoGeneral = Literal["ACTIVO", "INACTIVO"]

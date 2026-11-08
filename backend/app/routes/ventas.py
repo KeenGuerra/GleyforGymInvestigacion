@@ -41,7 +41,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 def crear_venta(
     venta: schemas.VentaCreate,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR"))
+    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))
 ):
     if not venta.detalles:
         raise HTTPException(status_code=400, detail=MSG_DETALLE_VACIO)
@@ -145,7 +145,7 @@ def crear_venta(
 @router.get(
     "/",
     response_model=list[schemas.VentaResponse],
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def listar_ventas(db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100):
@@ -158,7 +158,7 @@ def listar_ventas(db: Annotated[Session, Depends(get_db)], skip: int = 0, limit:
 @router.get(
     "/resumen",
     response_model=schemas.ResumenVentas,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
@@ -210,7 +210,7 @@ def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
 @router.get(
     "/reporte",
     response_model=schemas.ReporteVentas,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def reporte_ventas(
@@ -374,7 +374,7 @@ def iniciar_checkout_venta(
 @router.get(
     "/{id_venta}",
     response_model=schemas.VentaResponse,
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Venta no encontrada"}
@@ -396,7 +396,7 @@ def obtener_venta(
 
 @router.get(
     "/{id_venta}/boleta",
-    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
     responses={
         401: {"description": "Token inválido o expirado"},
         404: {"description": "Venta no encontrada"},
@@ -438,7 +438,7 @@ def descargar_boleta_venta(
 def anular_venta(
     id_venta: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR"))
+    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))
 ):
     venta = db.query(models.Venta).filter(
         models.Venta.id_venta == id_venta

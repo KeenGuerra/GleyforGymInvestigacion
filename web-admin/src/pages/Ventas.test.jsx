@@ -44,6 +44,7 @@ function mockApiGet(ventas = [mockVentaPendiente]) {
 describe("Ventas Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    localStorage.clear();
     mockApiGet();
   });
 
@@ -136,6 +137,9 @@ describe("Ventas Page Component", () => {
   });
 
   it("confirms a pending sale", async () => {
+    // El botón "Confirmar" solo se muestra para ADMIN (el backend restringe
+    // /ventas/{id}/confirmar a ese rol; ver el comentario en Ventas.jsx).
+    localStorage.setItem("rol", "ADMIN");
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockResolvedValue({ data: {} });
 
@@ -146,6 +150,14 @@ describe("Ventas Page Component", () => {
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/1/confirmar");
     });
+  });
+
+  it("does not show the Confirmar button for a non-ADMIN role", async () => {
+    localStorage.setItem("rol", "RECEPCIONISTA");
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Ana López")).toBeDefined());
+    expect(screen.queryByText("Confirmar")).toBeNull();
   });
 
   it("cancels a confirmed sale", async () => {

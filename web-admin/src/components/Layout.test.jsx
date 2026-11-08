@@ -92,4 +92,23 @@ describe("Layout Component", () => {
     expect(screen.getByText("Ejercicios")).toBeDefined();
     expect(screen.getAllByText("ENTRENADOR").length).toBeGreaterThan(0);
   });
+
+  it("renders sidebar with RECEPCIONISTA links when role is RECEPCIONISTA", () => {
+    localStorage.setItem("rol", "RECEPCIONISTA");
+    localStorage.setItem("correo", "recepcion@gym.com");
+
+    render(
+      <MemoryRouter>
+        <Layout />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Panel de recepción")).toBeDefined();
+    expect(screen.getByText("Clientes")).toBeDefined();
+    expect(screen.getByText("Asistencias")).toBeDefined();
+    expect(screen.getByText("Asignar membresía")).toBeDefined();
+    expect(screen.getByText("Pagos")).toBeDefined();
+    expect(screen.getByText("Ventas")).toBeDefined();
+    expect(screen.getAllByText("RECEPCIONISTA").length).toBeGreaterThan(0);
+  });
 });
