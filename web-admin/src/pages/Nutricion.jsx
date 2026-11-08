@@ -44,6 +44,25 @@ function Nutricion() {
     return c ? `${c.nombres} ${c.apellidos}` : MSG_CLIENTE_NO_ENCONTRADO;
   };
 
+  // Un plan puede estar "ACTIVO" (no desactivado) y aun así estar oculto
+  // para el cliente si el entrenador lo rechazó en la revisión de IA -- esta
+  // columna lo hace visible para que el admin no se confunda pensando que
+  // el cliente ya lo puede ver.
+  const badgeRevision = (estadoRevision) => {
+    if (estadoRevision === "aprobada" || estadoRevision === "aprobada_con_cambios") return "badge badge-success";
+    if (estadoRevision === "rechazada") return "badge badge-danger";
+    if (estadoRevision === "pendiente") return "badge badge-warning";
+    return "badge";
+  };
+
+  const etiquetaRevision = (estadoRevision) => {
+    if (estadoRevision === "aprobada_con_cambios") return "Aprobada con cambios";
+    if (estadoRevision === "aprobada") return "Aprobada";
+    if (estadoRevision === "rechazada") return "Rechazada";
+    if (estadoRevision === "pendiente") return "Pendiente";
+    return "Sin revisión";
+  };
+
   const generarIA = async () => {
     setError("");
 
@@ -178,6 +197,7 @@ function Nutricion() {
                 <th>Fecha</th>
                 <th>IA</th>
                 <th>Estado</th>
+                <th>Revisión</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -185,7 +205,7 @@ function Nutricion() {
             <tbody>
               {planesFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="empty-message">
+                  <td colSpan="9" className="empty-message">
                     No hay planes nutricionales registrados
                   </td>
                 </tr>
@@ -202,6 +222,11 @@ function Nutricion() {
                     <td>{p.generada_por_ia ? "Sí" : "No"}</td>
                     <td>
                       <span className="badge">{p.estado || "ACTIVO"}</span>
+                    </td>
+                    <td>
+                      <span className={badgeRevision(p.estado_revision)}>
+                        {etiquetaRevision(p.estado_revision)}
+                      </span>
                     </td>
 
                     <td>

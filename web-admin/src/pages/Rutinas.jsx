@@ -44,6 +44,25 @@ function Rutinas() {
     return c ? `${c.nombres} ${c.apellidos}` : MSG_CLIENTE_NO_ENCONTRADO;
   };
 
+  // Una rutina puede estar "ACTIVA" (no desactivada) y aun así estar oculta
+  // para el cliente si el entrenador la rechazó en la revisión de IA -- esta
+  // columna lo hace visible para que el admin no se confunda pensando que
+  // el cliente ya la puede ver.
+  const badgeRevision = (estadoRevision) => {
+    if (estadoRevision === "aprobada" || estadoRevision === "aprobada_con_cambios") return "badge badge-success";
+    if (estadoRevision === "rechazada") return "badge badge-danger";
+    if (estadoRevision === "pendiente") return "badge badge-warning";
+    return "badge";
+  };
+
+  const etiquetaRevision = (estadoRevision) => {
+    if (estadoRevision === "aprobada_con_cambios") return "Aprobada con cambios";
+    if (estadoRevision === "aprobada") return "Aprobada";
+    if (estadoRevision === "rechazada") return "Rechazada";
+    if (estadoRevision === "pendiente") return "Pendiente";
+    return "Sin revisión";
+  };
+
   const generarRutinaIA = async () => {
     setError("");
 
@@ -186,6 +205,7 @@ function Rutinas() {
                 <th>Fecha</th>
                 <th>IA</th>
                 <th>Estado</th>
+                <th>Revisión</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -193,7 +213,7 @@ function Rutinas() {
             <tbody>
               {rutinasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="empty-message">
+                  <td colSpan="10" className="empty-message">
                     No hay rutinas registradas
                   </td>
                 </tr>
@@ -211,6 +231,11 @@ function Rutinas() {
                     <td>{r.generada_por_ia ? "Sí" : "No"}</td>
                     <td>
                       <span className="badge">{r.estado || "ACTIVA"}</span>
+                    </td>
+                    <td>
+                      <span className={badgeRevision(r.estado_revision)}>
+                        {etiquetaRevision(r.estado_revision)}
+                      </span>
                     </td>
 
                     <td>

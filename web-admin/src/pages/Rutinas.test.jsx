@@ -37,6 +37,7 @@ const mockRutinas = [
     fecha_creacion: "2026-06-01",
     generada_por_ia: true,
     estado: "ACTIVA",
+    estado_revision: "rechazada",
   },
 ];
 
@@ -54,7 +55,7 @@ describe("Rutinas Page Component", () => {
     });
   });
 
-  it("renders header, stats and lists routines", async () => {
+  it("renders header, stats and lists routines, including the review status", async () => {
     render(
       <MemoryRouter>
         <Rutinas />
@@ -64,6 +65,7 @@ describe("Rutinas Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Rutina Hipertrofia Pecho")).toBeDefined();
       expect(screen.getByText("Juan Perez")).toBeDefined();
+      expect(screen.getByText("Rechazada")).toBeDefined();
     });
   });
 

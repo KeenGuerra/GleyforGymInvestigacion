@@ -32,6 +32,7 @@ const mockPlanes = [
     id_plan: 10,
     id_cliente: 1,
     estado: "ACTIVO",
+    estado_revision: "rechazada",
     objetivo: "Dieta Hiperproteica",
     calorias_diarias: 2500,
     generada_por_ia: true,
@@ -57,11 +58,12 @@ describe("Nutricion Page Component", () => {
     });
   });
 
-  it("renders the header and lists generated plans", async () => {
+  it("renders the header and lists generated plans, including the review status", async () => {
     renderNutricion();
     expect(screen.getByText("Planes nutricionales")).toBeDefined();
     await waitFor(() => {
       expect(screen.getByText("Dieta Hiperproteica")).toBeDefined();
+      expect(screen.getByText("Rechazada")).toBeDefined();
       expect(screen.getByText("Juan Perez")).toBeDefined();
       expect(screen.getByText("2500 kcal")).toBeDefined();
     });
