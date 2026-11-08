@@ -20,6 +20,7 @@ function llenarFormulario() {
   fireEvent.change(screen.getByLabelText("DNI"), { target: { value: "12345678" } });
   fireEvent.change(screen.getByLabelText("Nombres"), { target: { value: "Ana" } });
   fireEvent.change(screen.getByLabelText("Apellidos"), { target: { value: "Torres" } });
+  fireEvent.change(screen.getByLabelText("Teléfono"), { target: { value: "987654321" } });
 }
 
 describe("HazteSocio Page Component", () => {

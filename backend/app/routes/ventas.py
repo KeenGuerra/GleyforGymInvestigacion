@@ -307,6 +307,16 @@ def iniciar_checkout_venta(
         raise HTTPException(status_code=400, detail="La venta no está en estado PENDIENTE")
 
     if venta.cliente:
+        # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
+        # (lo rechaza con 400 si llega vacío) — con MockGateway no importa.
+        if not hasattr(gateway, "resolver_transaccion") and (
+            not venta.cliente.telefono or len(venta.cliente.telefono) < 6
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Registra un teléfono válido en tu perfil antes de pagar.",
+            )
+
         datos_cliente = {
             "nombres": venta.cliente.nombres,
             "apellidos": venta.cliente.apellidos,

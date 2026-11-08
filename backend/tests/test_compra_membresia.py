@@ -10,6 +10,7 @@ test que también usan membresías/pagos (test_crud.py, test_backend.py).
 """
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -95,15 +96,23 @@ def crear_plan(headers, estado="ACTIVO", precio=100.0, duracion_dias=30):
     return res.json()["id_membresia"]
 
 
-def crear_cliente(id_usuario, id_cliente, headers_admin):
+def crear_cliente(id_usuario, id_cliente, headers_admin, telefono=None):
     db = TestingSessionLocal()
     db.add(models.Usuario(id_usuario=id_usuario, correo=f"cliente{id_usuario}@gleyforgym.com",
                            password_hash=encriptar_password("cliente123"), rol="CLIENTE", estado="ACTIVO"))
     db.add(models.Cliente(id_cliente=id_cliente, id_usuario=id_usuario, dni=f"{id_usuario:08d}",
-                           nombres="Ana", apellidos="Lopez", estado="ACTIVO"))
+                           nombres="Ana", apellidos="Lopez", estado="ACTIVO", telefono=telefono))
     db.commit()
     db.close()
     return get_auth_headers(rol="CLIENTE", id_usuario=id_usuario)
+
+
+class _GatewayRealStub:
+    """Simula un gateway real (sin resolver_transaccion, a diferencia de
+    MockGateway) para probar el chequeo de teléfono en iniciar_checkout_pago."""
+
+    def crear_checkout(self, monto, referencia, cliente):
+        return {"id_transaccion_externa": "ext_stub_1", "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
 
 
 def test_comprar_membresia_crea_pago_y_cliente_membresia_pendientes():
@@ -247,3 +256,39 @@ def test_webhook_pago_membresia_fallido_cancela_cliente_membresia_pendiente():
         "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
     )
     assert reintento.status_code == 200
+
+
+def test_checkout_con_gateway_real_exige_telefono_valido():
+    """Reproduce el bug real: Culqi rechaza la orden con 400 si el teléfono
+    llega vacío — antes de esta corrección, ese 400 de Culqi reventaba como
+    un 500 genérico en vez de avisarle al cliente que falta su teléfono."""
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono=None)
+
+    pago = client.post(
+        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
+    ).json()
+
+    with patch("app.routes.pagos.gateway", _GatewayRealStub()):
+        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
+
+    assert res.status_code == 400
+
+
+def test_checkout_con_gateway_real_y_telefono_valido_funciona():
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin)
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono="987654321")
+
+    pago = client.post(
+        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
+    ).json()
+
+    with patch("app.routes.pagos.gateway", _GatewayRealStub()):
+        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
+
+    assert res.status_code == 200
+    assert res.json()["id_transaccion_externa"] == "ext_stub_1"

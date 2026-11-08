@@ -121,7 +121,15 @@ function HazteSocio() {
 
           <div className="form-field">
             <label htmlFor="telefono">Teléfono</label>
-            <input id="telefono" name="telefono" value={form.telefono} onChange={cambiar} />
+            <input
+              id="telefono"
+              name="telefono"
+              value={form.telefono}
+              onChange={cambiar}
+              minLength={6}
+              maxLength={15}
+              required
+            />
           </div>
 
           <div className="form-field">

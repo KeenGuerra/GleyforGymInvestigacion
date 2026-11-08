@@ -10,6 +10,7 @@ generar tokens.
 """
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -451,6 +452,48 @@ def test_checkout_de_comprador_sin_membresia_sobre_su_propia_venta():
 
     res_ajeno = client.post(f"/ventas/{id_venta}/checkout", headers=headers_otro)
     assert res_ajeno.status_code == 403
+
+
+class _GatewayRealStub:
+    """Simula un gateway real (sin resolver_transaccion) para probar el
+    chequeo de teléfono en iniciar_checkout_venta."""
+
+    def crear_checkout(self, monto, referencia, cliente):
+        return {"id_transaccion_externa": "ext_stub_venta", "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
+
+
+def test_checkout_venta_con_gateway_real_exige_telefono_valido_del_socio():
+    """Mismo bug que con pagos de membresia: Culqi rechaza con 400 si el
+    telefono del cliente llega vacio -- antes reventaba como 500 generico."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=50, correo="socio.sintelefono@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=50, id_usuario=50, dni="50505050", nombres="Rosa", apellidos="Vera", estado="ACTIVO"))
+    db.commit()
+    db.close()
+
+    headers_socio = get_auth_headers(rol="CLIENTE", id_usuario=50)
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 1}]},
+        headers=headers_socio,
+    ).json()["id_venta"]
+
+    with patch("app.routes.ventas.gateway", _GatewayRealStub()):
+        res = client.post(f"/ventas/{id_venta}/checkout", headers=headers_socio)
+
+    assert res.status_code == 400
 
 
 def test_venta_rechaza_stock_insuficiente_cuando_el_detalle_repite_el_producto():

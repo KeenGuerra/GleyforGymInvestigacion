@@ -110,6 +110,17 @@ def iniciar_checkout_pago(
         raise HTTPException(status_code=400, detail="El pago no está en estado PENDIENTE")
 
     cliente_db = pago_db.cliente
+
+    # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
+    # (lo rechaza con 400 si llega vacío) — con MockGateway no importa.
+    if not hasattr(gateway, "resolver_transaccion") and (
+        not cliente_db.telefono or len(cliente_db.telefono) < 6
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Registra un teléfono válido en tu perfil antes de pagar.",
+        )
+
     sesion = gateway.crear_checkout(
         pago_db.monto,
         referencia=f"pago-{pago_db.id_pago}",
