@@ -130,12 +130,17 @@ describe("Progreso Page Component", () => {
       expect(screen.getByText("Juan Perez - DNI 12345678")).toBeDefined();
     });
 
+    const observacionInput = screen.getByLabelText("Observación");
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Peso (kg)"), { target: { value: "82" } });
     fireEvent.change(screen.getByLabelText("% grasa corporal"), { target: { value: "18" } });
     fireEvent.change(screen.getByLabelText("Pierna derecha (cm)"), { target: { value: "55.5" } });
     fireEvent.change(screen.getByLabelText("Fecha de registro"), { target: { value: "2026-06-02" } });
-    fireEvent.change(screen.getByLabelText("Observación"), { target: { value: "Nueva" } });
+    fireEvent.change(observacionInput, { target: { value: "Nueva" } });
+    // Evita una condición de carrera: sin esto, el clic puede dispararse
+    // antes de que React procese estos cambios (mismo fix que en
+    // Nutricion.test.jsx/Rutinas.test.jsx, que sí llegó a fallar en CI).
+    await waitFor(() => expect(observacionInput.value).toBe("Nueva"));
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
@@ -170,7 +175,9 @@ describe("Progreso Page Component", () => {
     expect(screen.getByRole("heading", { name: "Editar progreso" })).toBeDefined();
 
     // Modify weight
-    fireEvent.change(screen.getByLabelText("Peso (kg)"), { target: { value: "85" } });
+    const pesoInputEdicion = screen.getByLabelText("Peso (kg)");
+    fireEvent.change(pesoInputEdicion, { target: { value: "85" } });
+    await waitFor(() => expect(pesoInputEdicion.value).toBe("85"));
 
     fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
 

@@ -80,9 +80,14 @@ describe("Asistencias Page Component", () => {
     });
 
     // select client
+    const observacionInput = screen.getByLabelText("Observación");
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Hora entrada"), { target: { value: "08:00" } });
-    fireEvent.change(screen.getByLabelText("Observación"), { target: { value: "Entrenamiento completado" } });
+    fireEvent.change(observacionInput, { target: { value: "Entrenamiento completado" } });
+    // Evita una condición de carrera: sin esto, el clic puede dispararse
+    // antes de que React procese estos cambios (mismo fix que en
+    // Nutricion.test.jsx/Rutinas.test.jsx, que sí llegó a fallar en CI).
+    await waitFor(() => expect(observacionInput.value).toBe("Entrenamiento completado"));
 
     fireEvent.click(screen.getByText("Guardar asistencia"));
 
@@ -105,7 +110,9 @@ describe("Asistencias Page Component", () => {
       expect(screen.getByRole("heading", { name: "Editar asistencia" })).toBeDefined();
     });
 
-    fireEvent.change(screen.getByLabelText("Hora salida"), { target: { value: "11:00" } });
+    const horaSalidaInput = screen.getByLabelText("Hora salida");
+    fireEvent.change(horaSalidaInput, { target: { value: "11:00" } });
+    await waitFor(() => expect(horaSalidaInput.value).toBe("11:00"));
     fireEvent.click(screen.getByText("Actualizar asistencia"));
 
     await waitFor(() => {

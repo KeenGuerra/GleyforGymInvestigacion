@@ -280,8 +280,17 @@ describe("ClienteMembresias Page Component", () => {
       expect(screen.getByLabelText("Cliente")).toBeDefined();
     });
 
-    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("Membresía"), { target: { value: "5" } });
+    const selectCliente = screen.getByLabelText("Cliente");
+    const selectMembresia = screen.getByLabelText("Membresía");
+    fireEvent.change(selectCliente, { target: { value: "1" } });
+    fireEvent.change(selectMembresia, { target: { value: "5" } });
+    // Evita una condición de carrera: sin esto, el clic puede dispararse
+    // antes de que React procese estos cambios (mismo fix que en
+    // Nutricion.test.jsx/Rutinas.test.jsx, que sí llegó a fallar en CI).
+    await waitFor(() => {
+      expect(selectCliente.value).toBe("1");
+      expect(selectMembresia.value).toBe("5");
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Asignar membresía" }));
 

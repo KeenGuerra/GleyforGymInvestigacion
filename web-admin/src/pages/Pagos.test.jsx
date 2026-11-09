@@ -104,11 +104,16 @@ describe("Pagos Page Component", () => {
       expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
     });
 
+    const fechaPagoInput = screen.getByLabelText("Fecha de pago");
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Membresía"), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText("Monto (S/)"), { target: { value: "120" } });
     fireEvent.change(screen.getByLabelText("Método de pago"), { target: { value: "YAPE" } });
-    fireEvent.change(screen.getByLabelText("Fecha de pago"), { target: { value: "2026-06-02" } });
+    fireEvent.change(fechaPagoInput, { target: { value: "2026-06-02" } });
+    // Evita una condición de carrera: sin esto, el clic puede dispararse
+    // antes de que React procese estos cambios (mismo fix que en
+    // Nutricion.test.jsx/Rutinas.test.jsx, que sí llegó a fallar en CI).
+    await waitFor(() => expect(fechaPagoInput.value).toBe("2026-06-02"));
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
@@ -140,7 +145,9 @@ describe("Pagos Page Component", () => {
     expect(screen.getByRole("heading", { name: "Editar pago" })).toBeDefined();
 
     // Change amount
-    fireEvent.change(screen.getByLabelText("Monto (S/)"), { target: { value: "180" } });
+    const montoInput = screen.getByLabelText("Monto (S/)");
+    fireEvent.change(montoInput, { target: { value: "180" } });
+    await waitFor(() => expect(montoInput.value).toBe("180"));
 
     // Submit form (button is now "Actualizar")
     fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
@@ -231,10 +238,12 @@ describe("Pagos Page Component", () => {
       expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
     });
 
+    const metodoPagoSelect = screen.getByLabelText("Método de pago");
     fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Membresía"), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText("Monto (S/)"), { target: { value: "120" } });
-    fireEvent.change(screen.getByLabelText("Método de pago"), { target: { value: "YAPE" } });
+    fireEvent.change(metodoPagoSelect, { target: { value: "YAPE" } });
+    await waitFor(() => expect(metodoPagoSelect.value).toBe("YAPE"));
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 

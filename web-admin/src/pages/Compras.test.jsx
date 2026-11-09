@@ -81,6 +81,10 @@ describe("Compras Page Component", () => {
 
     const proveedorSelect = container.querySelector('select[name="id_proveedor"]');
     fireEvent.change(proveedorSelect, { target: { value: "1" } });
+    // Evita una condición de carrera: sin esto, los siguientes clics pueden
+    // dispararse antes de que React procese este cambio (mismo fix que en
+    // Nutricion.test.jsx/Rutinas.test.jsx, que sí llegó a fallar en CI).
+    await waitFor(() => expect(proveedorSelect.value).toBe("1"));
 
     fireEvent.click(screen.getByText("+ Agregar producto"));
 
@@ -90,6 +94,7 @@ describe("Compras Page Component", () => {
     const inputs = container.querySelectorAll('input[type="number"]');
     fireEvent.change(inputs[0], { target: { value: "10" } });
     fireEvent.change(inputs[1], { target: { value: "5" } });
+    await waitFor(() => expect(inputs[1].value).toBe("5"));
 
     fireEvent.click(screen.getByText("Registrar compra"));
 
