@@ -1948,50 +1948,6 @@ def test_clientes_membresia_actual_cae_a_la_mas_reciente_si_ninguna_esta_activa(
     assert cliente_1["estado_membresia"] == "TERMINADA"
 
 
-def test_reset_total_borra_todo_y_resiembra_solo_admin_y_avisos():
-    """Endpoint TEMPORAL (ver backend/app/routes/mantenimiento.py y
-    Pendientes.md): solo ADMIN puede llamarlo, exige la confirmación exacta,
-    y deja la BD exactamente como create_db.py la deja en un entorno nuevo
-    -- un admin y los avisos iniciales, nada más."""
-    from app.routes.mantenimiento import AVISOS_INICIALES
-
-    populate_db_for_coverage()
-    headers_admin = get_auth_headers()
-    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
-
-    res_no_admin = client.post(
-        "/mantenimiento/reset-total", json={"confirmar": "BORRAR_TODO"}, headers=headers_cliente
-    )
-    assert res_no_admin.status_code == 403
-
-    res_confirmacion_invalida = client.post(
-        "/mantenimiento/reset-total", json={"confirmar": "borrar"}, headers=headers_admin
-    )
-    assert res_confirmacion_invalida.status_code == 422
-
-    res_ok = client.post(
-        "/mantenimiento/reset-total", json={"confirmar": "BORRAR_TODO"}, headers=headers_admin
-    )
-    assert res_ok.status_code == 200
-
-    db = TestingSessionLocal()
-    try:
-        usuarios = db.query(models.Usuario).all()
-        assert len(usuarios) == 1
-        assert usuarios[0].correo == "admin@gleyforgym.com"
-        assert usuarios[0].rol == "ADMIN"
-        assert db.query(models.Cliente).count() == 0
-        assert db.query(models.Pago).count() == 0
-        assert db.query(models.Aviso).count() == len(AVISOS_INICIALES)
-    finally:
-        db.close()
-
-    res_login = client.post(
-        "/usuarios/login", json={"correo": "admin@gleyforgym.com", "password": "Admin123*"}
-    )
-    assert res_login.status_code == 200
-
-
 def test_avisos_crud_y_visibilidad_publica():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")
