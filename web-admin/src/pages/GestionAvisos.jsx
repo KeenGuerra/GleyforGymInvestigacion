@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api/api";
 
 const TIPOS = ["HORARIO", "COACHES", "BAILE", "COMUNICADO", "EVENTO"];
+const hoy = new Date().toISOString().slice(0, 10);
 
 function GestionAvisos() {
   const [avisos, setAvisos] = useState([]);
@@ -264,7 +265,20 @@ function GestionAvisos() {
                     <td>{a.titulo}</td>
                     <td><span className="badge">{a.tipo}</span></td>
                     <td>{a.contenido}</td>
-                    <td>{a.fecha_evento ? new Date(a.fecha_evento).toLocaleDateString("es-PE") : "—"}</td>
+                    <td>
+                      {a.fecha_evento ? (
+                        <>
+                          {new Date(a.fecha_evento).toLocaleDateString("es-PE")}
+                          {a.tipo === "EVENTO" && a.fecha_evento < hoy && (
+                            <span className="badge badge-neutral" style={{ marginLeft: "6px" }}>
+                              Pasado
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td><span className="badge">{a.estado}</span></td>
                     <td>
                       <div className="table-actions">

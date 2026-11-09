@@ -57,6 +57,31 @@ describe("Avisos Page Component", () => {
     });
   });
 
+  it("hides a past EVENTO and keeps a future one, sorted by closest date first", async () => {
+    api.get.mockResolvedValue({
+      data: [
+        { id_aviso: 1, titulo: "Evento pasado", contenido: "Ya ocurrió", tipo: "EVENTO", fecha_evento: "2026-01-01", estado: "ACTIVO" },
+        { id_aviso: 2, titulo: "Evento lejano", contenido: "En dos meses", tipo: "EVENTO", fecha_evento: "2027-01-15", estado: "ACTIVO" },
+        { id_aviso: 3, titulo: "Evento cercano", contenido: "La próxima semana", tipo: "EVENTO", fecha_evento: "2026-11-15", estado: "ACTIVO" },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <Avisos />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("Evento pasado")).toBeNull();
+      expect(screen.getByText("Evento cercano")).toBeDefined();
+      expect(screen.getByText("Evento lejano")).toBeDefined();
+    });
+
+    const titulos = screen.getAllByText(/^Evento (cercano|lejano)$/).map((el) => el.textContent);
+    expect(titulos).toEqual(["Evento cercano", "Evento lejano"]);
+  });
+
   it("shows an empty message when there are no avisos", async () => {
     api.get.mockResolvedValue({ data: [] });
 

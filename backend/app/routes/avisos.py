@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
+from datetime import date
 from typing import Annotated
 
 from app.database import get_db
@@ -22,11 +23,19 @@ def listar_avisos(
 ):
     """Público (como el catálogo de membresías): sin sesión solo se ven los
     avisos activos; con sesión (cualquier rol) se ven todos, para poder
-    administrarlos."""
+    administrarlos. Además, un EVENTO con fecha_evento ya pasada se oculta
+    de la vista pública automáticamente (no tiene sentido seguir anunciando
+    un evento que ya ocurrió) -- el staff sí lo sigue viendo al administrar,
+    para su propio historial."""
     query = db.query(models.Aviso)
 
     if not usuario_actual:
-        query = query.filter(models.Aviso.estado == ESTADO_ACTIVO)
+        hoy = date.today()
+        query = query.filter(models.Aviso.estado == ESTADO_ACTIVO).filter(
+            (models.Aviso.tipo != "EVENTO")
+            | (models.Aviso.fecha_evento.is_(None))
+            | (models.Aviso.fecha_evento >= hoy)
+        )
 
     return query.order_by(models.Aviso.fecha_creacion.desc()).all()
 

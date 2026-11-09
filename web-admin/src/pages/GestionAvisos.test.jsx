@@ -51,6 +51,26 @@ describe("GestionAvisos Page Component", () => {
     expect(within(filaSinFecha).getByText("—")).toBeDefined();
   });
 
+  it("marks a past EVENTO as 'Pasado' but not a future one", async () => {
+    api.get.mockResolvedValue({
+      data: [
+        { id_aviso: 3, titulo: "Evento pasado", contenido: "Ya ocurrió", tipo: "EVENTO", fecha_evento: "2026-01-01", estado: "ACTIVO" },
+        { id_aviso: 4, titulo: "Evento futuro", contenido: "Próximamente", tipo: "EVENTO", fecha_evento: "2026-12-15", estado: "ACTIVO" },
+      ],
+    });
+    render(<GestionAvisos />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Evento pasado")).toBeDefined();
+    });
+
+    const filaPasado = screen.getByText("Evento pasado").closest("tr");
+    expect(within(filaPasado).getByText("Pasado")).toBeDefined();
+
+    const filaFuturo = screen.getByText("Evento futuro").closest("tr");
+    expect(within(filaFuturo).queryByText("Pasado")).toBeNull();
+  });
+
   it("creates a new aviso", async () => {
     api.post.mockResolvedValue({ data: {} });
     render(<GestionAvisos />);

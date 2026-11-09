@@ -19,7 +19,19 @@ function Avisos() {
     const cargar = async () => {
       try {
         const res = await api.get("/avisos/");
-        setAvisos(res.data.filter((a) => a.estado === "ACTIVO"));
+        const hoy = new Date().toISOString().slice(0, 10);
+        setAvisos(
+          res.data.filter(
+            (a) =>
+              a.estado === "ACTIVO" &&
+              // Un EVENTO con fecha ya pasada no se muestra -- el backend ya
+              // lo filtra para visitantes sin sesión, pero un usuario
+              // logueado (cliente/staff) sí recibe todo, así que se repite
+              // el filtro aquí para que esta página pública nunca muestre un
+              // evento vencido a nadie.
+              (a.tipo !== "EVENTO" || !a.fecha_evento || a.fecha_evento >= hoy)
+          )
+        );
       } catch (err) {
         console.error("Error al cargar avisos:", err);
         setError("No se pudieron cargar los avisos.");
@@ -34,6 +46,14 @@ function Avisos() {
     acc[tipo].push(aviso);
     return acc;
   }, {});
+
+  // Los próximos eventos se ven mejor ordenados por fecha (el más cercano
+  // primero), no por orden de creación como el resto de tipos de aviso.
+  if (grupos.EVENTO) {
+    grupos.EVENTO = [...grupos.EVENTO].sort((a, b) =>
+      (a.fecha_evento || "").localeCompare(b.fecha_evento || "")
+    );
+  }
 
   return (
     <div className="public-page">

@@ -852,6 +852,19 @@ class LoteResponse(LoteCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AlertaLoteResponse(LoteResponse):
+    """LoteResponse + cuántos días faltan para vencer (negativo si ya
+    venció) -- usado solo por GET /inventario/alertas/vencimiento, para que
+    el frontend pueda separar "vencidos" de "por vencer" y mostrar el
+    detalle sin tener que recalcularlo."""
+    dias_restantes: int
+
+
+class AlertasVencimientoResponse(BaseModel):
+    vencidos: List[AlertaLoteResponse]
+    por_vencer: List[AlertaLoteResponse]
+
+
 # =========================
 # MOVIMIENTOS DE STOCK
 # =========================

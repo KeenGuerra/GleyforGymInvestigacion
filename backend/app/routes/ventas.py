@@ -196,8 +196,11 @@ def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
     ).scalar() or 0
 
     from datetime import timedelta
-    fecha_limite = datetime.now() + timedelta(days=30)
+    fecha_limite = hoy + timedelta(days=30)
+    # No cuenta los que YA vencieron (antes se contaban juntos, igual que
+    # pasaba en GET /inventario/alertas/vencimiento -- ver el fix ahí).
     por_vencer = db.query(func.count(models.Lote.id_lote)).filter(
+        models.Lote.fecha_vencimiento >= hoy,
         models.Lote.fecha_vencimiento <= fecha_limite,
         models.Lote.estado == "ACTIVO",
         models.Lote.cantidad > 0

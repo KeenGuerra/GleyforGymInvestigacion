@@ -1002,6 +1002,80 @@ def test_resumen_ventas_cuenta_confirmada_y_entregada_juntas():
     assert data["ingresos_hoy"] == 100.0
 
 
+def test_alertas_vencimiento_separa_vencidos_de_por_vencer():
+    """GET /inventario/alertas/vencimiento no debe mezclar un lote que ya
+    venció con uno que todavía está por vencer bajo la misma lista -- antes
+    de este fix, ambos caían juntos sin ninguna forma de distinguirlos
+    (Lote.estado nunca pasa a VENCIDO en ningún lado del código)."""
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers)
+
+    hoy = date.today()
+    res_vencido = client.post(
+        "/inventario/lotes",
+        json={
+            "id_producto": id_producto, "numero_lote": "L-VENCIDO",
+            "cantidad": 5, "fecha_vencimiento": (hoy - timedelta(days=3)).isoformat(),
+        },
+        headers=headers,
+    )
+    assert res_vencido.status_code == 200, res_vencido.text
+
+    res_por_vencer = client.post(
+        "/inventario/lotes",
+        json={
+            "id_producto": id_producto, "numero_lote": "L-POR-VENCER",
+            "cantidad": 5, "fecha_vencimiento": (hoy + timedelta(days=5)).isoformat(),
+        },
+        headers=headers,
+    )
+    assert res_por_vencer.status_code == 200, res_por_vencer.text
+
+    res = client.get("/inventario/alertas/vencimiento?dias=30", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert len(data["vencidos"]) == 1
+    assert data["vencidos"][0]["numero_lote"] == "L-VENCIDO"
+    assert data["vencidos"][0]["dias_restantes"] == -3
+
+    assert len(data["por_vencer"]) == 1
+    assert data["por_vencer"][0]["numero_lote"] == "L-POR-VENCER"
+    assert data["por_vencer"][0]["dias_restantes"] == 5
+
+
+def test_resumen_ventas_productos_por_vencer_excluye_los_ya_vencidos():
+    """GET /ventas/resumen -> productos_por_vencer tenía el mismo bug: no
+    tenía límite inferior, así que un lote ya vencido se contaba igual que
+    uno por vencer de verdad."""
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers)
+
+    hoy = date.today()
+    client.post(
+        "/inventario/lotes",
+        json={
+            "id_producto": id_producto, "numero_lote": "L-VENCIDO",
+            "cantidad": 5, "fecha_vencimiento": (hoy - timedelta(days=3)).isoformat(),
+        },
+        headers=headers,
+    )
+    client.post(
+        "/inventario/lotes",
+        json={
+            "id_producto": id_producto, "numero_lote": "L-POR-VENCER",
+            "cantidad": 5, "fecha_vencimiento": (hoy + timedelta(days=5)).isoformat(),
+        },
+        headers=headers,
+    )
+
+    res = client.get("/ventas/resumen", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["productos_por_vencer"] == 1
+
+
 def test_reporte_tiempos_respuesta_registra_llamadas_reales():
     """El middleware de app/main.py (I4/F-04) debe escribir en la misma BD
     que usan los tests (vía el override de get_db), no en la de producción."""

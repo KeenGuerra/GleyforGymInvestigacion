@@ -5,7 +5,8 @@ function Inventario() {
   const [inventario, setInventario] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
   const [alertasStock, setAlertasStock] = useState([]);
-  const [alertasVencimiento, setAlertasVencimiento] = useState([]);
+  const [lotesVencidos, setLotesVencidos] = useState([]);
+  const [lotesPorVencer, setLotesPorVencer] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [tab, setTab] = useState("inventario");
@@ -25,7 +26,8 @@ function Inventario() {
         api.get("/inventario/alertas/vencimiento"),
       ]);
       setInventario(r1.data); setMovimientos(r2.data);
-      setAlertasStock(r3.data); setAlertasVencimiento(r4.data);
+      setAlertasStock(r3.data);
+      setLotesVencidos(r4.data.vencidos); setLotesPorVencer(r4.data.por_vencer);
 
       const valoresIniciales = {};
       r1.data.forEach((inv) => { valoresIniciales[inv.id_producto] = inv.stock_actual; });
@@ -92,7 +94,8 @@ function Inventario() {
       <section className="stats-grid">
         <div className="stat-card"><span>Productos</span><strong>{inventario.length}</strong></div>
         <div className="stat-card"><span>Bajo stock</span><strong style={{ color: alertasStock.length > 0 ? "var(--danger)" : undefined }}>{alertasStock.length}</strong></div>
-        <div className="stat-card"><span>Por vencer</span><strong style={{ color: alertasVencimiento.length > 0 ? "var(--warning)" : undefined }}>{alertasVencimiento.length}</strong></div>
+        <div className="stat-card"><span>Por vencer</span><strong style={{ color: lotesPorVencer.length > 0 ? "var(--warning)" : undefined }}>{lotesPorVencer.length}</strong></div>
+        <div className="stat-card"><span>Vencidos</span><strong style={{ color: lotesVencidos.length > 0 ? "var(--danger)" : undefined }}>{lotesVencidos.length}</strong></div>
       </section>
 
       <div className="tabs-container" style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
@@ -191,7 +194,7 @@ function Inventario() {
       {tab === "alertas" && (
         <section className="table-card">
           <div className="card-header"><div><h2>Alertas</h2></div></div>
-          {alertasStock.length === 0 && alertasVencimiento.length === 0 ? <p className="empty-message">No hay alertas activas.</p> : (
+          {alertasStock.length === 0 && lotesVencidos.length === 0 && lotesPorVencer.length === 0 ? <p className="empty-message">No hay alertas activas.</p> : (
             <>
               {alertasStock.length > 0 && (
                 <>
@@ -209,15 +212,34 @@ function Inventario() {
                   </div>
                 </>
               )}
-              {alertasVencimiento.length > 0 && (
+              {lotesVencidos.length > 0 && (
+                <>
+                  <h3 style={{ color: "var(--danger)", margin: "1rem 0 0.5rem" }}>Vencidos</h3>
+                  <div className="cards-grid">
+                    {lotesVencidos.map((l) => (
+                      <div key={l.id_lote} className="card item-card" style={{ borderLeft: "3px solid var(--danger)" }}>
+                        <h3>{l.nombre_producto}</h3>
+                        <p className="item-description">Lote: {l.numero_lote}</p>
+                        <p className="item-description">Vence: {l.fecha_vencimiento}</p>
+                        <p className="item-description">Venció hace {Math.abs(l.dias_restantes)} día(s)</p>
+                        <p className="item-description">Cantidad: {l.cantidad}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {lotesPorVencer.length > 0 && (
                 <>
                   <h3 style={{ color: "var(--warning)", margin: "1rem 0 0.5rem" }}>Próximos a vencer</h3>
                   <div className="cards-grid">
-                    {alertasVencimiento.map((l) => (
+                    {lotesPorVencer.map((l) => (
                       <div key={l.id_lote} className="card item-card" style={{ borderLeft: "3px solid var(--warning)" }}>
                         <h3>{l.nombre_producto}</h3>
                         <p className="item-description">Lote: {l.numero_lote}</p>
                         <p className="item-description">Vence: {l.fecha_vencimiento}</p>
+                        <p className="item-description">
+                          {l.dias_restantes === 0 ? "Vence hoy" : `Vence en ${l.dias_restantes} día(s)`}
+                        </p>
                         <p className="item-description">Cantidad: {l.cantidad}</p>
                       </div>
                     ))}

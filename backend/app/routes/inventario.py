@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 # pyrefly: ignore [missing-import]
 from sqlalchemy import func
 from typing import Annotated, Optional
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from app.database import get_db
 from app import models, schemas
@@ -188,7 +188,7 @@ def alertas_stock_bajo(db: Annotated[Session, Depends(get_db)]):
 
 @router.get(
     "/alertas/vencimiento",
-    response_model=list[schemas.LoteResponse],
+    response_model=schemas.AlertasVencimientoResponse,
     dependencies=[Depends(requerir_roles("ADMIN"))],
     responses={401: {"description": "Token inválido o expirado"}}
 )
@@ -196,7 +196,14 @@ def alertas_vencimiento(
     db: Annotated[Session, Depends(get_db)],
     dias: int = 30,
 ):
-    fecha_limite = datetime.now() + timedelta(days=dias)
+    """Antes esto devolvía una sola lista sin distinguir un lote que vence
+    pronto de uno que YA venció (Lote.estado nunca se actualiza a VENCIDO,
+    así que seguían apareciendo juntos bajo "por vencer" para siempre). Se
+    separa aquí, calculando los días restantes al vuelo en vez de depender
+    de un proceso en segundo plano que mantenga Lote.estado al día (este
+    proyecto no tiene ningún cron -- ver Pendientes.md)."""
+    hoy = date.today()
+    fecha_limite = hoy + timedelta(days=dias)
 
     lotes = db.query(models.Lote).filter(
         models.Lote.fecha_vencimiento <= fecha_limite,
@@ -204,12 +211,14 @@ def alertas_vencimiento(
         models.Lote.cantidad > 0
     ).order_by(models.Lote.fecha_vencimiento).all()
 
-    resultado = []
+    vencidos = []
+    por_vencer = []
     for lote in lotes:
         prod = db.query(models.Producto).filter(
             models.Producto.id_producto == lote.id_producto
         ).first()
-        resultado.append(schemas.LoteResponse(
+        dias_restantes = (lote.fecha_vencimiento - hoy).days
+        item = schemas.AlertaLoteResponse(
             id_lote=lote.id_lote,
             id_producto=lote.id_producto,
             numero_lote=lote.numero_lote,
@@ -217,9 +226,12 @@ def alertas_vencimiento(
             fecha_vencimiento=lote.fecha_vencimiento,
             fecha_ingreso=lote.fecha_ingreso,
             estado=lote.estado,
-            nombre_producto=prod.nombre if prod else None
-        ))
-    return resultado
+            nombre_producto=prod.nombre if prod else None,
+            dias_restantes=dias_restantes,
+        )
+        (vencidos if dias_restantes < 0 else por_vencer).append(item)
+
+    return schemas.AlertasVencimientoResponse(vencidos=vencidos, por_vencer=por_vencer)
 
 
 @router.post(

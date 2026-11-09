@@ -1989,6 +1989,40 @@ def test_avisos_crud_y_visibilidad_publica():
     res_eliminar = client.delete(f"/avisos/{id_aviso}", headers=headers_admin)
     assert res_eliminar.status_code == 200
 
+
+def test_avisos_evento_pasado_se_oculta_del_publico_pero_no_del_staff():
+    """Un EVENTO con fecha_evento ya pasada no tiene sentido seguir
+    anunciándolo -- se oculta solo de la vista pública sin sesión, pero el
+    staff lo sigue viendo al administrar (igual que ya pasaba con estado)."""
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    ayer = (date.today() - timedelta(days=1)).isoformat()
+    manana = (date.today() + timedelta(days=1)).isoformat()
+
+    id_pasado = client.post(
+        "/avisos/",
+        json={"titulo": "Evento pasado", "contenido": "Ya ocurrió", "tipo": "EVENTO", "fecha_evento": ayer},
+        headers=headers_admin,
+    ).json()["id_aviso"]
+
+    id_futuro = client.post(
+        "/avisos/",
+        json={"titulo": "Evento futuro", "contenido": "Próximamente", "tipo": "EVENTO", "fecha_evento": manana},
+        headers=headers_admin,
+    ).json()["id_aviso"]
+
+    res_publico = client.get("/avisos/")
+    assert res_publico.status_code == 200
+    ids_publico = [a["id_aviso"] for a in res_publico.json()]
+    assert id_pasado not in ids_publico
+    assert id_futuro in ids_publico
+
+    res_staff = client.get("/avisos/", headers=headers_admin)
+    ids_staff = [a["id_aviso"] for a in res_staff.json()]
+    assert id_pasado in ids_staff
+    assert id_futuro in ids_staff
+
     # No encontrado
     assert client.put(
         "/avisos/9999", json={"titulo": "x"}, headers=headers_admin

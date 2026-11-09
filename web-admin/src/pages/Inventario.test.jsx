@@ -18,7 +18,10 @@ const mockMovimientos = [
   { id_movimiento: 1, nombre_producto: "Proteína Whey", tipo_movimiento: "ENTRADA_COMPRA", cantidad: 10, costo_unitario: 60, fecha_movimiento: "2026-09-01T10:00:00Z" },
 ];
 const mockAlertasStock = [{ id_inventario: 2, nombre_producto: "Creatina", stock_actual: 1, stock_minimo: 5 }];
-const mockAlertasVencimiento = [{ id_lote: 1, nombre_producto: "Barras", numero_lote: "L1", fecha_vencimiento: "2026-10-01", cantidad: 3 }];
+const mockAlertasVencimiento = {
+  vencidos: [{ id_lote: 2, nombre_producto: "Barritas", numero_lote: "L2", fecha_vencimiento: "2026-09-01", cantidad: 2, dias_restantes: -5 }],
+  por_vencer: [{ id_lote: 1, nombre_producto: "Barras", numero_lote: "L1", fecha_vencimiento: "2026-10-01", cantidad: 3, dias_restantes: 7 }],
+};
 
 function mockApiGet() {
   api.get.mockImplementation((url) => {
@@ -67,7 +70,7 @@ describe("Inventario Page Component", () => {
     });
   });
 
-  it("switches to the alertas tab and shows both alert types", async () => {
+  it("switches to the alertas tab and shows stock, expired and about-to-expire alerts separately", async () => {
     render(<Inventario />);
     await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
 
@@ -76,8 +79,12 @@ describe("Inventario Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Stock bajo")).toBeDefined();
       expect(screen.getByText("Creatina")).toBeDefined();
+      expect(screen.getAllByText("Vencidos").length).toBeGreaterThan(0);
+      expect(screen.getByText("Barritas")).toBeDefined();
+      expect(screen.getByText("Venció hace 5 día(s)")).toBeDefined();
       expect(screen.getByText("Próximos a vencer")).toBeDefined();
       expect(screen.getByText("Barras")).toBeDefined();
+      expect(screen.getByText("Vence en 7 día(s)")).toBeDefined();
     });
   });
 
@@ -127,7 +134,7 @@ describe("Inventario Page Component", () => {
       if (url === "/inventario/") return Promise.resolve({ data: mockInventario });
       if (url === "/inventario/movimientos/") return Promise.resolve({ data: [] });
       if (url === "/inventario/alertas/stock") return Promise.resolve({ data: [] });
-      if (url === "/inventario/alertas/vencimiento") return Promise.resolve({ data: [] });
+      if (url === "/inventario/alertas/vencimiento") return Promise.resolve({ data: { vencidos: [], por_vencer: [] } });
       return Promise.resolve({ data: [] });
     });
 
