@@ -104,6 +104,9 @@ describe("Tienda Page Component", () => {
     fireEvent.click(screen.getAllByText("Carrito (1)")[1]);
 
     await waitFor(() => expect(screen.getByText("Confirmar pedido")).toBeDefined());
+    expect(
+      screen.getByText("📍 Todas las compras se recogen en el gimnasio — no hacemos delivery.")
+    ).toBeDefined();
     fireEvent.click(screen.getByText("Confirmar pedido"));
 
     await waitFor(() => {
@@ -136,6 +139,31 @@ describe("Tienda Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Stock insuficiente")).toBeDefined();
     });
+  });
+
+  it("shows a pickup reminder on a confirmed order instead of the pay button", async () => {
+    localStorage.setItem("token", "fake-token");
+    api.get.mockImplementation((url) => {
+      if (url === "/productos/disponibles") return Promise.resolve({ data: mockProductos });
+      if (url === "/ventas/mis-pedidos") {
+        return Promise.resolve({
+          data: [{ ...mockPedidos[0], estado: "CONFIRMADA" }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    renderTienda();
+    await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Mis pedidos (1)"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("✔ Pago confirmado. Recógelo en el gimnasio — no hacemos delivery.")
+      ).toBeDefined();
+    });
+    expect(screen.queryByText("Pagar ahora")).toBeNull();
   });
 
   it("starts the payment for a pending order and shows the checkout modal", async () => {

@@ -253,6 +253,9 @@ function Tienda() {
                     <p>Subtotal: <strong>S/ {subtotal.toFixed(2)}</strong></p>
                     <p><strong>Total: S/ {total.toFixed(2)}</strong></p>
                   </div>
+                  <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "14px", marginBottom: "1rem" }}>
+                    📍 Todas las compras se recogen en el gimnasio — no hacemos delivery.
+                  </p>
                   <div className="form-actions" style={{ justifyContent: "flex-end" }}>
                     <button className="btn-secondary" onClick={() => setCarrito([])}>Vaciar</button>
                     <button className="btn-primary" disabled={procesando} onClick={checkout}>
@@ -302,6 +305,11 @@ function Tienda() {
                       >
                         {pagandoId === v.id_venta ? "Generando pago..." : "Pagar ahora"}
                       </button>
+                    )}
+                    {v.estado === "CONFIRMADA" && (
+                      <p className="success-message" style={{ marginTop: "0.75rem", textAlign: "center" }}>
+                        ✔ Pago confirmado. Recógelo en el gimnasio — no hacemos delivery.
+                      </p>
                     )}
                   </div>
                 ))}
