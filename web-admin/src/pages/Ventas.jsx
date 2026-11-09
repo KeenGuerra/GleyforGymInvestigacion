@@ -109,6 +109,13 @@ function Ventas() {
     finally { setProcesando(null); }
   };
 
+  const entregar = async (id) => {
+    if (!globalThis.confirm("¿Marcar esta venta como entregada? El cliente ya pasó a recogerla.")) return;
+    try { setProcesando(id); await api.post(`/ventas/${id}/entregar`); await cargar(); }
+    catch (err) { setError(err.response?.data?.detail || "Error al marcar como entregada"); }
+    finally { setProcesando(null); }
+  };
+
   const descargarBoleta = async (id) => {
     try {
       const res = await api.get(`/ventas/${id}/boleta`, { responseType: "blob" });
@@ -129,7 +136,8 @@ function Ventas() {
   });
 
   const badgeColor = (estado) => {
-    if (estado === "CONFIRMADA") return "badge badge-success";
+    if (estado === "ENTREGADA") return "badge badge-success";
+    if (estado === "CONFIRMADA") return "badge badge-warning";
     if (estado === "ANULADA") return "badge badge-danger";
     return "badge";
   };
@@ -267,8 +275,13 @@ function Ventas() {
                       {procesando === v.id_venta ? "Confirmando..." : "Confirmar"}
                     </button>
                   )}
-                  {v.estado === "CONFIRMADA" && (
+                  {(v.estado === "CONFIRMADA" || v.estado === "ENTREGADA") && (
                     <>
+                      {v.estado === "CONFIRMADA" && (
+                        <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => entregar(v.id_venta)}>
+                          {procesando === v.id_venta ? "Marcando..." : "Marcar como entregado"}
+                        </button>
+                      )}
                       <button className="btn-secondary" onClick={() => descargarBoleta(v.id_venta)}>
                         Descargar boleta
                       </button>

@@ -278,11 +278,61 @@ def test_venta_directa_descuenta_stock_inmediatamente():
     )
     assert res_venta.status_code == 200, res_venta.text
     venta = res_venta.json()
-    assert venta["estado"] == "CONFIRMADA"
+    # Venta de mostrador: el staff entrega en el momento, nace directo en
+    # ENTREGADA (no pasa por CONFIRMADA, que es solo para la Tienda online).
+    assert venta["estado"] == "ENTREGADA"
     assert venta["total"] == round(4 * 50.0, 2)
 
     stock_tras_venta = client.get(f"/inventario/{id_producto}", headers=headers).json()["stock_actual"]
     assert stock_tras_venta == 6  # 10 comprados - 4 vendidos
+
+
+# ── Marcar como entregada una venta de la Tienda online ──────────────────────
+def test_entregar_venta_marca_como_entregada_solo_desde_confirmada():
+    """POST /ventas/{id}/entregar es para cuando el cliente pasa físicamente
+    a recoger un pedido de la Tienda online ya pagado (CONFIRMADA). RECEPCIONISTA
+    puede usarlo (igual que confirmar membresías/pagos). No se puede usar
+    sobre una venta que no esté en CONFIRMADA (PENDIENTE, ya ENTREGADA o ANULADA)."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    headers_recepcionista = get_auth_headers(rol="RECEPCIONISTA")
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=60, correo="socio.entrega@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=60, id_usuario=60, dni="60606060", nombres="Mario", apellidos="Leon",
+                           estado="ACTIVO", telefono="987654321"))
+    db.commit()
+    db.close()
+    headers_socio = get_auth_headers(rol="CLIENTE", id_usuario=60)
+
+    # Todavía PENDIENTE: no se puede entregar algo que no se ha pagado.
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "EFECTIVO", "detalles": [{"id_producto": id_producto, "cantidad": 2}]},
+        headers=headers_socio,
+    ).json()["id_venta"]
+
+    res_pendiente = client.post(f"/ventas/{id_venta}/entregar", headers=headers_recepcionista)
+    assert res_pendiente.status_code == 409
+
+    client.post(f"/ventas/{id_venta}/confirmar", headers=headers_admin)
+
+    res_entregar = client.post(f"/ventas/{id_venta}/entregar", headers=headers_recepcionista)
+    assert res_entregar.status_code == 200, res_entregar.text
+    assert res_entregar.json()["estado"] == "ENTREGADA"
+
+    # Ya entregada: un segundo intento no tiene sentido.
+    res_otra_vez = client.post(f"/ventas/{id_venta}/entregar", headers=headers_recepcionista)
+    assert res_otra_vez.status_code == 409
 
 
 # ── Stock insuficiente rechaza la venta ──────────────────────────────────────
@@ -904,6 +954,52 @@ def test_reporte_productos_mas_vendidos_y_ventas_por_metodo_pago():
     data = res_metodo.json()
     assert data["total"] == 150.0
     assert data["por_metodo"] == [{"metodo_pago": "YAPE", "monto": 150.0, "cantidad": 1}]
+
+
+def test_resumen_ventas_cuenta_confirmada_y_entregada_juntas():
+    """GET /ventas/resumen debe contar tanto las ventas CONFIRMADA (de la
+    Tienda online, pendientes de recojo) como las ENTREGADA (de mostrador, o
+    ya recogidas) -- ambas son ventas reales y pagadas, solo en distinto
+    punto del flujo de recojo."""
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers, precio_venta=50.0)
+    id_proveedor = crear_proveedor(headers)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers)
+
+    # Venta de mostrador -> nace ENTREGADA.
+    client.post(
+        "/ventas/",
+        json={"metodo_pago": "EFECTIVO", "detalles": [{"id_producto": id_producto, "cantidad": 1}]},
+        headers=headers,
+    )
+
+    # Venta online solicitada y confirmada por el staff -> queda CONFIRMADA.
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=61, correo="socio.resumen@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=61, id_usuario=61, dni="61616161", nombres="Lucia", apellidos="Paz",
+                           estado="ACTIVO", telefono="987654321"))
+    db.commit()
+    db.close()
+    headers_socio = get_auth_headers(rol="CLIENTE", id_usuario=61)
+    id_venta_online = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "EFECTIVO", "detalles": [{"id_producto": id_producto, "cantidad": 1}]},
+        headers=headers_socio,
+    ).json()["id_venta"]
+    client.post(f"/ventas/{id_venta_online}/confirmar", headers=headers)
+
+    res = client.get("/ventas/resumen", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ventas_hoy"] == 2
+    assert data["ingresos_hoy"] == 100.0
 
 
 def test_reporte_tiempos_respuesta_registra_llamadas_reales():

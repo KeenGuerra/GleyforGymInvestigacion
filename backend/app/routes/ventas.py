@@ -130,12 +130,18 @@ def crear_venta(
             referencia_id=nueva_venta.id_venta,
             cantidad=detalle.cantidad,
             costo_unitario=inventario.ultimo_costo,
-            descripcion=f"Venta #{nueva_venta.id_venta} confirmada",
+            descripcion=f"Venta #{nueva_venta.id_venta} entregada en mostrador",
             id_usuario=usuario.get("id_usuario")
         )
         db.add(movimiento)
 
-    nueva_venta.estado = "CONFIRMADA"
+    # Venta de mostrador: el staff entrega el producto en el mismo momento
+    # de cobrar, así que nace directo en ENTREGADA -- no tiene sentido
+    # pedirle un segundo paso de "marcar como entregado" para algo que ya
+    # entregó con sus propias manos. Distinto del flujo de la Tienda online
+    # (ver aplicar_confirmacion_venta), donde sí hay una espera real entre
+    # el pago y el recojo.
+    nueva_venta.estado = "ENTREGADA"
     db.commit()
     db.refresh(nueva_venta)
 
@@ -167,22 +173,22 @@ def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
 
     ventas_hoy = db.query(func.count(models.Venta.id_venta)).filter(
         func.date(models.Venta.fecha_venta) == hoy,
-        models.Venta.estado == "CONFIRMADA"
+        models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"])
     ).scalar() or 0
 
     ingresos_hoy = db.query(func.coalesce(func.sum(models.Venta.total), 0)).filter(
         func.date(models.Venta.fecha_venta) == hoy,
-        models.Venta.estado == "CONFIRMADA"
+        models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"])
     ).scalar() or 0
 
     ventas_mes = db.query(func.count(models.Venta.id_venta)).filter(
         models.Venta.fecha_venta >= primer_dia_mes,
-        models.Venta.estado == "CONFIRMADA"
+        models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"])
     ).scalar() or 0
 
     ingresos_mes = db.query(func.coalesce(func.sum(models.Venta.total), 0)).filter(
         models.Venta.fecha_venta >= primer_dia_mes,
-        models.Venta.estado == "CONFIRMADA"
+        models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"])
     ).scalar() or 0
 
     productos_bajo = db.query(func.count(models.Inventario.id_inventario)).filter(
@@ -219,7 +225,7 @@ def reporte_ventas(
     fecha_fin: Optional[date] = None,
 ):
     query = db.query(models.Venta).filter(
-        models.Venta.estado == "CONFIRMADA"
+        models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"])
     )
 
     if fecha_inicio:
@@ -450,7 +456,7 @@ def anular_venta(
     if venta.estado == "ANULADA":
         raise HTTPException(status_code=409, detail="La venta ya está anulada")
 
-    if venta.estado == "CONFIRMADA":
+    if venta.estado in ("CONFIRMADA", "ENTREGADA"):
         detalles = db.query(models.DetalleVenta).filter(
             models.DetalleVenta.id_venta == id_venta
         ).all()
@@ -627,6 +633,46 @@ def confirmar_venta(
     db.refresh(venta)
 
     registrar_auditoria(db, usuario, "CONFIRMAR", "Venta", venta.id_venta, f"total={venta.total}")
+
+    return _venta_con_detalles(db, venta)
+
+
+@router.post(
+    "/{id_venta}/entregar",
+    response_model=schemas.VentaResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Venta no encontrada"},
+        409: {"description": "Venta no se puede marcar como entregada"},
+    },
+)
+def entregar_venta(
+    id_venta: int,
+    db: Annotated[Session, Depends(get_db)],
+    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA")),
+):
+    """El staff la usa cuando el cliente pasa físicamente a recoger un
+    pedido ya pagado de la Tienda online (estado CONFIRMADA). Las ventas de
+    mostrador no pasan por aquí: ya nacen en ENTREGADA (ver crear_venta)."""
+    venta = db.query(models.Venta).filter(
+        models.Venta.id_venta == id_venta
+    ).first()
+
+    if not venta:
+        raise HTTPException(status_code=404, detail=MSG_VENTA_NO_ENCONTRADA)
+
+    if venta.estado != "CONFIRMADA":
+        raise HTTPException(
+            status_code=409,
+            detail="Solo se pueden marcar como entregadas las ventas pagadas (CONFIRMADA)",
+        )
+
+    venta.estado = "ENTREGADA"
+    db.commit()
+    db.refresh(venta)
+
+    registrar_auditoria(db, usuario, "ENTREGAR", "Venta", venta.id_venta, f"total={venta.total}")
 
     return _venta_con_detalles(db, venta)
 

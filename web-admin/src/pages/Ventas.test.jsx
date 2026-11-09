@@ -174,6 +174,29 @@ describe("Ventas Page Component", () => {
     });
   });
 
+  it("marks a confirmed sale as delivered", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    api.post.mockResolvedValue({ data: {} });
+    mockApiGet([{ ...mockVentaPendiente, estado: "CONFIRMADA" }]);
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Marcar como entregado")).toBeDefined());
+    fireEvent.click(screen.getByText("Marcar como entregado"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/ventas/1/entregar");
+    });
+  });
+
+  it("allows downloading the boleta and anular for an already delivered sale, but not marking it as delivered again", async () => {
+    mockApiGet([{ ...mockVentaPendiente, estado: "ENTREGADA" }]);
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Descargar boleta")).toBeDefined());
+    expect(screen.getByText("Anular")).toBeDefined();
+    expect(screen.queryByText("Marcar como entregado")).toBeNull();
+  });
+
   it("downloads the boleta for a confirmed sale", async () => {
     const { descargarBlob } = await import("../utils/descargarArchivo");
     const blobFalso = new Blob(["pdf"]);

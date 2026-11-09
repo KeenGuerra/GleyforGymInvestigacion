@@ -487,7 +487,12 @@ class Venta(Base):
     descuento = Column(Float, nullable=False, default=0)
     total = Column(Float, nullable=False, default=0)
     metodo_pago = Column(String(50), nullable=False, default="EFECTIVO")
-    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ANULADA, FALLIDA
+    # PENDIENTE (online, sin pagar) -> CONFIRMADA (pagada, pendiente de
+    # recojo en el gimnasio -- solo aplica a ventas de la Tienda online) ->
+    # ENTREGADA (ya se la llevó) -> ANULADA. Una venta de mostrador
+    # (POST /ventas/, el staff entrega en el momento) nace directo en
+    # ENTREGADA, sin pasar por CONFIRMADA.
+    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ENTREGADA, ANULADA, FALLIDA
     observaciones = Column(Text, nullable=True)
     id_transaccion_externa = Column(String(100), nullable=True)  # referencia de la pasarela de pago (ver app/pagos_gateway)
     created_at = Column(DateTime, default=datetime.now)

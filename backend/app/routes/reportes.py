@@ -525,7 +525,7 @@ def reporte_productos_mas_vendidos(db: Annotated[Session, Depends(get_db)], desd
         .join(models.DetalleVenta, models.DetalleVenta.id_producto == models.Producto.id_producto)
         .join(models.Venta, models.Venta.id_venta == models.DetalleVenta.id_venta)
         .filter(
-            models.Venta.estado == "CONFIRMADA",
+            models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"]),
             models.Venta.fecha_venta >= desde,
             models.Venta.fecha_venta <= fin_dia,
         )
@@ -553,7 +553,7 @@ def reporte_ventas_por_metodo_pago(db: Annotated[Session, Depends(get_db)], desd
             func.count(models.Venta.id_venta),
         )
         .filter(
-            models.Venta.estado == "CONFIRMADA",
+            models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"]),
             models.Venta.fecha_venta >= desde,
             models.Venta.fecha_venta <= fin_dia,
         )

@@ -166,6 +166,32 @@ describe("Tienda Page Component", () => {
     expect(screen.queryByText("Pagar ahora")).toBeNull();
   });
 
+  it("shows a delivered confirmation on an ENTREGADA order", async () => {
+    localStorage.setItem("token", "fake-token");
+    api.get.mockImplementation((url) => {
+      if (url === "/productos/disponibles") return Promise.resolve({ data: mockProductos });
+      if (url === "/ventas/mis-pedidos") {
+        return Promise.resolve({
+          data: [{ ...mockPedidos[0], estado: "ENTREGADA" }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    renderTienda();
+    await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Mis pedidos (1)"));
+
+    await waitFor(() => {
+      expect(screen.getByText("✔ Entregado. ¡Gracias por tu compra!")).toBeDefined();
+    });
+    expect(screen.queryByText("Pagar ahora")).toBeNull();
+    expect(
+      screen.queryByText("✔ Pago confirmado. Recógelo en el gimnasio — no hacemos delivery.")
+    ).toBeNull();
+  });
+
   it("starts the payment for a pending order and shows the checkout modal", async () => {
     localStorage.setItem("token", "fake-token");
     api.post.mockResolvedValue({

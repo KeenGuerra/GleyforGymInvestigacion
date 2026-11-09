@@ -123,7 +123,8 @@ function Tienda() {
   });
 
   const badgeColor = (estado) => {
-    if (estado === "CONFIRMADA") return "badge badge-success";
+    if (estado === "ENTREGADA") return "badge badge-success";
+    if (estado === "CONFIRMADA") return "badge badge-warning";
     if (estado === "ANULADA") return "badge badge-danger";
     return "badge";
   };
@@ -309,6 +310,11 @@ function Tienda() {
                     {v.estado === "CONFIRMADA" && (
                       <p className="success-message" style={{ marginTop: "0.75rem", textAlign: "center" }}>
                         ✔ Pago confirmado. Recógelo en el gimnasio — no hacemos delivery.
+                      </p>
+                    )}
+                    {v.estado === "ENTREGADA" && (
+                      <p className="success-message" style={{ marginTop: "0.75rem", textAlign: "center" }}>
+                        ✔ Entregado. ¡Gracias por tu compra!
                       </p>
                     )}
                   </div>
