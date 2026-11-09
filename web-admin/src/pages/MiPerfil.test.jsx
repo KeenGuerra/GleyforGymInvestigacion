@@ -66,6 +66,28 @@ describe("MiPerfil Page Component", () => {
     await waitFor(() => {
       expect(api.put).toHaveBeenCalled();
     });
+
+    // El mensaje de éxito debe verse como éxito, no como error (antes usaba
+    // la misma clase CSS que un error, solo distinguible por el emoji).
+    await waitFor(() => {
+      const mensaje = screen.getByText("Perfil actualizado correctamente ✔");
+      expect(mensaje.className).toBe("success-message");
+    });
+  });
+
+  it("shows the failure message as an error, not as success, when saving the profile fails", async () => {
+    api.put.mockRejectedValue(new Error("save failed"));
+    render(<MiPerfil />);
+
+    await waitFor(() => expect(screen.getByText("Juan Perez")).toBeDefined());
+
+    fireEvent.click(screen.getByText("Editar perfil"));
+    fireEvent.click(screen.getByText("Guardar cambios"));
+
+    await waitFor(() => {
+      const mensaje = screen.getByText("No se pudo actualizar el perfil ❌");
+      expect(mensaje.className).toBe("error-message");
+    });
   });
 
   // ── No debe congelarse para siempre si falla la carga del cliente ────────

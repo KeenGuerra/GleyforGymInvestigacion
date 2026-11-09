@@ -14,6 +14,11 @@ import {
   etiquetaNivelActividad,
 } from "../constants/opciones";
 
+// Tanto `mensaje` como `mensajePassword` guardan texto de éxito ("✔") y de
+// error en el mismo estado -- esto distingue cuál clase CSS usar sin tener
+// que duplicar el estado en cada handler.
+const esMensajeExito = (texto) => texto.includes("✔");
+
 function MiPerfil() {
   const { cliente, error: errorCliente, recargarCliente } = useClienteActual();
   const [editando, setEditando] = useState(false);
@@ -147,7 +152,9 @@ function MiPerfil() {
         </button>
       </section>
 
-      {mensaje && <p className="error-message">{mensaje}</p>}
+      {mensaje && (
+        <p className={esMensajeExito(mensaje) ? "success-message" : "error-message"}>{mensaje}</p>
+      )}
 
       <section className="table-card">
         <div className="card-header">
@@ -169,7 +176,11 @@ function MiPerfil() {
 
         {mostrarPassword && (
           <form onSubmit={cambiarPassword}>
-            {mensajePassword && <p className="error-message">{mensajePassword}</p>}
+            {mensajePassword && (
+              <p className={esMensajeExito(mensajePassword) ? "success-message" : "error-message"}>
+                {mensajePassword}
+              </p>
+            )}
 
             <div className="form-grid">
               <div className="form-field">

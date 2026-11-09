@@ -805,6 +805,17 @@ tr:hover td {
   font-size: 14px;
 }
 
+.success-message {
+  margin: 16px 0;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--success-soft);
+  border: 1px solid rgba(21, 128, 61, 0.25);
+  color: var(--success);
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .empty-message,
 .empty-card {
   padding: 40px;
