@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { useClienteActual } from "../hooks/useClienteActual";
 import { descargarBlob } from "../utils/descargarArchivo";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function MiRutina() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ function MiRutina() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 import {
   ResponsiveContainer,
   LineChart,
@@ -36,7 +37,7 @@ function MiProgreso() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const calcularIMC = (peso, estatura) => {

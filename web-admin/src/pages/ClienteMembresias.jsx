@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function ClienteMembresias() {
   const [asignaciones, setAsignaciones] = useState([]);
@@ -47,7 +48,7 @@ function ClienteMembresias() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const calcularFechaFin = (idMembresia, fechaInicio) => {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { formatearFecha } from "../utils/formatearFecha";
 
 function Compras() {
   const [compras, setCompras] = useState([]);
@@ -208,7 +209,7 @@ function Compras() {
                   <div><strong>S/ {c.total?.toFixed(2)}</strong><span>Total</span></div>
                   <div><strong>{c.detalles?.length || 0}</strong><span>Productos</span></div>
                 </div>
-                <p className="item-description">Fecha: {new Date(c.fecha_compra).toLocaleDateString()}</p>
+                <p className="item-description">Fecha: {formatearFecha(c.fecha_compra)}</p>
                 {c.estado === "PENDIENTE" && (
                   <div className="item-actions">
                     <button className="btn-primary" disabled={procesando === c.id_compra} onClick={() => confirmar(c.id_compra)}>

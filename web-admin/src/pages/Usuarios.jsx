@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
@@ -160,7 +161,7 @@ function Usuarios() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const usuariosInternos = usuarios.filter((u) => u.rol !== "CLIENTE");

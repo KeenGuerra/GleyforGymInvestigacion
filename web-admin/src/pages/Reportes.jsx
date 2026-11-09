@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
+import { formatearFecha } from "../utils/formatearFecha";
 
 function primerDiaDelMes() {
   const hoy = new Date();
@@ -322,9 +323,20 @@ function Reportes() {
 
   const mensajePredeterminado = (fila) => {
     const primerNombre = (fila.nombre_cliente || "").split(" ")[0] || "";
+    // *texto* = negrita en WhatsApp. La fecha se muestra en formato largo
+    // ("14 de noviembre de 2026") en vez del ISO crudo ("2026-11-14"), que
+    // se ve mejor en un chat. formatearFecha ya corrige el salto de día en
+    // husos horarios negativos (ver web-admin/src/utils/formatearFecha.js).
+    const fechaLegible = formatearFecha(fila.fecha_fin, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
     return (
-      `Hola ${primerNombre}, tu membresía "${fila.nombre_membresia || ""}" vence el ${fila.fecha_fin}. ` +
-      "Recuerda renovarla para seguir entrenando sin interrupciones. — GLEYFORGYM"
+      `¡Hola ${primerNombre}! 👋\n\n` +
+      `Tu membresía *${fila.nombre_membresia || ""}* vence el *${fechaLegible}* 📅\n\n` +
+      "Renueva a tiempo y sigue entrenando sin interrupciones 💪\n\n" +
+      "*GLEYFORGYM* 🏋️"
     );
   };
 

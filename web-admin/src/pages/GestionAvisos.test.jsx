@@ -45,7 +45,7 @@ describe("GestionAvisos Page Component", () => {
     });
 
     const filaEvento = screen.getByText("Noche de retos").closest("tr");
-    expect(within(filaEvento).getByText(new Date("2026-12-15").toLocaleDateString("es-PE"))).toBeDefined();
+    expect(within(filaEvento).getByText(new Date("2026-12-15T00:00:00").toLocaleDateString("es-PE"))).toBeDefined();
 
     const filaSinFecha = screen.getByText("Deyvi").closest("tr");
     expect(within(filaSinFecha).getByText("—")).toBeDefined();

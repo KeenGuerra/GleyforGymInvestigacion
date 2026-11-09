@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { useClienteActual } from "../hooks/useClienteActual";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 import {
   OBJETIVOS,
   NIVELES,
@@ -64,7 +65,7 @@ function MiPerfil() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "No registrada";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const actualizarPerfil = async (e) => {

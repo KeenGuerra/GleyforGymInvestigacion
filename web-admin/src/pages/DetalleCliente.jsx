@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/api";
 import { etiquetasRestricciones, etiquetaNivelActividad } from "../constants/opciones";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function DetalleCliente() {
   const { id } = useParams();
@@ -26,7 +27,7 @@ function DetalleCliente() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   if (error) return <p className="error-message">{error}</p>;

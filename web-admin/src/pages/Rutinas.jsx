@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function Rutinas() {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ function Rutinas() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const obtenerNombreCliente = (id) => {

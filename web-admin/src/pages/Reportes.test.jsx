@@ -354,7 +354,15 @@ describe("Reportes Page Component", () => {
     expect(openSpy).toHaveBeenCalledTimes(1);
     const [url, target] = openSpy.mock.calls[0];
     expect(url).toContain("https://wa.me/51987654321?text=");
-    expect(decodeURIComponent(url.split("text=")[1])).toContain("Plan Mensual");
+    const mensaje = decodeURIComponent(url.split("text=")[1]);
+    // Formato con negrita (*texto*) de WhatsApp y fecha en formato largo,
+    // no el ISO crudo -- se ve mejor en el chat del cliente.
+    expect(mensaje).toBe(
+      "¡Hola Juan! 👋\n\n" +
+      "Tu membresía *Plan Mensual* vence el *20 de junio de 2026* 📅\n\n" +
+      "Renueva a tiempo y sigue entrenando sin interrupciones 💪\n\n" +
+      "*GLEYFORGYM* 🏋️"
+    );
     expect(target).toBe("_blank");
 
     vi.unstubAllGlobals();

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { formatearFecha } from "../utils/formatearFecha";
 
 const TIPOS = ["HORARIO", "COACHES", "BAILE", "COMUNICADO", "EVENTO"];
 const hoy = new Date().toISOString().slice(0, 10);
@@ -268,7 +269,7 @@ function GestionAvisos() {
                     <td>
                       {a.fecha_evento ? (
                         <>
-                          {new Date(a.fecha_evento).toLocaleDateString("es-PE")}
+                          {formatearFecha(a.fecha_evento)}
                           {a.tipo === "EVENTO" && a.fecha_evento < hoy && (
                             <span className="badge badge-neutral" style={{ marginLeft: "6px" }}>
                               Pasado

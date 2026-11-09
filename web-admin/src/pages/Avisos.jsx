@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import api from "../api/api";
 import { FaClock, FaUserTie, FaMusic, FaBullhorn } from "react-icons/fa";
+import { formatearFecha } from "../utils/formatearFecha";
 
 const CONFIG_TIPO = {
   HORARIO: { titulo: "Horario de atención", icono: FaClock, color: "var(--orange)", badge: "Horario" },
@@ -89,7 +90,7 @@ function Avisos() {
                         <p className="item-description" style={{ margin: 0 }}>{aviso.contenido}</p>
                         {aviso.tipo === "EVENTO" && aviso.fecha_evento && (
                           <p className="item-description" style={{ margin: 0, fontWeight: 600 }}>
-                            {new Date(aviso.fecha_evento).toLocaleDateString("es-PE")}
+                            {formatearFecha(aviso.fecha_evento)}
                           </p>
                         )}
                       </div>

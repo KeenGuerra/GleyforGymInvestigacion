@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 
 function Asistencias() {
@@ -46,7 +47,7 @@ function Asistencias() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const obtenerNombreCliente = (id_cliente) => {

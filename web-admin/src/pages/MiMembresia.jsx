@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { useClienteActual } from "../hooks/useClienteActual";
 import CheckoutModal from "../components/CheckoutModal";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function MiMembresia() {
   const { cliente, error: errorCliente } = useClienteActual();
@@ -15,7 +16,7 @@ function MiMembresia() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const calcularDiasRestantes = (fechaFin) => {

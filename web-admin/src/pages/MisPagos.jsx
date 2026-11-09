@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { descargarBlob } from "../utils/descargarArchivo";
 import { useClienteActual } from "../hooks/useClienteActual";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function MisPagos() {
   const { cliente, error: errorCliente } = useClienteActual();
@@ -24,7 +25,7 @@ function MisPagos() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   useEffect(() => {

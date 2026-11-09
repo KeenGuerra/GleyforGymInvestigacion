@@ -3,6 +3,7 @@ import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
 import { descargarBlob } from "../utils/descargarArchivo";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 import CheckoutModal from "../components/CheckoutModal";
 
 const PAGOS_POR_PAGINA = 20;
@@ -61,7 +62,7 @@ function Pagos() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const obtenerNombreCliente = (id_cliente) => {

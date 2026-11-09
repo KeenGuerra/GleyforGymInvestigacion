@@ -53,7 +53,7 @@ describe("Avisos Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Noche de retos")).toBeDefined();
-      expect(screen.getByText(new Date("2026-12-15").toLocaleDateString("es-PE"))).toBeDefined();
+      expect(screen.getByText(new Date("2026-12-15T00:00:00").toLocaleDateString("es-PE"))).toBeDefined();
     });
   });
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/api";
 import { descargarBlob } from "../utils/descargarArchivo";
+import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function DetallePlanNutricional() {
   const { id } = useParams();
@@ -15,7 +16,7 @@ function DetallePlanNutricional() {
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-PE");
+    return formatearFechaBase(fecha);
   };
 
   const descargarPdf = async () => {
