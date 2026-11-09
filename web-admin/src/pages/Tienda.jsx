@@ -20,7 +20,7 @@ function Tienda() {
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [tab, setTab] = useState("tienda");
-  const [metodoPago, setMetodoPago] = useState("EFECTIVO");
+  const [metodoPago, setMetodoPago] = useState("PAGOEFECTIVO");
   const [observaciones, setObservaciones] = useState("");
   const [procesando, setProcesando] = useState(false);
   const [pagandoId, setPagandoId] = useState(null);
@@ -237,12 +237,15 @@ function Tienda() {
                   <div className="form-grid" style={{ marginBottom: "1rem" }}>
                     <div className="form-field">
                       <label>Método de pago</label>
+                      {/* Solo los 2 canales que Culqi realmente soporta vía la
+                          API de Órdenes (ver crear_checkout en
+                          backend/app/pagos_gateway/culqi.py) -- esta compra es
+                          100% online, así que "Efectivo" (pagar en persona)
+                          no aplica aquí: para eso está la compra directa en
+                          el gimnasio. */}
                       <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)}>
-                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="PAGOEFECTIVO">PagoEfectivo</option>
                         <option value="YAPE">Yape</option>
-                        <option value="PLIN">Plin</option>
-                        <option value="TRANSFERENCIA">Transferencia</option>
-                        <option value="TARJETA">Tarjeta</option>
                       </select>
                     </div>
                     <div className="form-field field-large">

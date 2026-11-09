@@ -618,7 +618,7 @@ EstadoCompra = Literal["PENDIENTE", "CONFIRMADA", "ANULADA"]
 EstadoVenta = Literal["PENDIENTE", "CONFIRMADA", "ENTREGADA", "ANULADA", "FALLIDA"]
 EstadoLote = Literal["ACTIVO", "VENCIDO", "AGOTADO"]
 TipoMovimiento = Literal["ENTRADA_COMPRA", "SALIDA_VENTA", "ENTRADA_ANULACION_VENTA", "SALIDA_ANULACION_COMPRA", "AJUSTE"]
-MetodoPagoVenta = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA"]
+MetodoPagoVenta = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA", "PAGOEFECTIVO"]
 
 
 # =========================

@@ -93,6 +93,20 @@ describe("Tienda Page Component", () => {
     });
   });
 
+  it("only offers PagoEfectivo and Yape as payment methods -- those are the only ones Culqi actually supports here", async () => {
+    localStorage.setItem("token", "fake-token");
+
+    renderTienda();
+    await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
+
+    fireEvent.click(screen.getByText("+ Agregar"));
+    fireEvent.click(screen.getAllByText("Carrito (1)")[1]);
+
+    await waitFor(() => expect(screen.getByText("Confirmar pedido")).toBeDefined());
+    const opciones = screen.getAllByRole("option").map((o) => o.value);
+    expect(opciones).toEqual(["PAGOEFECTIVO", "YAPE"]);
+  });
+
   it("checks out the cart and lists the resulting order", async () => {
     localStorage.setItem("token", "fake-token");
     api.post.mockResolvedValue({ data: {} });
@@ -111,7 +125,7 @@ describe("Tienda Page Component", () => {
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/solicitar", {
-        metodo_pago: "EFECTIVO",
+        metodo_pago: "PAGOEFECTIVO",
         descuento: 0,
         observaciones: null,
         detalles: [{ id_producto: 1, cantidad: 1 }],
