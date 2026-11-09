@@ -984,6 +984,25 @@ tr:hover td {
   border-color: rgba(255, 85, 0, 0.2);
 }
 
+/* El primer <div> de un .list-item (fecha/título + descripción, ej. en
+   MiProgreso.jsx/DetallePlanNutricional.jsx) no tenía ninguna regla propia
+   -- <strong> y <span> quedaban en línea, uno pegado al otro sin espacio
+   ("8/11/2026Sin observación"). Escopado con :first-child + el hijo directo
+   para no tocar el <span className="badge"> de .tags-row (el otro hijo de
+   .list-item) ni los casos que ya usan .user-info (que se resuelven aparte,
+   más abajo). */
+.list-item > div:first-child > strong {
+  display: block;
+  color: var(--text);
+}
+
+.list-item > div:first-child > span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .mini-stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
