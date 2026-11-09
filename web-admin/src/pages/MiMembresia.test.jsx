@@ -63,6 +63,39 @@ describe("MiMembresia Page Component", () => {
     });
   });
 
+  it("calculates 'días restantes' as the real whole number of days, not one less (timezone bug)", async () => {
+    // Construye la fecha a mano con los getters LOCALES (no toISOString(),
+    // que es UTC y podría correrse de día según la hora en que corra el
+    // test) -- son 10 días desde "hoy" en el propio huso horario local.
+    const hoy = new Date();
+    const fin = new Date(hoy);
+    fin.setDate(fin.getDate() + 10);
+    const pad = (n) => String(n).padStart(2, "0");
+    const fechaFin = `${fin.getFullYear()}-${pad(fin.getMonth() + 1)}-${pad(fin.getDate())}`;
+
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/usuario/")) return Promise.resolve({ data: { id_cliente: 1 } });
+      if (url.includes("/cliente-membresias/cliente/")) {
+        return Promise.resolve({
+          data: [{
+            id_cliente_membresia: 1, id_membresia: 5, precio_asignado: 120,
+            fecha_inicio: "2026-06-01", fecha_fin: fechaFin, estado: "ACTIVA",
+          }],
+        });
+      }
+      if (url.includes("/membresias/")) {
+        return Promise.resolve({ data: [{ id_membresia: 5, nombre: "Plan Fuerza Semestral", estado: "ACTIVO" }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<MiMembresia />);
+    await waitFor(() => {
+      expect(screen.getAllByText(/Plan Fuerza Semestral/i).length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText("10 días")).toBeDefined();
+  });
+
   it("shows no 'comprar' option while a membership is already active", async () => {
     render(<MiMembresia />);
     await waitFor(() => {

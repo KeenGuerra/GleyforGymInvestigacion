@@ -23,7 +23,14 @@ function MiMembresia() {
     if (!fechaFin) return 0;
 
     const hoy = new Date();
-    const fin = new Date(fechaFin);
+    // "T00:00:00" (sin zona) fuerza a que se parsee como medianoche LOCAL,
+    // no UTC -- si no, en un huso horario negativo (ej. Perú, UTC-5) el
+    // setHours(0,0,0,0) de abajo termina fijando el día anterior al real,
+    // restando un día de más a "días restantes" (ver el mismo bug ya
+    // corregido para fechas que se muestran en web-admin/src/utils/formatearFecha.js
+    // -- aquí no se mostraba la fecha, se usaba en aritmética, así que se
+    // escapó de ese barrido).
+    const fin = new Date(`${fechaFin}T00:00:00`);
 
     hoy.setHours(0, 0, 0, 0);
     fin.setHours(0, 0, 0, 0);
