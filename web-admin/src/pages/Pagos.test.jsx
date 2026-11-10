@@ -61,7 +61,10 @@ describe("Pagos Page Component", () => {
   it("shows the plan name in the Membresía dropdown, not just its internal id", async () => {
     render(<Pagos />);
 
-    fireEvent.change(await screen.findByLabelText("Cliente"), { target: { value: "1" } });
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
+    });
+    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
 
     await waitFor(() => {
       expect(
@@ -86,7 +89,10 @@ describe("Pagos Page Component", () => {
 
     render(<Pagos />);
 
-    fireEvent.change(await screen.findByLabelText("Cliente"), { target: { value: "1" } });
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
+    });
+    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
 
     await waitFor(() => {
       expect(
@@ -116,7 +122,10 @@ describe("Pagos Page Component", () => {
 
     render(<Pagos />);
 
-    fireEvent.change(await screen.findByLabelText("Cliente"), { target: { value: "1" } });
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Juan Perez" })).toBeDefined();
+    });
+    fireEvent.change(screen.getByLabelText("Cliente"), { target: { value: "1" } });
     fireEvent.change(screen.getByLabelText("Monto (S/)"), { target: { value: "999" } });
 
     await waitFor(() => {
