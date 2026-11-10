@@ -32,7 +32,6 @@ from app.routes import (
     auditoria,
     webhooks,
     avisos,
-    mantenimiento,
 )
 
 from app.routes.ia import ia_rutina, ia_nutricion
@@ -183,8 +182,6 @@ app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])
 app.include_router(auditoria.router, prefix="/auditoria", tags=["Auditoría"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 app.include_router(avisos.router, prefix="/avisos", tags=["Avisos"])
-# TEMPORAL -- se elimina en el commit siguiente, ver backend/app/routes/mantenimiento.py
-app.include_router(mantenimiento.router, prefix="/mantenimiento", tags=["Mantenimiento"])
 
 
 @app.get("/")
