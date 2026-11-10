@@ -247,6 +247,8 @@ class ClienteMembresiaResponse(BaseModel):
     estado: EstadoClienteMembresia
     precio_asignado: Optional[float] = None
     nombre_membresia: Optional[str] = None
+    monto_pagado: float = 0
+    saldo_pendiente: float = 0
 
     model_config = ConfigDict(from_attributes=True)
 

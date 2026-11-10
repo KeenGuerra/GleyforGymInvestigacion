@@ -86,7 +86,7 @@ def listar_asistencias_cliente(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
-    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db, roles_adicionales=("RECEPCIONISTA",))
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente

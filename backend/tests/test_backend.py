@@ -500,6 +500,103 @@ def test_pagos_edge_cases():
     )
     assert response.status_code == 404
 
+def test_cliente_membresia_calcula_saldo_pendiente_y_monto_pagado():
+    """ClienteMembresia.monto_pagado/saldo_pendiente (usados por Pagos.jsx y
+    ClienteMembresias.jsx para mostrar cuánto le falta pagar a un cliente que
+    paga en partes, siempre que la membresía la haya asignado el staff) deben
+    sumar solo los pagos PAGADO -- un pago ANULADO no debe contar."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    id_cm = client.post(
+        "/cliente-membresias/",
+        json={
+            "id_cliente": 1,
+            "id_membresia": 1,
+            "fecha_inicio": "2026-06-02",
+            "fecha_fin": "2026-07-02",
+            "precio_asignado": 100.0,
+        },
+        headers=headers,
+    ).json()["id_cliente_membresia"]
+
+    res_sin_pagos = client.get("/cliente-membresias/", headers=headers).json()
+    cm_sin_pagos = next(c for c in res_sin_pagos if c["id_cliente_membresia"] == id_cm)
+    assert cm_sin_pagos["monto_pagado"] == 0
+    assert cm_sin_pagos["saldo_pendiente"] == 100.0
+
+    client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1,
+            "id_cliente_membresia": id_cm,
+            "monto": 60.0,
+            "metodo_pago": "YAPE",
+            "fecha_pago": "2026-06-02",
+        },
+        headers=headers,
+    )
+    id_pago_anulado = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1,
+            "id_cliente_membresia": id_cm,
+            "monto": 1000.0,
+            "metodo_pago": "EFECTIVO",
+            "fecha_pago": "2026-06-02",
+        },
+        headers=headers,
+    ).json()["id_pago"]
+    client.delete(f"/pagos/{id_pago_anulado}", headers=headers)  # queda ANULADO, no se borra
+
+    res_cliente = client.get("/cliente-membresias/cliente/1", headers=headers).json()
+    cm = next(c for c in res_cliente if c["id_cliente_membresia"] == id_cm)
+    assert cm["monto_pagado"] == 60.0
+    assert cm["saldo_pendiente"] == 40.0
+
+
+def test_recepcionista_accede_a_datos_puntuales_de_cliente_pero_no_a_rutinas():
+    """verificar_propiedad_cliente con roles_adicionales=("RECEPCIONISTA",):
+    RECEPCIONISTA ya tiene acceso a nivel de router a Clientes/Asistencias/
+    Cliente-Membresias/Pagos, pero antes de este fix el helper compartido lo
+    rechazaba igual con 403 en los endpoints por id_cliente puntual (ver
+    descargar_recibo_pago, listar_asistencias_cliente, etc). Rutinas no debe
+    abrirse -- ese módulo deliberadamente sigue sin RECEPCIONISTA."""
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers()
+    headers_recepcionista = get_auth_headers(rol="RECEPCIONISTA")
+
+    id_pago = client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1,
+            "id_cliente_membresia": client.post(
+                "/cliente-membresias/",
+                json={
+                    "id_cliente": 1,
+                    "id_membresia": 1,
+                    "fecha_inicio": "2026-06-02",
+                    "fecha_fin": "2026-07-02",
+                    "precio_asignado": 100.0,
+                },
+                headers=headers_admin,
+            ).json()["id_cliente_membresia"],
+            "monto": 60.0,
+            "metodo_pago": "YAPE",
+            "fecha_pago": "2026-06-02",
+        },
+        headers=headers_admin,
+    ).json()["id_pago"]
+
+    assert client.get("/clientes/1/detalle", headers=headers_recepcionista).status_code == 200
+    assert client.get("/asistencias/cliente/1", headers=headers_recepcionista).status_code == 200
+    assert client.get("/cliente-membresias/cliente/1", headers=headers_recepcionista).status_code == 200
+    assert client.get("/pagos/cliente/1", headers=headers_recepcionista).status_code == 200
+    assert client.get(f"/pagos/{id_pago}/recibo", headers=headers_recepcionista).status_code == 200
+
+    assert client.get("/rutinas/cliente/1", headers=headers_recepcionista).status_code == 403
+
+
 def test_asistencias_edge_cases():
     populate_db_for_coverage()
     headers = get_auth_headers()

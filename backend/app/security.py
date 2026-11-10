@@ -95,14 +95,17 @@ def verificar_propiedad_cliente(
     usuario_actual: dict,
     id_cliente: int,
     db,
+    roles_adicionales: tuple[str, ...] = (),
 ) -> None:
     """
     Para endpoints que un CLIENTE puede consultar sobre sí mismo: ADMIN y
-    ENTRENADOR pasan siempre; un CLIENTE solo si id_cliente es el suyo.
+    ENTRENADOR pasan siempre (y cualquier rol en roles_adicionales, para
+    módulos puntuales como Pagos/Clientes donde RECEPCIONISTA también debe
+    poder pasar); un CLIENTE solo si id_cliente es el suyo.
     """
     from app import models  # import local para evitar ciclo con models.py
 
-    if usuario_actual.get("rol") in ("ADMIN", "ENTRENADOR"):
+    if usuario_actual.get("rol") in ("ADMIN", "ENTRENADOR", *roles_adicionales):
         return
 
     cliente = (

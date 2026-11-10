@@ -283,14 +283,24 @@ function Pagos() {
             <select
               id="id_cliente_membresia"
               value={form.id_cliente_membresia}
-              onChange={(e) =>
-                setForm({ ...form, id_cliente_membresia: e.target.value })
-              }
+              onChange={(e) => {
+                const idSeleccionada = e.target.value;
+                const asignacion = asignacionesCliente.find(
+                  (a) => String(a.id_cliente_membresia) === idSeleccionada
+                );
+                const saldo = asignacion?.saldo_pendiente || 0;
+                setForm({
+                  ...form,
+                  id_cliente_membresia: idSeleccionada,
+                  monto: !form.monto && saldo > 0 ? String(saldo) : form.monto,
+                });
+              }}
             >
               <option value="">Seleccione membresía</option>
               {asignacionesCliente.map((a) => (
                 <option key={a.id_cliente_membresia} value={a.id_cliente_membresia}>
-                  {a.nombre_membresia || `Membresía #${a.id_cliente_membresia}`} ({a.estado}, vence {formatearFecha(a.fecha_fin)})
+                  {a.nombre_membresia || `Membresía #${a.id_cliente_membresia}`} ({a.estado}, vence {formatearFecha(a.fecha_fin)}) —{" "}
+                  {(a.saldo_pendiente || 0) === 0 ? "pagado completo" : `falta S/ ${a.saldo_pendiente.toFixed(2)}`}
                 </option>
               ))}
             </select>

@@ -269,6 +269,29 @@ describe("ClienteMembresias Page Component", () => {
     expect(screen.getByText("Cancelar", { selector: "button" })).toBeDefined();
   });
 
+  it("shows a 'Falta S/ X' badge for a partial payment and 'Pagado' when there is no balance left", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/cliente-membresias/")) {
+        return Promise.resolve({
+          data: [
+            { id_cliente_membresia: 40, id_cliente: 1, id_membresia: 5, fecha_inicio: "2026-06-01", fecha_fin: "2026-09-01", estado: "ACTIVA", saldo_pendiente: 40 },
+            { id_cliente_membresia: 41, id_cliente: 1, id_membresia: 5, fecha_inicio: "2026-06-01", fecha_fin: "2026-09-01", estado: "ACTIVA", saldo_pendiente: 0 },
+          ],
+        });
+      }
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/membresias/")) return Promise.resolve({ data: mockMembresias });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<ClienteMembresias />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Falta S/ 40.00")).toBeDefined();
+      expect(screen.getByText("Pagado")).toBeDefined();
+    });
+  });
+
   it("shows error if membership assignment creation fails", async () => {
     api.post.mockRejectedValue({
       response: { data: { detail: "Cliente ya tiene membresía activa" } }

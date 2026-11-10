@@ -108,7 +108,7 @@ def iniciar_checkout_pago(
     if not pago_db:
         raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
 
-    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db)
+    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db, roles_adicionales=("RECEPCIONISTA",))
 
     if pago_db.estado != "PENDIENTE":
         raise HTTPException(status_code=400, detail="El pago no está en estado PENDIENTE")
@@ -196,7 +196,7 @@ def listar_pagos_cliente(
     db: Annotated[Session, Depends(get_db)],
     usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
-    verificar_propiedad_cliente(usuario_actual, id_cliente, db)
+    verificar_propiedad_cliente(usuario_actual, id_cliente, db, roles_adicionales=("RECEPCIONISTA",))
 
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_cliente == id_cliente
@@ -308,7 +308,7 @@ def descargar_recibo_pago(
     if not pago_db:
         raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
 
-    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db)
+    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db, roles_adicionales=("RECEPCIONISTA",))
 
     cliente = db.query(models.Cliente).filter(models.Cliente.id_cliente == pago_db.id_cliente).first()
     if not cliente:

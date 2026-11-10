@@ -65,10 +65,69 @@ describe("Pagos Page Component", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("option", { name: "Plan Oro (ACTIVA, vence 1/12/2026)" })
+        screen.getByRole("option", {
+          name: "Plan Oro (ACTIVA, vence 1/12/2026) — pagado completo",
+        })
       ).toBeDefined();
     });
     expect(screen.queryByText("#10")).toBeNull();
+  });
+
+  it("shows the pending balance in the Membresía option and auto-fills Monto with it", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/cliente-membresias/")) {
+        return Promise.resolve({
+          data: [{ ...mockAsignaciones[0], saldo_pendiente: 40 }],
+        });
+      }
+      return Promise.resolve({ data: mockPagos });
+    });
+
+    render(<Pagos />);
+
+    fireEvent.change(await screen.findByLabelText("Cliente"), { target: { value: "1" } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", {
+          name: "Plan Oro (ACTIVA, vence 1/12/2026) — falta S/ 40.00",
+        })
+      ).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText("Membresía"), { target: { value: "10" } });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Monto (S/)").value).toBe("40");
+    });
+  });
+
+  it("does not overwrite a manually entered Monto when selecting a membership with a pending balance", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/cliente-membresias/")) {
+        return Promise.resolve({
+          data: [{ ...mockAsignaciones[0], saldo_pendiente: 40 }],
+        });
+      }
+      return Promise.resolve({ data: mockPagos });
+    });
+
+    render(<Pagos />);
+
+    fireEvent.change(await screen.findByLabelText("Cliente"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Monto (S/)"), { target: { value: "999" } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: /falta S\/ 40\.00/ })
+      ).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByLabelText("Membresía"), { target: { value: "10" } });
+
+    expect(screen.getByLabelText("Monto (S/)").value).toBe("999");
   });
 
   it("fails validation if form fields are missing or invalid", async () => {

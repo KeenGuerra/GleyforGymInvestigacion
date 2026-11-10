@@ -397,6 +397,7 @@ function ClienteMembresias() {
                 <th>Inicio</th>
                 <th>Fin</th>
                 <th>Estado</th>
+                <th>Saldo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -404,7 +405,7 @@ function ClienteMembresias() {
             <tbody>
               {asignaciones.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="empty-message">
+                  <td colSpan="8" className="empty-message">
                     No hay membresías asignadas
                   </td>
                 </tr>
@@ -425,6 +426,16 @@ function ClienteMembresias() {
 
                     <td>
                       <span className={claseEstado(a.estado)}>{a.estado}</span>
+                    </td>
+
+                    <td>
+                      {(a.saldo_pendiente || 0) === 0 ? (
+                        <span className="badge badge-success">Pagado</span>
+                      ) : (
+                        <span className="badge badge-warning">
+                          Falta S/ {a.saldo_pendiente.toFixed(2)}
+                        </span>
+                      )}
                     </td>
 
                     <td>

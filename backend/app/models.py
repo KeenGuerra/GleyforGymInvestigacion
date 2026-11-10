@@ -115,6 +115,15 @@ class ClienteMembresia(Base):
     def nombre_membresia(self):
         return self.membresia.nombre if self.membresia else None
 
+    @property
+    def monto_pagado(self):
+        return round(sum(p.monto for p in self.pagos if p.estado == "PAGADO"), 2)
+
+    @property
+    def saldo_pendiente(self):
+        precio = self.precio_asignado or 0
+        return max(round(precio - self.monto_pagado, 2), 0)
+
     # Un cliente no puede tener mas de una membresia ACTIVA/PAUSADA/PENDIENTE
     # a la vez -- cierra a nivel de BD la condicion de carrera de
     # POST /cliente-membresias/comprar (ver create_db.py para la migracion
