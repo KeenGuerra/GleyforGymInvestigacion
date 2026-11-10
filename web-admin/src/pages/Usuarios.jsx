@@ -374,7 +374,6 @@ function Usuarios() {
           <table>
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Correo</th>
                 <th>Rol</th>
                 <th>Estado</th>
@@ -386,17 +385,13 @@ function Usuarios() {
             <tbody>
               {usuariosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="empty-message">
+                  <td colSpan="5" className="empty-message">
                     No hay usuarios internos registrados
                   </td>
                 </tr>
               ) : (
                 usuariosFiltrados.map((u) => (
                   <tr key={u.id_usuario}>
-                    <td>
-                      <span className="badge">#{u.id_usuario}</span>
-                    </td>
-
                     <td>{u.correo}</td>
 
                     <td>

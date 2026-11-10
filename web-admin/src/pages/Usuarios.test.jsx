@@ -38,6 +38,15 @@ describe("Usuarios Page Component", () => {
     });
   });
 
+  it("does not show the internal database id -- correo is already the real identifier", async () => {
+    render(<Usuarios />);
+    await waitFor(() => {
+      expect(screen.getByText("entrenador@gym.com")).toBeDefined();
+    });
+    expect(screen.queryByText("ID")).toBeNull();
+    expect(screen.queryByText("#1")).toBeNull();
+  });
+
   it("filters user list based on search term", async () => {
     render(<Usuarios />);
     await waitFor(() => {

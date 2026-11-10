@@ -42,6 +42,15 @@ describe("Entrenadores Page Component", () => {
     });
   });
 
+  it("does not show the internal database id -- DNI is already the real identifier", async () => {
+    render(<Entrenadores />);
+    await waitFor(() => {
+      expect(screen.getByText("71234567")).toBeDefined();
+    });
+    expect(screen.queryByText("ID")).toBeNull();
+    expect(screen.queryByText("#1")).toBeNull();
+  });
+
   it("filters trainers based on search term", async () => {
     render(<Entrenadores />);
     await waitFor(() => expect(screen.getByText("71234567")).toBeDefined());

@@ -597,7 +597,7 @@ function Clientes() {
                           <strong>
                             {c.nombres} {c.apellidos}
                           </strong>
-                          <span>DNI {c.dni || "—"}</span>
+                          <span>{c.telefono || "sin teléfono"}</span>
                         </div>
                       </div>
                     </td>

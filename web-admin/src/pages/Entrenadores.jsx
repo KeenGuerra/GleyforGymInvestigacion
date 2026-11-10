@@ -311,7 +311,6 @@ function Entrenadores() {
           <table>
             <thead>
               <tr>
-                <th>ID</th>
                 <th>DNI</th>
                 <th>Nombres</th>
                 <th>Apellidos</th>
@@ -325,16 +324,13 @@ function Entrenadores() {
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="empty-message">
+                  <td colSpan="7" className="empty-message">
                     No hay entrenadores registrados
                   </td>
                 </tr>
               ) : (
                 filtrados.map((e) => (
                   <tr key={e.id_entrenador}>
-                    <td>
-                      <span className="badge">#{e.id_entrenador}</span>
-                    </td>
                     <td>{e.dni}</td>
                     <td>{e.nombres}</td>
                     <td>{e.apellidos}</td>

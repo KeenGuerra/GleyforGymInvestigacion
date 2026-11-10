@@ -99,13 +99,14 @@ describe("Clientes Page Component", () => {
     });
   });
 
-  it("shows the client's DNI under their name instead of the internal database id", async () => {
+  it("shows the client's phone under their name instead of the internal database id (DNI already has its own column)", async () => {
     render(<Clientes />);
     await waitFor(() => {
-      expect(screen.getByText("DNI 12345678")).toBeDefined();
-      expect(screen.getByText("DNI 87654321")).toBeDefined();
+      expect(screen.getByText("999888777")).toBeDefined();
+      expect(screen.getByText("999555444")).toBeDefined();
     });
     expect(screen.queryByText(/ID #/)).toBeNull();
+    expect(screen.queryByText(/^DNI /)).toBeNull();
   });
 
   // ── Boundary Value: DNI vacío → error de validación ───────────────────────
