@@ -367,6 +367,11 @@ class Producto(Base):
     stock_minimo = Column(Float, nullable=False, default=0)
     controla_lote = Column(Boolean, default=False)
     controla_vencimiento = Column(Boolean, default=False)
+    # Algunos productos (ej. una gaseosa de S/1) solo se venden en el
+    # mostrador y no tiene sentido ofrecerlos en la Tienda online -- este
+    # campo no afecta el listado del staff (Productos.jsx/Ventas.jsx), solo
+    # GET /productos/disponibles cuando lo consulta alguien que no es staff.
+    visible_tienda = Column(Boolean, default=True, nullable=False)
     estado = Column(String(20), default="ACTIVO")
     fecha_creacion = Column(DateTime, default=datetime.now)
 

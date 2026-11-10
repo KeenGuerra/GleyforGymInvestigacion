@@ -14,7 +14,7 @@ from typing import Annotated, Optional
 from app.database import get_db
 from app import models, schemas
 from app.config import CLOUDINARY_URL
-from app.security import requerir_roles
+from app.security import requerir_roles, obtener_usuario_opcional
 from app.constants import ESTADO_INACTIVO, MSG_PRODUCTO_NO_ENCONTRADO
 
 router = APIRouter()
@@ -53,6 +53,7 @@ async def crear_producto(
     stock_inicial: Annotated[float, Form()] = 0,
     controla_lote: Annotated[bool, Form()] = False,
     controla_vencimiento: Annotated[bool, Form()] = False,
+    visible_tienda: Annotated[bool, Form()] = True,
     estado: Annotated[str, Form()] = "ACTIVO",
     imagen: Annotated[Optional[UploadFile], File()] = None,
 ):
@@ -88,6 +89,7 @@ async def crear_producto(
         stock_minimo=stock_minimo,
         controla_lote=controla_lote,
         controla_vencimiento=controla_vencimiento,
+        visible_tienda=visible_tienda,
         estado=estado,
     )
     db.add(nuevo)
@@ -142,11 +144,25 @@ def listar_productos(db: Annotated[Session, Depends(get_db)], skip: int = 0, lim
     response_model=list[schemas.ProductoResponse],
     responses={401: {"description": "Token inválido o expirado"}}
 )
-def listar_productos_disponibles(db: Annotated[Session, Depends(get_db)]):
+def listar_productos_disponibles(
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict | None, Depends(obtener_usuario_opcional)],
+):
     try:
-        productos = db.query(models.Producto).filter(
-            models.Producto.estado == "ACTIVO"
-        ).order_by(models.Producto.nombre).all()
+        query = db.query(models.Producto).filter(models.Producto.estado == "ACTIVO")
+
+        # Este mismo endpoint lo usan tanto la Tienda online (público/CLIENTE)
+        # como la venta de mostrador del staff (Ventas.jsx) -- un producto
+        # marcado como no visible en tienda (ej. una gaseosa de S/1) debe
+        # seguir apareciendo para el staff, solo se oculta para quien compra
+        # por la web.
+        es_staff = usuario_actual is not None and usuario_actual.get("rol") in (
+            "ADMIN", "ENTRENADOR", "RECEPCIONISTA"
+        )
+        if not es_staff:
+            query = query.filter(models.Producto.visible_tienda.is_(True))
+
+        productos = query.order_by(models.Producto.nombre).all()
         return [_producto_con_stock(db, p) for p in productos]
     except Exception:
         db.rollback()
@@ -198,6 +214,7 @@ async def actualizar_producto(
     stock_minimo: Annotated[Optional[float], Form()] = None,
     controla_lote: Annotated[Optional[bool], Form()] = None,
     controla_vencimiento: Annotated[Optional[bool], Form()] = None,
+    visible_tienda: Annotated[Optional[bool], Form()] = None,
     estado: Annotated[Optional[str], Form()] = None,
     imagen: Annotated[Optional[UploadFile], File()] = None,
 ):
@@ -226,6 +243,8 @@ async def actualizar_producto(
         producto.controla_lote = controla_lote
     if controla_vencimiento is not None:
         producto.controla_vencimiento = controla_vencimiento
+    if visible_tienda is not None:
+        producto.visible_tienda = visible_tienda
     if estado is not None:
         producto.estado = estado
 
@@ -308,6 +327,7 @@ def _producto_con_stock(db: Session, producto: models.Producto) -> schemas.Produ
         stock_minimo=producto.stock_minimo,
         controla_lote=producto.controla_lote,
         controla_vencimiento=producto.controla_vencimiento,
+        visible_tienda=getattr(producto, "visible_tienda", True),
         estado=producto.estado,
         fecha_creacion=producto.fecha_creacion,
         stock_actual=inventario.stock_actual if inventario else 0,

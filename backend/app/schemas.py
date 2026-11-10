@@ -660,6 +660,7 @@ class ProductoCreate(BaseModel):
     stock_minimo: float = 0
     controla_lote: bool = False
     controla_vencimiento: bool = False
+    visible_tienda: bool = True
     estado: EstadoProducto = "ACTIVO"
 
 
@@ -675,6 +676,7 @@ class ProductoUpdate(BaseModel):
     stock_minimo: Optional[float] = None
     controla_lote: Optional[bool] = None
     controla_vencimiento: Optional[bool] = None
+    visible_tienda: Optional[bool] = None
     estado: Optional[EstadoProducto] = None
 
 

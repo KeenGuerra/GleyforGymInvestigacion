@@ -26,6 +26,7 @@ function Productos() {
     stock_inicial: "",
     controla_lote: false,
     controla_vencimiento: false,
+    visible_tienda: true,
     estado: "ACTIVO",
   };
 
@@ -101,6 +102,7 @@ function Productos() {
       if (!editando) data.append("stock_inicial", Number(form.stock_inicial) || 0);
       data.append("controla_lote", form.controla_lote);
       data.append("controla_vencimiento", form.controla_vencimiento);
+      data.append("visible_tienda", form.visible_tienda);
       data.append("estado", form.estado);
       if (imagen) data.append("imagen", imagen);
 
@@ -134,6 +136,7 @@ function Productos() {
       stock_minimo: p.stock_minimo || "",
       controla_lote: p.controla_lote || false,
       controla_vencimiento: p.controla_vencimiento || false,
+      visible_tienda: p.visible_tienda ?? true,
       estado: p.estado,
     });
     setPreview(p.imagen_url || null);
@@ -247,6 +250,14 @@ function Productos() {
             <div className="form-field">
               <label className="checkbox-label"><input type="checkbox" name="controla_vencimiento" checked={form.controla_vencimiento} onChange={cambiar} /> Controla vencimiento</label>
             </div>
+            <div className="form-field">
+              <label className="checkbox-label">
+                <input type="checkbox" name="visible_tienda" checked={form.visible_tienda} onChange={cambiar} /> Visible en la tienda online
+              </label>
+              <small style={{ color: "var(--muted)" }}>
+                Desmárcalo para productos que solo se venden en el mostrador (ej. una gaseosa de S/1).
+              </small>
+            </div>
             <div className="form-field field-large">
               <label>Descripción</label>
               <textarea name="descripcion" value={form.descripcion} onChange={cambiar} />
@@ -292,6 +303,9 @@ function Productos() {
                   <div className="item-card-top">
                     <span className="badge">{p.nombre_categoria || "SIN CAT."}</span>
                     <span className="badge">{p.estado}</span>
+                    {p.visible_tienda === false && (
+                      <span className="badge badge-neutral">Solo mostrador</span>
+                    )}
                   </div>
                   <h3>{p.nombre}</h3>
                   <div className="mini-stats-grid">

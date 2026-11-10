@@ -335,6 +335,63 @@ def test_entregar_venta_marca_como_entregada_solo_desde_confirmada():
     assert res_otra_vez.status_code == 409
 
 
+# ── visible_tienda: oculto solo para la Tienda online, no para el staff ──────
+def test_producto_no_visible_en_tienda_se_oculta_solo_para_no_staff():
+    """Un producto con visible_tienda=False (ej. una gaseosa de S/1 que solo
+    se vende en mostrador) debe seguir apareciendo para ADMIN/ENTRENADOR/
+    RECEPCIONISTA (Ventas.jsx), pero no para un CLIENTE ni para un visitante
+    anónimo (Tienda.jsx) en GET /productos/disponibles."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+
+    res_cat = client.post("/categorias/", json={"nombre": "Bebidas"}, headers=headers_admin)
+    id_categoria = res_cat.json()["id_categoria"]
+
+    res_prod = client.post(
+        "/productos/",
+        data={
+            "nombre": "Agua 1 sol",
+            "id_categoria": str(id_categoria),
+            "precio_compra": "0.5",
+            "precio_venta": "1",
+            "unidad_medida": "UNIDAD",
+            "stock_minimo": "5",
+            "stock_inicial": "10",
+            "visible_tienda": "false",
+        },
+        headers=headers_admin,
+    )
+    assert res_prod.status_code == 200, res_prod.text
+    assert res_prod.json()["visible_tienda"] is False
+    id_producto = res_prod.json()["id_producto"]
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=70, correo="socio.tienda@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=70, id_usuario=70, dni="70707070", nombres="Ines", apellidos="Rojas",
+                           estado="ACTIVO", telefono="987654321"))
+    db.commit()
+    db.close()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=70)
+    headers_recepcionista = get_auth_headers(rol="RECEPCIONISTA")
+
+    # Staff: lo sigue viendo (RECEPCIONISTA, que es quien vende en mostrador).
+    res_staff = client.get("/productos/disponibles", headers=headers_recepcionista)
+    assert any(p["id_producto"] == id_producto for p in res_staff.json())
+
+    # CLIENTE logueado: no lo ve.
+    res_cliente = client.get("/productos/disponibles", headers=headers_cliente)
+    assert not any(p["id_producto"] == id_producto for p in res_cliente.json())
+
+    # Visitante anónimo: tampoco lo ve.
+    res_anonimo = client.get("/productos/disponibles")
+    assert not any(p["id_producto"] == id_producto for p in res_anonimo.json())
+
+    # Un producto normal (visible_tienda=True, el default) sí lo ven todos.
+    id_normal = crear_producto_con_categoria(headers_admin, precio_venta=20.0)
+    assert any(p["id_producto"] == id_normal for p in client.get("/productos/disponibles").json())
+
+
 # ── Stock insuficiente rechaza la venta ──────────────────────────────────────
 def test_venta_con_stock_insuficiente_es_rechazada():
     populate_comercio()

@@ -96,6 +96,11 @@ def initialize_tables():
         # -- para que el panel admin distinga un pago que el staff debe cobrar
         # de uno que el propio cliente ya va a pagar online (ver Pendientes.md).
         ("pagos", "origen", "VARCHAR(20)"),
+        # Por defecto TRUE para no ocultar de golpe los productos ya
+        # existentes de la Tienda online -- el admin desmarca manualmente
+        # los que solo se venden en el mostrador (ver Producto.visible_tienda
+        # en models.py).
+        ("productos", "visible_tienda", "BOOLEAN DEFAULT TRUE"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:

@@ -104,6 +104,41 @@ describe("Productos Page Component", () => {
     const formData = api.post.mock.calls[0][1];
     expect(formData.get("nombre")).toBe("Creatina");
     expect(formData.get("precio_venta")).toBe("50");
+    // Por defecto, un producto nuevo sí se muestra en la Tienda online.
+    expect(formData.get("visible_tienda")).toBe("true");
+  });
+
+  it("unchecking 'Visible en la tienda online' sends visible_tienda=false", async () => {
+    api.post.mockResolvedValue({ data: {} });
+    const { container } = render(<Productos />);
+
+    fireEvent.click(screen.getByText("+ Nuevo producto"));
+    await waitFor(() => expect(getField(container, "nombre")).not.toBeNull());
+
+    fireEvent.change(getField(container, "nombre"), { target: { value: "Agua 1 sol" } });
+    fireEvent.change(getField(container, "precio_venta"), { target: { value: "1" } });
+    fireEvent.click(getField(container, "visible_tienda"));
+    fireEvent.click(screen.getByText("Guardar"));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+
+    const formData = api.post.mock.calls[0][1];
+    expect(formData.get("visible_tienda")).toBe("false");
+  });
+
+  it("shows a 'Solo mostrador' badge for a product not visible in the online store", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/categorias/") return Promise.resolve({ data: mockCategorias });
+      return Promise.resolve({
+        data: [{ ...mockProductos[0], visible_tienda: false }],
+      });
+    });
+
+    render(<Productos />);
+    await waitFor(() => {
+      expect(screen.getByText("Proteína Whey")).toBeDefined();
+      expect(screen.getByText("Solo mostrador")).toBeDefined();
+    });
   });
 
   it("validates required fields before submitting", async () => {
