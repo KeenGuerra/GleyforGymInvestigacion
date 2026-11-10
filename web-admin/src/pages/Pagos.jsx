@@ -290,7 +290,7 @@ function Pagos() {
               <option value="">Seleccione membresía</option>
               {asignacionesCliente.map((a) => (
                 <option key={a.id_cliente_membresia} value={a.id_cliente_membresia}>
-                  #{a.id_cliente_membresia}
+                  {a.nombre_membresia || `Membresía #${a.id_cliente_membresia}`} ({a.estado}, vence {formatearFecha(a.fecha_fin)})
                 </option>
               ))}
             </select>

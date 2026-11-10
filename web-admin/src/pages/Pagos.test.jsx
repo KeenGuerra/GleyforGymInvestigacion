@@ -30,7 +30,13 @@ const mockClientes = [
 ];
 
 const mockAsignaciones = [
-  { id_cliente_membresia: 10, id_cliente: 1, estado: "ACTIVA" },
+  {
+    id_cliente_membresia: 10,
+    id_cliente: 1,
+    estado: "ACTIVA",
+    nombre_membresia: "Plan Oro",
+    fecha_fin: "2026-12-01",
+  },
 ];
 
 describe("Pagos Page Component", () => {
@@ -50,6 +56,19 @@ describe("Pagos Page Component", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Juan Perez").length).toBeGreaterThan(0);
     });
+  });
+
+  it("shows the plan name in the Membresía dropdown, not just its internal id", async () => {
+    render(<Pagos />);
+
+    fireEvent.change(await screen.findByLabelText("Cliente"), { target: { value: "1" } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: "Plan Oro (ACTIVA, vence 1/12/2026)" })
+      ).toBeDefined();
+    });
+    expect(screen.queryByText("#10")).toBeNull();
   });
 
   it("fails validation if form fields are missing or invalid", async () => {

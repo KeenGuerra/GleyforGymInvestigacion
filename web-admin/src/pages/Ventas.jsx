@@ -179,12 +179,12 @@ function Ventas() {
             </div>
             <div className="form-field">
               <label>Método de pago</label>
+              {/* Solo los 3 métodos que el gimnasio realmente usa en el
+                  mostrador -- el mismo criterio que ya tenía Pagos.jsx. */}
               <select name="metodo_pago" value={form.metodo_pago} onChange={cambiar}>
                 <option value="EFECTIVO">EFECTIVO</option>
                 <option value="YAPE">YAPE</option>
                 <option value="PLIN">PLIN</option>
-                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
-                <option value="TARJETA">TARJETA</option>
               </select>
             </div>
             <div className="form-field">

@@ -116,6 +116,16 @@ describe("Ventas Page Component", () => {
     });
   });
 
+  it("only offers EFECTIVO, YAPE and PLIN as payment methods -- the ones the gym actually uses at the counter", async () => {
+    const { container } = render(<Ventas />);
+    fireEvent.click(screen.getByText("+ Nueva venta"));
+    await waitFor(() => expect(screen.getByText("Confirmar venta")).toBeDefined());
+
+    const metodoPagoSelect = container.querySelector('select[name="metodo_pago"]');
+    const opciones = Array.from(metodoPagoSelect.options).map((o) => o.value);
+    expect(opciones).toEqual(["EFECTIVO", "YAPE", "PLIN"]);
+  });
+
   it("rejects a quantity greater than the available stock", async () => {
     const { container } = render(<Ventas />);
     fireEvent.click(screen.getByText("+ Nueva venta"));
