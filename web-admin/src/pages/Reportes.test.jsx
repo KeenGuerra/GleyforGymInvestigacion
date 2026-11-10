@@ -402,4 +402,72 @@ describe("Reportes Page Component", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("shows clients with a pending balance, their total owed, and sends a WhatsApp reminder", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/saldos-pendientes") {
+        return Promise.resolve({
+          data: [{
+            id_cliente_membresia: 20,
+            id_cliente: 1,
+            nombre_cliente: "Juan Perez",
+            telefono_cliente: "987654321",
+            nombre_membresia: "Plan Mensual",
+            precio_asignado: 100,
+            monto_pagado: 30,
+            saldo_pendiente: 70,
+          }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar saldos pendientes"));
+
+    await waitFor(() => expect(screen.getByText("Juan Perez")).toBeDefined());
+    expect(screen.getByText("Falta S/ 70.00")).toBeDefined();
+    expect(screen.getByText(/Total adeudado:/)).toBeDefined();
+    expect(screen.getByText("S/ 70.00")).toBeDefined();
+
+    fireEvent.click(screen.getByText("Enviar recordatorio por WhatsApp"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const [url] = openSpy.mock.calls[0];
+    expect(url).toContain("https://wa.me/51987654321?text=");
+    const mensaje = decodeURIComponent(url.split("text=")[1]);
+    expect(mensaje).toBe(
+      "¡Hola Juan! 👋\n\n" +
+      "Tienes un saldo pendiente de *S/ 70.00* por tu membresía *Plan Mensual* 💳\n\n" +
+      "Puedes completar el pago cuando pases por el gimnasio.\n\n" +
+      "*GLEYFORGYM* 🏋️"
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("shows an empty message when no client has a pending balance", async () => {
+    api.get.mockResolvedValue({ data: [] });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar saldos pendientes"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No hay clientes con saldo pendiente.")).toBeDefined();
+    });
+  });
+
+  it("shows an error when consulting pending balances fails", async () => {
+    api.get.mockRejectedValue(new Error("fail"));
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar saldos pendientes"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo consultar los saldos pendientes")).toBeDefined();
+    });
+  });
 });

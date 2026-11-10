@@ -24,6 +24,10 @@ function Reportes() {
   const [cargandoVencimiento, setCargandoVencimiento] = useState(false);
   const [mensajes, setMensajes] = useState({});
 
+  const [saldosPendientes, setSaldosPendientes] = useState(null);
+  const [cargandoSaldos, setCargandoSaldos] = useState(false);
+  const [mensajesSaldo, setMensajesSaldo] = useState({});
+
   const [corteTiempos, setCorteTiempos] = useState(() => {
     const fecha = new Date();
     fecha.setDate(fecha.getDate() - 30);
@@ -340,15 +344,66 @@ function Reportes() {
     );
   };
 
-  const enviarRecordatorioWhatsApp = (fila) => {
+  const enviarWhatsApp = (fila, mensaje) => {
     const telefono = (fila.telefono_cliente || "").trim();
     if (!(telefono.length === 9 && /^\d+$/.test(telefono))) {
       setError(`${fila.nombre_cliente || "Este cliente"} no tiene un teléfono válido de 9 dígitos registrado.`);
       return;
     }
-    const mensaje = mensajes[fila.id_cliente_membresia] ?? mensajePredeterminado(fila);
     const url = `https://wa.me/51${telefono}?text=${encodeURIComponent(mensaje)}`;
     globalThis.open(url, "_blank");
+  };
+
+  const enviarRecordatorioWhatsApp = (fila) => {
+    enviarWhatsApp(fila, mensajes[fila.id_cliente_membresia] ?? mensajePredeterminado(fila));
+  };
+
+  const consultarSaldosPendientes = async () => {
+    try {
+      setCargandoSaldos(true);
+      setError("");
+      const res = await api.get("/reportes/saldos-pendientes");
+      setSaldosPendientes(res.data);
+
+      const mensajesIniciales = {};
+      res.data.forEach((fila) => {
+        mensajesIniciales[fila.id_cliente_membresia] = mensajePredeterminadoSaldo(fila);
+      });
+      setMensajesSaldo(mensajesIniciales);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo consultar los saldos pendientes");
+    } finally {
+      setCargandoSaldos(false);
+    }
+  };
+
+  const mensajePredeterminadoSaldo = (fila) => {
+    const primerNombre = (fila.nombre_cliente || "").split(" ")[0] || "";
+    return (
+      `¡Hola ${primerNombre}! 👋\n\n` +
+      `Tienes un saldo pendiente de *S/ ${Number(fila.saldo_pendiente).toFixed(2)}* por tu membresía *${fila.nombre_membresia || ""}* 💳\n\n` +
+      "Puedes completar el pago cuando pases por el gimnasio.\n\n" +
+      "*GLEYFORGYM* 🏋️"
+    );
+  };
+
+  const enviarRecordatorioSaldoWhatsApp = (fila) => {
+    enviarWhatsApp(fila, mensajesSaldo[fila.id_cliente_membresia] ?? mensajePredeterminadoSaldo(fila));
+  };
+
+  const exportarSaldosPendientes = () => {
+    exportarCsv(
+      "clientes-saldo-pendiente.csv",
+      [
+        { etiqueta: "Cliente", valor: "nombre_cliente" },
+        { etiqueta: "Teléfono", valor: "telefono_cliente" },
+        { etiqueta: "Membresía", valor: "nombre_membresia" },
+        { etiqueta: "Pagado (S/)", valor: "monto_pagado" },
+        { etiqueta: "Saldo pendiente (S/)", valor: "saldo_pendiente" },
+      ],
+      saldosPendientes || []
+    );
   };
 
   return (
@@ -602,6 +657,77 @@ function Reportes() {
                 </article>
               ))}
             </div>
+          )
+        )}
+      </section>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Clientes con saldo pendiente</h2>
+            <p>
+              Membresías asignadas por el staff donde el cliente pagó solo una parte.
+              Revisa quién debe y envíale un recordatorio por WhatsApp.
+            </p>
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button className="btn-primary" disabled={cargandoSaldos} onClick={consultarSaldosPendientes}>
+            {cargandoSaldos ? "Consultando..." : "Consultar saldos pendientes"}
+          </button>
+          {saldosPendientes && saldosPendientes.length > 0 && (
+            <button className="btn-secondary" onClick={exportarSaldosPendientes}>
+              Exportar CSV
+            </button>
+          )}
+        </div>
+
+        {saldosPendientes && (
+          saldosPendientes.length === 0 ? (
+            <p className="empty-message">No hay clientes con saldo pendiente.</p>
+          ) : (
+            <>
+              <p>
+                Total adeudado:{" "}
+                <strong>
+                  S/ {saldosPendientes.reduce((t, f) => t + Number(f.saldo_pendiente), 0).toFixed(2)}
+                </strong>
+              </p>
+              <div className="cards-grid">
+                {saldosPendientes.map((fila) => (
+                  <article className="card item-card" key={fila.id_cliente_membresia}>
+                    <div className="item-card-top">
+                      <span className="badge badge-warning">
+                        Falta S/ {Number(fila.saldo_pendiente).toFixed(2)}
+                      </span>
+                    </div>
+                    <h3>{fila.nombre_cliente || `Cliente #${fila.id_cliente}`}</h3>
+                    <p className="item-description">
+                      {fila.nombre_membresia || "Membresía"} — pagó S/ {Number(fila.monto_pagado).toFixed(2)}{" "}
+                      de S/ {Number(fila.precio_asignado || 0).toFixed(2)}
+                    </p>
+                    <p className="item-description">Teléfono: {fila.telefono_cliente || "no registrado"}</p>
+                    <div className="form-field">
+                      <label htmlFor={`mensaje-saldo-${fila.id_cliente_membresia}`}>Mensaje</label>
+                      <textarea
+                        id={`mensaje-saldo-${fila.id_cliente_membresia}`}
+                        rows={3}
+                        value={mensajesSaldo[fila.id_cliente_membresia] ?? mensajePredeterminadoSaldo(fila)}
+                        onChange={(e) =>
+                          setMensajesSaldo({ ...mensajesSaldo, [fila.id_cliente_membresia]: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="item-actions">
+                      <button className="btn-primary" onClick={() => enviarRecordatorioSaldoWhatsApp(fila)}>
+                        Enviar recordatorio por WhatsApp
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
           )
         )}
       </section>

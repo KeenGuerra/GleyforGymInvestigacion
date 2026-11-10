@@ -510,6 +510,38 @@ def reporte_membresias_por_vencer(db: Annotated[Session, Depends(get_db)], dias:
     return resultado
 
 
+@router.get("/saldos-pendientes")
+def reporte_saldos_pendientes(db: Annotated[Session, Depends(get_db)]):
+    """Membresías ACTIVA con saldo_pendiente > 0 -- un cliente que pagó solo
+    una parte del plan en el mostrador (ver ClienteMembresia.saldo_pendiente
+    en models.py). Solo aplica a asignaciones del staff: las compradas desde
+    la web ya exigen pago completo antes de activarse. Igual que
+    membresias-por-vencer, esta lista NO anonimiza al cliente: es operativa,
+    para que el staff pueda contactarlo por WhatsApp."""
+    asignaciones = (
+        db.query(models.ClienteMembresia)
+        .filter(models.ClienteMembresia.estado == "ACTIVA")
+        .all()
+    )
+
+    resultado = [
+        {
+            "id_cliente_membresia": cm.id_cliente_membresia,
+            "id_cliente": cm.id_cliente,
+            "nombre_cliente": f"{cm.cliente.nombres} {cm.cliente.apellidos}" if cm.cliente else None,
+            "telefono_cliente": cm.cliente.telefono if cm.cliente else None,
+            "nombre_membresia": cm.membresia.nombre if cm.membresia else None,
+            "precio_asignado": cm.precio_asignado,
+            "monto_pagado": cm.monto_pagado,
+            "saldo_pendiente": cm.saldo_pendiente,
+        }
+        for cm in asignaciones
+        if cm.saldo_pendiente > 0
+    ]
+    resultado.sort(key=lambda fila: fila["saldo_pendiente"], reverse=True)
+    return resultado
+
+
 @router.get("/productos-mas-vendidos")
 def reporte_productos_mas_vendidos(db: Annotated[Session, Depends(get_db)], desde: date, hasta: date):
     """Suma de unidades e ingresos por producto, en ventas CONFIRMADA dentro

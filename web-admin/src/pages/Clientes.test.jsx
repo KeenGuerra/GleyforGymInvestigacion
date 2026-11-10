@@ -99,6 +99,15 @@ describe("Clientes Page Component", () => {
     });
   });
 
+  it("shows the client's DNI under their name instead of the internal database id", async () => {
+    render(<Clientes />);
+    await waitFor(() => {
+      expect(screen.getByText("DNI 12345678")).toBeDefined();
+      expect(screen.getByText("DNI 87654321")).toBeDefined();
+    });
+    expect(screen.queryByText(/ID #/)).toBeNull();
+  });
+
   // ── Boundary Value: DNI vacío → error de validación ───────────────────────
   it("shows DNI validation error when form is submitted without DNI (BVA)", async () => {
     render(<Clientes />);

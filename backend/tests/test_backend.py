@@ -1696,6 +1696,74 @@ def test_reporte_membresias_por_vencer():
     ).status_code == 403
 
 
+def test_reporte_saldos_pendientes():
+    """Base de la sección "Clientes con saldo pendiente" de Reportes.jsx:
+    solo debe listar membresías ACTIVA con saldo_pendiente > 0, ordenadas de
+    mayor a menor deuda, y nunca una ya pagada por completo. Se usan dos
+    clientes distintos porque uno solo puede tener una membresía ACTIVA a
+    la vez."""
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    id_cm_con_deuda = client.post(
+        "/cliente-membresias/",
+        json={
+            "id_cliente": 1, "id_membresia": 1,
+            "fecha_inicio": "2026-06-02", "fecha_fin": "2026-07-02",
+            "precio_asignado": 100.0,
+        },
+        headers=headers_admin,
+    ).json()["id_cliente_membresia"]
+    client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm_con_deuda, "monto": 30.0,
+            "metodo_pago": "YAPE", "fecha_pago": "2026-06-02",
+        },
+        headers=headers_admin,
+    )
+
+    id_cliente_2 = client.post(
+        "/clientes/",
+        json={
+            "dni": "87654321", "nombres": "Rosa", "apellidos": "Diaz",
+            "correo": "rosa.diaz@gleyforgym.com", "password": "12345678",
+        },
+        headers=headers_admin,
+    ).json()["id_cliente"]
+    id_cm_pagada = client.post(
+        "/cliente-membresias/",
+        json={
+            "id_cliente": id_cliente_2, "id_membresia": 1,
+            "fecha_inicio": "2026-06-02", "fecha_fin": "2026-07-02",
+        },
+        headers=headers_admin,
+    ).json()["id_cliente_membresia"]
+    # asignar_membresia siempre usa el precio del catálogo (Plan Test = 100),
+    # sin importar lo que se envíe -- se paga ese monto para dejarla en 0.
+    client.post(
+        "/pagos/",
+        json={
+            "id_cliente": id_cliente_2, "id_cliente_membresia": id_cm_pagada, "monto": 100.0,
+            "metodo_pago": "EFECTIVO", "fecha_pago": "2026-06-02",
+        },
+        headers=headers_admin,
+    )
+
+    res = client.get("/reportes/saldos-pendientes", headers=headers_admin)
+    assert res.status_code == 200
+    filas = res.json()
+    # Solo aparece la que tiene deuda; la pagada por completo (saldo 0) no.
+    assert len(filas) == 1
+    assert filas[0]["id_cliente_membresia"] == id_cm_con_deuda
+    assert filas[0]["nombre_cliente"] == "Juan Perez"
+    assert filas[0]["monto_pagado"] == 30.0
+    assert filas[0]["saldo_pendiente"] == 70.0
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get("/reportes/saldos-pendientes", headers=headers_cliente).status_code == 403
+
+
 def test_verificar_correo():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")
