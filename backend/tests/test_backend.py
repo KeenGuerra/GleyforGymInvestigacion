@@ -163,7 +163,7 @@ def populate_db_for_coverage():
         models.Ejercicio(id_ejercicio=2, nombre="Extensiones de Triceps", grupo_muscular="Triceps", nivel="Principiante", objetivo="Ganar masa muscular", descripcion="Tricep pushdown", instrucciones="Inst", estado="ACTIVO"),
         models.Ejercicio(id_ejercicio=3, nombre="Dominadas", grupo_muscular="Espalda", nivel="Principiante", objetivo="Ganar masa muscular", descripcion="Pull ups", instrucciones="Inst", estado="ACTIVO"),
         models.Ejercicio(id_ejercicio=4, nombre="Curl de Biceps", grupo_muscular="Biceps", nivel="Principiante", objetivo="Ganar masa muscular", descripcion="Bicep curl", instrucciones="Inst", estado="ACTIVO"),
-        models.Ejercicio(id_ejercicio=5, nombre="Sentadillas", grupo_muscular="Piernas", nivel="Principiante", objetivo="Ganar masa muscular", descripcion="Squat", instrucciones="Inst", estado="ACTIVO"),
+        models.Ejercicio(id_ejercicio=5, nombre="Sentadillas", grupo_muscular="Cuádriceps", nivel="Principiante", objetivo="Ganar masa muscular", descripcion="Squat", instrucciones="Inst", estado="ACTIVO"),
         models.Ejercicio(id_ejercicio=6, nombre="Press Militar", grupo_muscular="Hombros", nivel="Principiante", objetivo="Ganar masa muscular", descripcion="Overhead press", instrucciones="Inst", estado="ACTIVO"),
         models.Ejercicio(id_ejercicio=7, nombre="Crunch Abdominal", grupo_muscular="Abdomen", nivel="Principiante", objetivo="Ganar masa muscular", descripcion="Ab crunch", instrucciones="Inst", estado="ACTIVO"),
     ]
@@ -724,7 +724,7 @@ def test_ia_rutina_restriccion_rodilla_excluye_solo_el_ejercicio_marcado():
     db.commit()
     db.close()
 
-    # Sin ningún ejercicio marcado con la restricción, "Piernas" ya NO se
+    # Sin ningún ejercicio marcado con la restricción, "Cuádriceps" ya NO se
     # excluye completo (antes sí) -- se asigna igual porque el único
     # ejercicio de ese grupo (Sentadillas) no está etiquetado.
     response = client.post("/ia/rutina/generar/1", headers=headers)
@@ -734,9 +734,9 @@ def test_ia_rutina_restriccion_rodilla_excluye_solo_el_ejercicio_marcado():
     detalle = client.get(f"/rutinas/{res_data['id_rutina']}/detalle", headers=headers)
     assert detalle.status_code == 200
     grupos_asignados = {e["grupo_muscular"] for e in detalle.json()["ejercicios"]}
-    assert "Piernas" in grupos_asignados
+    assert "Cuádriceps" in grupos_asignados
 
-    # Ahora se marca el único ejercicio de Piernas como de carga en la
+    # Ahora se marca el único ejercicio de Cuádriceps como de carga en la
     # rodilla: recién ahí el grupo queda sin opciones elegibles.
     db = TestingSessionLocal()
     sentadillas = db.query(models.Ejercicio).filter(models.Ejercicio.id_ejercicio == 5).first()
@@ -749,11 +749,11 @@ def test_ia_rutina_restriccion_rodilla_excluye_solo_el_ejercicio_marcado():
     res_data = response.json()
 
     grupos_con_aviso = [g for aviso in res_data["avisos"] for g in aviso["grupos"]]
-    assert "Piernas" in grupos_con_aviso
+    assert "Cuádriceps" in grupos_con_aviso
 
     detalle = client.get(f"/rutinas/{res_data['id_rutina']}/detalle", headers=headers)
     grupos_asignados = {e["grupo_muscular"] for e in detalle.json()["ejercicios"]}
-    assert "Piernas" not in grupos_asignados
+    assert "Cuádriceps" not in grupos_asignados
 
 
 def test_ia_rutina_generacion():

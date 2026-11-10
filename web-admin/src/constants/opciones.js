@@ -17,7 +17,13 @@ export const GRUPOS_MUSCULARES = [
   "Tríceps",
   "Espalda",
   "Bíceps",
+  // "Piernas" queda solo por compatibilidad con ejercicios ya cargados con
+  // ese valor -- la generación de rutinas usa los 4 subgrupos de abajo.
   "Piernas",
+  "Cuádriceps",
+  "Gemelos",
+  "Glúteos",
+  "Femorales",
   "Hombros",
   "Abdomen",
   "Full body",

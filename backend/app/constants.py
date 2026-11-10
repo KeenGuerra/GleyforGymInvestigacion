@@ -37,12 +37,20 @@ DIA_2 = "Día 2"
 DIA_3 = "Día 3"
 DIA_4 = "Día 4"
 DIA_5 = "Día 5"
+DIA_6 = "Día 6"
 
 GRUPO_PECHO = "Pecho"
 GRUPO_TRICEPS = "Tríceps"
 GRUPO_ESPALDA = "Espalda"
 GRUPO_BICEPS = "Bíceps"
+# GRUPO_PIERNAS queda solo por compatibilidad con ejercicios ya cargados con
+# ese valor -- la generación de rutinas usa los 4 subgrupos de abajo en su
+# lugar (ver recomendador_rutinas.py::obtener_division).
 GRUPO_PIERNAS = "Piernas"
+GRUPO_CUADRICEPS = "Cuádriceps"
+GRUPO_GEMELOS = "Gemelos"
+GRUPO_GLUTEOS = "Glúteos"
+GRUPO_FEMORALES = "Femorales"
 GRUPO_HOMBROS = "Hombros"
 GRUPO_ABDOMEN = "Abdomen"
 GRUPO_FULL_BODY = "Full body"
@@ -75,7 +83,8 @@ OBJETIVOS = [
 
 GRUPOS_MUSCULARES = [
     GRUPO_PECHO, GRUPO_TRICEPS, GRUPO_ESPALDA, GRUPO_BICEPS,
-    GRUPO_PIERNAS, GRUPO_HOMBROS, GRUPO_ABDOMEN, GRUPO_FULL_BODY,
+    GRUPO_PIERNAS, GRUPO_CUADRICEPS, GRUPO_GEMELOS, GRUPO_GLUTEOS, GRUPO_FEMORALES,
+    GRUPO_HOMBROS, GRUPO_ABDOMEN, GRUPO_FULL_BODY,
 ]
 
 # Restricciones médicas: catálogo cerrado (antes texto libre). Cliente.restricciones_medicas

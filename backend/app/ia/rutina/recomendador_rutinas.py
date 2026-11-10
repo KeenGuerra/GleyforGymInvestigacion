@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from app import models
 import random
 from app.constants import (
-    DIA_1, DIA_2, DIA_3, DIA_4, DIA_5,
+    DIA_1, DIA_2, DIA_3, DIA_4, DIA_5, DIA_6,
     GRUPO_PECHO, GRUPO_TRICEPS, GRUPO_ESPALDA, GRUPO_BICEPS,
-    GRUPO_PIERNAS, GRUPO_HOMBROS, GRUPO_ABDOMEN, GRUPO_FULL_BODY,
+    GRUPO_CUADRICEPS, GRUPO_GEMELOS, GRUPO_GLUTEOS, GRUPO_FEMORALES,
+    GRUPO_HOMBROS, GRUPO_ABDOMEN, GRUPO_FULL_BODY,
     RESTRICCION_GRUPOS_EXCLUIDOS, RESTRICCION_NINGUNA,
     RESTRICCION_RODILLA, RESTRICCION_CADERA,
 )
@@ -49,6 +50,16 @@ OBJETIVO_CONFIG_DEFECTO = {
     "series": 3, "repeticiones": "10-12", "descanso": 60,
     "nombre": "Rutina IA personalizada",
 }
+
+# Cuántos ejercicios elegir por grupo muscular, según cuántos grupos tenga
+# ESE día -- así el total por día queda parejo (~6) sea cual sea la
+# combinación, en vez de un número fijo sin importar el día (antes: siempre 2).
+CANTIDAD_SEGUN_GRUPOS_DEL_DIA = {1: 4, 2: 3, 3: 2}
+CANTIDAD_POR_GRUPO_DEFECTO = 2
+
+
+def cantidad_por_grupo(cantidad_grupos_del_dia: int) -> int:
+    return CANTIDAD_SEGUN_GRUPOS_DEL_DIA.get(cantidad_grupos_del_dia, CANTIDAD_POR_GRUPO_DEFECTO)
 
 
 def obtener_grupos_excluidos(restricciones_medicas: str | None) -> set[str]:
@@ -173,27 +184,37 @@ def obtener_candidatos_por_dia(db: Session, cliente: models.Cliente) -> dict[str
 
 
 def obtener_division(dias_semana: int):
-    if dias_semana >= 5:
+    if dias_semana >= 6:
         return {
             DIA_1: [GRUPO_PECHO, GRUPO_TRICEPS],
             DIA_2: [GRUPO_ESPALDA, GRUPO_BICEPS],
-            DIA_3: [GRUPO_PIERNAS],
+            DIA_3: [GRUPO_CUADRICEPS, GRUPO_GEMELOS],
             DIA_4: [GRUPO_HOMBROS, GRUPO_ABDOMEN],
-            DIA_5: [GRUPO_FULL_BODY]
+            DIA_5: [GRUPO_GLUTEOS, GRUPO_FEMORALES],
+            DIA_6: [GRUPO_FULL_BODY],
+        }
+
+    if dias_semana == 5:
+        return {
+            DIA_1: [GRUPO_PECHO, GRUPO_TRICEPS],
+            DIA_2: [GRUPO_ESPALDA, GRUPO_BICEPS],
+            DIA_3: [GRUPO_CUADRICEPS, GRUPO_GEMELOS],
+            DIA_4: [GRUPO_HOMBROS, GRUPO_ABDOMEN],
+            DIA_5: [GRUPO_GLUTEOS, GRUPO_FEMORALES],
         }
 
     if dias_semana == 4:
         return {
             DIA_1: [GRUPO_PECHO, GRUPO_TRICEPS],
             DIA_2: [GRUPO_ESPALDA, GRUPO_BICEPS],
-            DIA_3: [GRUPO_PIERNAS],
+            DIA_3: [GRUPO_CUADRICEPS, GRUPO_GLUTEOS],
             DIA_4: [GRUPO_HOMBROS, GRUPO_ABDOMEN]
         }
 
     return {
         DIA_1: [GRUPO_PECHO, GRUPO_TRICEPS],
         DIA_2: [GRUPO_ESPALDA, GRUPO_BICEPS],
-        DIA_3: [GRUPO_PIERNAS, GRUPO_ABDOMEN]
+        DIA_3: [GRUPO_CUADRICEPS, GRUPO_GLUTEOS, GRUPO_ABDOMEN]
     }
 
 
@@ -225,6 +246,7 @@ def generar_rutina_inteligente(db: Session, cliente: models.Cliente):
     for dia, grupos in division.items():
         orden = 1
         grupos_del_dia_sin_opciones = []
+        cantidad = cantidad_por_grupo(len(grupos))
 
         for grupo in grupos:
             if grupo in grupos_excluidos:
@@ -240,7 +262,7 @@ def generar_rutina_inteligente(db: Session, cliente: models.Cliente):
                 continue
 
             seleccionados = _seleccionar_por_puntaje(
-                ejercicios_disponibles, nivel, ejercicios_rutina_anterior, cantidad=2
+                ejercicios_disponibles, nivel, ejercicios_rutina_anterior, cantidad=cantidad
             )
 
             for ejercicio in seleccionados:

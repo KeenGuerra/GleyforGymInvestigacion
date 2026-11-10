@@ -167,10 +167,14 @@ def elegir_rutina_con_claude(contexto_cliente: dict, candidatos_por_dia: dict) -
     system_prompt = (
         "Eres un asistente que arma rutinas de entrenamiento para un gimnasio. "
         "SOLO puedes elegir ejercicios de la lista de candidatos que se te da — "
-        "nunca inventes un ejercicio ni uses uno fuera de esa lista. Elige 2 "
-        "ejercicios por grupo muscular de cada día, con series/repeticiones/"
-        "descanso apropiados para el nivel y objetivo del cliente, y una "
-        "justificación breve (una frase) por ejercicio."
+        "nunca inventes un ejercicio ni uses uno fuera de esa lista. Por cada "
+        "día, elige ejercicios de CADA grupo muscular presente ese día según "
+        "esta regla (para que el total del día quede parejo, sin importar "
+        "cuántos grupos tenga): si el día tiene 2 grupos musculares, elige 3 "
+        "ejercicios de cada uno; si tiene 3 grupos, elige 2 de cada uno; si "
+        "el día es de un solo grupo (ej. Full body), elige 4. Define series/"
+        "repeticiones/descanso apropiados para el nivel y objetivo del "
+        "cliente, y da una justificación breve (una frase) por ejercicio."
     )
     user_prompt = f"Cliente: {contexto_cliente}.\n\nCandidatos permitidos por día: {candidatos_por_dia}"
 

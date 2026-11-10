@@ -5,6 +5,8 @@ from app.ia.rutina.recomendador_rutinas import (
     obtener_grupos_excluidos,
     obtener_codigos_restriccion_fisica,
     _seleccionar_por_puntaje,
+    obtener_division,
+    cantidad_por_grupo,
 )
 
 
@@ -63,3 +65,43 @@ def test_seleccionar_por_puntaje_respeta_cantidad():
     ejercicios = [_ejercicio(i, nivel="Principiante") for i in range(5)]
     seleccionados = _seleccionar_por_puntaje(ejercicios, "Principiante", set(), cantidad=2)
     assert len(seleccionados) == 2
+
+
+def test_cantidad_por_grupo_segun_grupos_del_dia():
+    # El total por día queda parejo (~6) sea cual sea la combinación.
+    assert cantidad_por_grupo(1) == 4  # día de un solo grupo (ej. Full body)
+    assert cantidad_por_grupo(2) == 3  # el caso más común: 3 x 2 = 6
+    assert cantidad_por_grupo(3) == 2  # 2 x 3 = 6
+    assert cantidad_por_grupo(4) == 2  # sin una entrada específica, usa el default
+
+
+def test_obtener_division_3_dias_principiante():
+    division = obtener_division(3)
+    assert division["Día 1"] == ["Pecho", "Tríceps"]
+    assert division["Día 2"] == ["Espalda", "Bíceps"]
+    assert division["Día 3"] == ["Cuádriceps", "Glúteos", "Abdomen"]
+
+
+def test_obtener_division_4_dias_intermedio():
+    division = obtener_division(4)
+    assert division["Día 3"] == ["Cuádriceps", "Glúteos"]
+    assert division["Día 4"] == ["Hombros", "Abdomen"]
+    assert len(division) == 4
+
+
+def test_obtener_division_5_dias():
+    division = obtener_division(5)
+    assert division["Día 3"] == ["Cuádriceps", "Gemelos"]
+    assert division["Día 5"] == ["Glúteos", "Femorales"]
+    assert len(division) == 5
+
+
+def test_obtener_division_6_dias_avanzado_separa_piernas_en_dos_dias():
+    division = obtener_division(6)
+    assert division["Día 3"] == ["Cuádriceps", "Gemelos"]
+    assert division["Día 5"] == ["Glúteos", "Femorales"]
+    assert division["Día 6"] == ["Full body"]
+    assert len(division) == 6
+    # Ningún grupo de pierna usa ya el genérico "Piernas".
+    grupos_del_dia = {g for grupos in division.values() for g in grupos}
+    assert "Piernas" not in grupos_del_dia

@@ -8,7 +8,7 @@ def obtener_dias_semana(nivel, frecuencia):
         return 3
     elif nivel == "intermedio":
         return 4
-    return 5
+    return 6
 
 
 def obtener_tipo_rutina(objetivo, nivel, tipo_entrenamiento):

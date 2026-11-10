@@ -299,6 +299,98 @@ def seed_avisos_iniciales():
         db.close()
 
 
+def seed_ejercicios_iniciales():
+    """
+    El catálogo de Ejercicios en producción tenía muy pocos registros por
+    grupo muscular (1-4), lo que limitaba la variedad de las rutinas que
+    genera la IA (ver app/ia/rutina/recomendador_rutinas.py). Se siembra un
+    banco de ejercicios reales y conocidos, repartido entre los grupos que ya
+    existían y los 4 nuevos de pierna (Cuádriceps/Gemelos/Glúteos/Femorales).
+
+    A diferencia de seed_avisos_iniciales() (que se salta todo si ya hay
+    avisos), acá la idempotencia es por nombre: solo se inserta cada
+    ejercicio cuyo nombre todavía no exista, para no duplicar ni tocar nada
+    que el dueño ya haya cargado a mano desde el panel.
+    """
+    print("Checking which seed exercises are missing...")
+    from app.database import SessionLocal
+    from app.models import Ejercicio
+    from app.constants import (
+        GRUPO_PECHO, GRUPO_TRICEPS, GRUPO_ESPALDA, GRUPO_BICEPS,
+        GRUPO_CUADRICEPS, GRUPO_GEMELOS, GRUPO_GLUTEOS, GRUPO_FEMORALES,
+        GRUPO_HOMBROS, GRUPO_ABDOMEN,
+        RESTRICCION_RODILLA, RESTRICCION_CADERA,
+    )
+
+    # (nombre, grupo_muscular, nivel, restricciones)
+    EJERCICIOS_INICIALES = [
+        ("Press de banca plano", GRUPO_PECHO, "Intermedio", None),
+        ("Press inclinado con mancuernas", GRUPO_PECHO, "Principiante", None),
+        ("Aperturas en polea alta", GRUPO_PECHO, "Principiante", None),
+        ("Flexiones de pecho", GRUPO_PECHO, "Principiante", None),
+
+        ("Fondos en paralelas", GRUPO_TRICEPS, "Intermedio", None),
+        ("Extensión de tríceps en polea alta con cuerda", GRUPO_TRICEPS, "Principiante", None),
+        ("Press francés con barra Z", GRUPO_TRICEPS, "Intermedio", None),
+        ("Patada de tríceps con mancuerna", GRUPO_TRICEPS, "Principiante", None),
+
+        ("Jalón al pecho en polea alta", GRUPO_ESPALDA, "Principiante", None),
+        ("Remo con barra", GRUPO_ESPALDA, "Intermedio", None),
+        ("Remo unilateral con mancuerna", GRUPO_ESPALDA, "Principiante", None),
+        ("Pull-over en polea alta con cuerda", GRUPO_ESPALDA, "Principiante", None),
+        ("Remo sentado en polea baja", GRUPO_ESPALDA, "Principiante", None),
+
+        ("Curl de bíceps con barra", GRUPO_BICEPS, "Principiante", None),
+        ("Curl martillo con mancuernas", GRUPO_BICEPS, "Principiante", None),
+        ("Curl concentrado en polea baja", GRUPO_BICEPS, "Principiante", None),
+
+        ("Sentadilla libre con barra", GRUPO_CUADRICEPS, "Intermedio", RESTRICCION_RODILLA),
+        ("Prensa de piernas inclinada", GRUPO_CUADRICEPS, "Principiante", RESTRICCION_RODILLA),
+        ("Extensiones de cuádriceps en máquina", GRUPO_CUADRICEPS, "Principiante", RESTRICCION_RODILLA),
+        ("Zancadas caminando con mancuernas", GRUPO_CUADRICEPS, "Intermedio", RESTRICCION_RODILLA),
+
+        ("Elevación de talones de pie", GRUPO_GEMELOS, "Principiante", None),
+        ("Elevación de talones sentado", GRUPO_GEMELOS, "Principiante", None),
+
+        ("Hip Thrust con barra", GRUPO_GLUTEOS, "Intermedio", RESTRICCION_CADERA),
+        ("Peso muerto rumano con barra", GRUPO_GLUTEOS, "Intermedio", RESTRICCION_CADERA),
+        ("Hiperextensiones en banco a 45 grados", GRUPO_GLUTEOS, "Principiante", RESTRICCION_CADERA),
+        ("Patada de glúteo en polea baja", GRUPO_GLUTEOS, "Principiante", None),
+        ("Puente de glúteo en máquina", GRUPO_GLUTEOS, "Principiante", None),
+
+        ("Curl femoral tumbado en máquina", GRUPO_FEMORALES, "Principiante", None),
+        ("Abducción de cadera en máquina", GRUPO_FEMORALES, "Principiante", None),
+
+        ("Press de hombros con mancuernas", GRUPO_HOMBROS, "Intermedio", None),
+        ("Elevaciones laterales con mancuernas", GRUPO_HOMBROS, "Principiante", None),
+        ("Pájaros (elevaciones posteriores)", GRUPO_HOMBROS, "Principiante", None),
+        ("Face Pull en polea", GRUPO_HOMBROS, "Principiante", None),
+
+        ("Elevaciones de piernas colgado", GRUPO_ABDOMEN, "Intermedio", None),
+        ("Crunch en polea alta", GRUPO_ABDOMEN, "Principiante", None),
+        ("Plancha abdominal (Plank)", GRUPO_ABDOMEN, "Principiante", None),
+        ("Dead Bug", GRUPO_ABDOMEN, "Principiante", None),
+    ]
+
+    db = SessionLocal()
+    try:
+        nombres_existentes = {n for (n,) in db.query(Ejercicio.nombre).all()}
+        nuevos = [
+            Ejercicio(nombre=nombre, grupo_muscular=grupo, nivel=nivel, restricciones=restricciones, estado="ACTIVO")
+            for nombre, grupo, nivel, restricciones in EJERCICIOS_INICIALES
+            if nombre not in nombres_existentes
+        ]
+        if not nuevos:
+            print("All seed exercises already exist, skipping.")
+            return
+
+        db.add_all(nuevos)
+        db.commit()
+        print(f"{len(nuevos)} ejercicio(s) nuevo(s) sembrado(s) correctamente.")
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     try:
         try:
@@ -310,6 +402,7 @@ if __name__ == "__main__":
         migrar_estado_revision_existentes()
         seed_admin_user()
         seed_avisos_iniciales()
+        seed_ejercicios_iniciales()
         print("Database setup completed successfully.")
     except Exception as e:
         print(f"An error occurred: {e}")
