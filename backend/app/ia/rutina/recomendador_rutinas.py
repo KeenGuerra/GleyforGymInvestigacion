@@ -62,6 +62,16 @@ def cantidad_por_grupo(cantidad_grupos_del_dia: int) -> int:
     return CANTIDAD_SEGUN_GRUPOS_DEL_DIA.get(cantidad_grupos_del_dia, CANTIDAD_POR_GRUPO_DEFECTO)
 
 
+def cantidad_para_dia(grupos_del_dia: list[str], grupos_excluidos: set[str]) -> int:
+    """Igual que cantidad_por_grupo, pero contando solo los grupos que
+    realmente se van a procesar ese día -- si una restricción médica excluye
+    un grupo completo (ej. HOMBRO en un día Hombros+Abdomen), el día no debe
+    quedarse con la cantidad pensada para 2 grupos cuando en la práctica solo
+    sobrevive uno."""
+    grupos_validos = [g for g in grupos_del_dia if g not in grupos_excluidos]
+    return cantidad_por_grupo(len(grupos_validos))
+
+
 def obtener_grupos_excluidos(restricciones_medicas: str | None) -> set[str]:
     """A partir de los códigos guardados en Cliente.restricciones_medicas
     (ver constants.RESTRICCIONES_MEDICAS), arma el set de grupos musculares
@@ -195,6 +205,10 @@ def obtener_division(dias_semana: int):
         }
 
     if dias_semana == 5:
+        # Hoy inalcanzable desde los endpoints reales: obtener_dias_semana()
+        # solo devuelve 3/4/6 porque ambos llamadores le pasan frecuencia=None
+        # -- queda lista para cuando se exponga esa frecuencia como opción
+        # explícita (no por nivel). Cubierta por test_obtener_division_5_dias.
         return {
             DIA_1: [GRUPO_PECHO, GRUPO_TRICEPS],
             DIA_2: [GRUPO_ESPALDA, GRUPO_BICEPS],
@@ -246,7 +260,7 @@ def generar_rutina_inteligente(db: Session, cliente: models.Cliente):
     for dia, grupos in division.items():
         orden = 1
         grupos_del_dia_sin_opciones = []
-        cantidad = cantidad_por_grupo(len(grupos))
+        cantidad = cantidad_para_dia(grupos, grupos_excluidos)
 
         for grupo in grupos:
             if grupo in grupos_excluidos:

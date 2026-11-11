@@ -7,6 +7,7 @@ from app.ia.rutina.recomendador_rutinas import (
     _seleccionar_por_puntaje,
     obtener_division,
     cantidad_por_grupo,
+    cantidad_para_dia,
 )
 
 
@@ -65,6 +66,16 @@ def test_seleccionar_por_puntaje_respeta_cantidad():
     ejercicios = [_ejercicio(i, nivel="Principiante") for i in range(5)]
     seleccionados = _seleccionar_por_puntaje(ejercicios, "Principiante", set(), cantidad=2)
     assert len(seleccionados) == 2
+
+
+def test_cantidad_para_dia_recalcula_si_una_restriccion_excluye_un_grupo_completo():
+    # Día de 2 grupos sin ninguna restricción que los afecte: 3 por grupo.
+    assert cantidad_para_dia(["Hombros", "Abdomen"], set()) == 3
+
+    # Si HOMBRO excluye el grupo completo, solo queda "Abdomen" -- debe
+    # recalcular a la cantidad de un día de 1 solo grupo (4), no quedarse en 3
+    # (que fue justamente el bug: el día terminaba con la mitad de ejercicios).
+    assert cantidad_para_dia(["Hombros", "Abdomen"], {"Hombros"}) == 4
 
 
 def test_cantidad_por_grupo_segun_grupos_del_dia():
