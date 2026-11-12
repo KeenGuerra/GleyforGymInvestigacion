@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 
 const FILTROS = [
@@ -10,6 +11,7 @@ const FILTROS = [
 ];
 
 function RevisionIA() {
+  const navigate = useNavigate();
   const [clientes, setClientes] = useState([]);
   const [items, setItems] = useState([]);
   const [filtro, setFiltro] = useState("pendiente");
@@ -311,6 +313,18 @@ function RevisionIA() {
                     <td><span className={badgeOrigen(item.origen_ia)}>{etiquetaOrigen(item.origen_ia)}</span></td>
                     <td><span className={badgeEstado(item.estado_revision)}>{item.estado_revision || "sin revisión"}</span></td>
                     <td className="table-actions">
+                      <button
+                        className="btn-secondary"
+                        onClick={() =>
+                          navigate(
+                            item.tipo === "rutina"
+                              ? `/rutinas/${item.id}/detalle`
+                              : `/nutricion/${item.id}/detalle`
+                          )
+                        }
+                      >
+                        Ver
+                      </button>
                       {item.estado_revision === "pendiente" && (
                         <>
                           <button disabled={procesandoId === clave} onClick={() => aprobar(item)}>

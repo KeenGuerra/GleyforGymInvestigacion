@@ -87,7 +87,7 @@ describe("Rutinas Page Component", () => {
     });
   });
 
-  it("triggers IA generation on button click when client is selected", async () => {
+  it("triggers IA generation on button click and does not navigate away -- the routine is reviewed from Revisión de IA instead", async () => {
     api.post.mockResolvedValue({ data: { id_rutina: 11, nombre: "Rutina generada" } });
     render(
       <MemoryRouter>
@@ -109,8 +109,9 @@ describe("Rutinas Page Component", () => {
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ia/rutina/generar/1");
-      expect(mockNavigate).toHaveBeenCalledWith("/rutinas/11/detalle");
+      expect(screen.getByText("Rutina generada. Revísala en Revisión de IA cuando quieras.")).toBeDefined();
     });
+    expect(mockNavigate).not.toHaveBeenCalledWith("/rutinas/11/detalle");
   });
 
   it("shows an Activar button instead of Desactivar for an INACTIVA routine, and reactivates it", async () => {

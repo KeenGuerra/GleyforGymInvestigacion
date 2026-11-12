@@ -12,6 +12,7 @@ function Rutinas() {
   const [idClienteIA, setIdClienteIA] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
+  const [mensajeExito, setMensajeExito] = useState("");
   const [cargandoIA, setCargandoIA] = useState(false);
 
   const cargarDatos = async () => {
@@ -66,6 +67,7 @@ function Rutinas() {
 
   const generarRutinaIA = async () => {
     setError("");
+    setMensajeExito("");
 
     if (!idClienteIA) {
       setError("Seleccione un cliente");
@@ -75,13 +77,13 @@ function Rutinas() {
     try {
       setCargandoIA(true);
 
-      const res = await api.post(`/ia/rutina/generar/${idClienteIA}`);
+      await api.post(`/ia/rutina/generar/${idClienteIA}`);
 
       await cargarDatos();
-
-      if (res.data?.id_rutina) {
-        navigate(`/rutinas/${res.data.id_rutina}/detalle`);
-      }
+      // No navega automáticamente al detalle -- la rutina queda pendiente de
+      // revisión en Revisión de IA, donde un botón "Ver" la muestra cuando
+      // el admin quiera (ver con todos sus ejercicios de golpe se veía feo).
+      setMensajeExito("Rutina generada. Revísala en Revisión de IA cuando quieras.");
     } catch (error) {
       console.error(error);
       setError(error.response?.data?.detail || "Error al generar rutina IA");
@@ -139,6 +141,7 @@ function Rutinas() {
       </section>
 
       {error && <p className="error-message">{error}</p>}
+      {mensajeExito && <p className="success-message">{mensajeExito}</p>}
 
       <section className="form-card">
         <div className="card-header">

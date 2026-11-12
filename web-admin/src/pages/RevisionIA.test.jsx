@@ -12,6 +12,11 @@ vi.mock("../api/api", () => ({
   },
 }));
 
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => mockNavigate,
+}));
+
 const mockClientes = [{ id_cliente: 1, nombres: "Juan", apellidos: "Perez" }];
 
 const mockRutinaPendiente = {
@@ -61,6 +66,19 @@ describe("RevisionIA Page Component", () => {
       expect(screen.getByText("Plan nutricional #20")).toBeDefined();
       expect(screen.getAllByText("Juan Perez").length).toBe(2);
     });
+  });
+
+  it("navigates to the routine/plan detail when clicking 'Ver', instead of dumping every exercise inline", async () => {
+    render(<RevisionIA />);
+    await waitFor(() => expect(screen.getByText("Rutina IA para ganancia muscular")).toBeDefined());
+
+    const filaRutina = screen.getByText("Rutina IA para ganancia muscular").closest("tr");
+    fireEvent.click(within(filaRutina).getByText("Ver"));
+    expect(mockNavigate).toHaveBeenCalledWith("/rutinas/10/detalle");
+
+    const filaPlan = screen.getByText("Plan nutricional #20").closest("tr");
+    fireEvent.click(within(filaPlan).getByText("Ver"));
+    expect(mockNavigate).toHaveBeenCalledWith("/nutricion/20/detalle");
   });
 
   it("approves a routine and reloads the list", async () => {
