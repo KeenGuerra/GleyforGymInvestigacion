@@ -147,8 +147,10 @@ describe("Ventas Page Component", () => {
   });
 
   it("confirms a pending sale", async () => {
-    // El botón "Confirmar" solo se muestra para ADMIN (el backend restringe
-    // /ventas/{id}/confirmar a ese rol; ver el comentario en Ventas.jsx).
+    // El botón "Confirmar" se muestra para ADMIN/ENTRENADOR/RECEPCIONISTA --
+    // con el pago único por QR de Yape, quien revisa que llegó el pago y
+    // confirma es el personal de mostrador, no solo un ADMIN (ver el
+    // comentario y el rol en Ventas.jsx y backend/app/routes/ventas.py).
     localStorage.setItem("rol", "ADMIN");
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockResolvedValue({ data: {} });
@@ -162,8 +164,16 @@ describe("Ventas Page Component", () => {
     });
   });
 
-  it("does not show the Confirmar button for a non-ADMIN role", async () => {
+  it("also shows the Confirmar button for RECEPCIONISTA", async () => {
     localStorage.setItem("rol", "RECEPCIONISTA");
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Ana López")).toBeDefined());
+    expect(screen.getByText("Confirmar")).toBeDefined();
+  });
+
+  it("does not show the Confirmar button for a non-staff role", async () => {
+    localStorage.setItem("rol", "CLIENTE");
 
     render(<Ventas />);
     await waitFor(() => expect(screen.getByText("Ana López")).toBeDefined());

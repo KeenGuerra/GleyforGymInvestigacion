@@ -475,6 +475,43 @@ def test_solicitar_venta_queda_pendiente_sin_tocar_stock_y_confirmar_si_lo_hace(
     assert client.get(f"/inventario/{id_producto}", headers=headers_admin).json()["stock_actual"] == 7
 
 
+def test_recepcionista_puede_confirmar_una_venta():
+    """Con el pago único por QR de Yape (sin pasarela), quien revisa que el
+    pago llegó y confirma la venta en el día a día es el personal de
+    mostrador, no necesariamente un ADMIN -- antes /ventas/{id}/confirmar
+    era ADMIN-only."""
+    populate_comercio()
+    headers_admin = get_auth_headers()
+    headers_recepcionista = get_auth_headers(rol="RECEPCIONISTA")
+    id_producto = crear_producto_con_categoria(headers_admin)
+    id_proveedor = crear_proveedor(headers_admin)
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers_admin,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=70, correo="socio.yape@gleyforgym.com",
+                           password_hash=encriptar_password("clave123"), rol="CLIENTE", estado="ACTIVO"))
+    db.add(models.Cliente(id_cliente=70, id_usuario=70, dni="70707070", nombres="Lucia", apellidos="Soto",
+                           estado="ACTIVO", telefono="987000000"))
+    db.commit()
+    db.close()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=70)
+
+    id_venta = client.post(
+        "/ventas/solicitar",
+        json={"metodo_pago": "YAPE", "detalles": [{"id_producto": id_producto, "cantidad": 2}]},
+        headers=headers_cliente,
+    ).json()["id_venta"]
+
+    res_confirmar = client.post(f"/ventas/{id_venta}/confirmar", headers=headers_recepcionista)
+    assert res_confirmar.status_code == 200, res_confirmar.text
+    assert res_confirmar.json()["estado"] == "CONFIRMADA"
+
+
 # ── Comprador sin membresía (autoregistro público, ver POST /usuarios/registro) ──
 def test_solicitar_venta_bloquea_comprador_sin_correo_verificado():
     populate_comercio()

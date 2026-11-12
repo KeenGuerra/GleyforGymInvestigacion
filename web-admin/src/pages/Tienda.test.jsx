@@ -93,7 +93,7 @@ describe("Tienda Page Component", () => {
     });
   });
 
-  it("only offers PagoEfectivo and Yape as payment methods -- those are the only ones Culqi actually supports here", async () => {
+  it("shows Yape as the only payment method -- no dropdown, no other gateway", async () => {
     localStorage.setItem("token", "fake-token");
 
     renderTienda();
@@ -103,11 +103,11 @@ describe("Tienda Page Component", () => {
     fireEvent.click(screen.getAllByText("Carrito (1)")[1]);
 
     await waitFor(() => expect(screen.getByText("Confirmar pedido")).toBeDefined());
-    const opciones = screen.getAllByRole("option").map((o) => o.value);
-    expect(opciones).toEqual(["PAGOEFECTIVO", "YAPE"]);
+    expect(screen.getByText("Yape (QR)")).toBeDefined();
+    expect(screen.queryAllByRole("option").length).toBe(0);
   });
 
-  it("checks out the cart and lists the resulting order", async () => {
+  it("checks out the cart with metodo_pago YAPE and lists the resulting order", async () => {
     localStorage.setItem("token", "fake-token");
     api.post.mockResolvedValue({ data: {} });
 
@@ -125,7 +125,7 @@ describe("Tienda Page Component", () => {
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/solicitar", {
-        metodo_pago: "PAGOEFECTIVO",
+        metodo_pago: "YAPE",
         descuento: 0,
         observaciones: null,
         detalles: [{ id_producto: 1, cantidad: 1 }],
@@ -177,7 +177,7 @@ describe("Tienda Page Component", () => {
         screen.getByText("✔ Pago confirmado. Recógelo en el gimnasio — no hacemos delivery.")
       ).toBeDefined();
     });
-    expect(screen.queryByText("Pagar ahora")).toBeNull();
+    expect(screen.queryByText("Pagar con Yape")).toBeNull();
   });
 
   it("shows a delivered confirmation on an ENTREGADA order", async () => {
@@ -200,55 +200,28 @@ describe("Tienda Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("✔ Entregado. ¡Gracias por tu compra!")).toBeDefined();
     });
-    expect(screen.queryByText("Pagar ahora")).toBeNull();
+    expect(screen.queryByText("Pagar con Yape")).toBeNull();
     expect(
       screen.queryByText("✔ Pago confirmado. Recógelo en el gimnasio — no hacemos delivery.")
     ).toBeNull();
   });
 
-  it("starts the payment for a pending order and shows the checkout modal", async () => {
+  it("shows the static Yape QR for a pending order, with no API call -- there is no gateway anymore", async () => {
     localStorage.setItem("token", "fake-token");
-    api.post.mockResolvedValue({
-      data: {
-        id_venta: 1,
-        url_checkout: "https://api.culqi.com/v2/orders/ord_test_123",
-        qr_yape: "https://niubizqr.pagoefectivo.pe/abc.png",
-        id_transaccion_externa: "ord_test_123",
-      },
-    });
 
     renderTienda();
     await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
 
     fireEvent.click(screen.getByText("Mis pedidos (1)"));
 
-    await waitFor(() => expect(screen.getByText("Pagar ahora")).toBeDefined());
-    fireEvent.click(screen.getByText("Pagar ahora"));
+    await waitFor(() => expect(screen.getByText("Pagar con Yape")).toBeDefined());
+    fireEvent.click(screen.getByText("Pagar con Yape"));
 
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith("/ventas/1/checkout");
-      expect(screen.getByText("Completar pago")).toBeDefined();
-      expect(screen.getByAltText("Código QR para pagar con Yape")).toBeDefined();
-    });
+    expect(screen.getByAltText("Código QR para pagar con Yape")).toBeDefined();
+    expect(screen.getByText(/Escanea con Yape y paga/)).toBeDefined();
+    expect(api.post).not.toHaveBeenCalledWith("/ventas/1/checkout");
 
-    fireEvent.click(screen.getByText("Cerrar"));
-    expect(screen.queryByText("Completar pago")).toBeNull();
-  });
-
-  it("shows an error when starting the payment fails", async () => {
-    localStorage.setItem("token", "fake-token");
-    api.post.mockRejectedValue({ response: { data: { detail: "CULQI_SECRET_KEY no configurada" } } });
-
-    renderTienda();
-    await waitFor(() => expect(screen.getByText("Proteína Whey")).toBeDefined());
-
-    fireEvent.click(screen.getByText("Mis pedidos (1)"));
-
-    await waitFor(() => expect(screen.getByText("Pagar ahora")).toBeDefined());
-    fireEvent.click(screen.getByText("Pagar ahora"));
-
-    await waitFor(() => {
-      expect(screen.getByText("CULQI_SECRET_KEY no configurada")).toBeDefined();
-    });
+    fireEvent.click(screen.getByText("Ocultar QR"));
+    expect(screen.queryByAltText("Código QR para pagar con Yape")).toBeNull();
   });
 });

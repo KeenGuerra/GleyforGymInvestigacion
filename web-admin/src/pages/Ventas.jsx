@@ -270,7 +270,7 @@ function Ventas() {
                   </div>
                 )}
                 <div className="item-actions">
-                  {v.estado === "PENDIENTE" && rol === "ADMIN" && (
+                  {v.estado === "PENDIENTE" && ["ADMIN", "ENTRENADOR", "RECEPCIONISTA"].includes(rol) && (
                     <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => confirmar(v.id_venta)}>
                       {procesando === v.id_venta ? "Confirmando..." : "Confirmar"}
                     </button>

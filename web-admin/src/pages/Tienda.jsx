@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
-import CheckoutModal from "../components/CheckoutModal";
 
 const CART_KEY = "carrito_tienda";
 
@@ -20,11 +19,9 @@ function Tienda() {
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
   const [tab, setTab] = useState("tienda");
-  const [metodoPago, setMetodoPago] = useState("PAGOEFECTIVO");
   const [observaciones, setObservaciones] = useState("");
   const [procesando, setProcesando] = useState(false);
-  const [pagandoId, setPagandoId] = useState(null);
-  const [checkoutInfo, setCheckoutInfo] = useState(null);
+  const [mostrandoQrPara, setMostrandoQrPara] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(CART_KEY, JSON.stringify(carrito));
@@ -93,7 +90,10 @@ function Tienda() {
     try {
       setProcesando(true); setError("");
       await api.post("/ventas/solicitar", {
-        metodo_pago: metodoPago, descuento: 0,
+        // Único método de pago: Yape por QR -- el cliente paga y el pago se
+        // confirma en el gimnasio (ver "Pago con Yape" en la pestaña Mis
+        // pedidos), sin ninguna pasarela de por medio.
+        metodo_pago: "YAPE", descuento: 0,
         observaciones: observaciones || null,
         detalles: carrito.map((c) => ({ id_producto: c.id_producto, cantidad: c.cantidad })),
       });
@@ -101,19 +101,6 @@ function Tienda() {
     } catch (err) {
       setError(err.response?.data?.detail || "Error al realizar el pedido");
     } finally { setProcesando(false); }
-  };
-
-  const pagarPedido = async (id_venta) => {
-    try {
-      setPagandoId(id_venta);
-      setError("");
-      const res = await api.post(`/ventas/${id_venta}/checkout`);
-      setCheckoutInfo(res.data);
-    } catch (err) {
-      setError(err.response?.data?.detail || "No se pudo iniciar el pago");
-    } finally {
-      setPagandoId(null);
-    }
   };
 
   const filtrados = productos.filter((p) => {
@@ -237,16 +224,9 @@ function Tienda() {
                   <div className="form-grid" style={{ marginBottom: "1rem" }}>
                     <div className="form-field">
                       <label>Método de pago</label>
-                      {/* Solo los 2 canales que Culqi realmente soporta vía la
-                          API de Órdenes (ver crear_checkout en
-                          backend/app/pagos_gateway/culqi.py) -- esta compra es
-                          100% online, así que "Efectivo" (pagar en persona)
-                          no aplica aquí: para eso está la compra directa en
-                          el gimnasio. */}
-                      <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)}>
-                        <option value="PAGOEFECTIVO">PagoEfectivo</option>
-                        <option value="YAPE">Yape</option>
-                      </select>
+                      {/* Único método: Yape por QR, pagado y confirmado en el
+                          gimnasio -- no se usa ninguna pasarela de pago. */}
+                      <p style={{ margin: 0, fontWeight: 600 }}>Yape (QR)</p>
                     </div>
                     <div className="form-field field-large">
                       <label>Observaciones</label>
@@ -301,14 +281,30 @@ function Tienda() {
                       </div>
                     )}
                     {v.estado === "PENDIENTE" && (
-                      <button
-                        className="btn-primary"
-                        style={{ marginTop: "0.75rem", width: "100%" }}
-                        disabled={pagandoId === v.id_venta}
-                        onClick={() => pagarPedido(v.id_venta)}
-                      >
-                        {pagandoId === v.id_venta ? "Generando pago..." : "Pagar ahora"}
-                      </button>
+                      <>
+                        <button
+                          className="btn-primary"
+                          style={{ marginTop: "0.75rem", width: "100%" }}
+                          onClick={() =>
+                            setMostrandoQrPara(mostrandoQrPara === v.id_venta ? null : v.id_venta)
+                          }
+                        >
+                          {mostrandoQrPara === v.id_venta ? "Ocultar QR" : "Pagar con Yape"}
+                        </button>
+                        {mostrandoQrPara === v.id_venta && (
+                          <div style={{ textAlign: "center", marginTop: "0.75rem" }}>
+                            <img
+                              src="/yape-qr.png"
+                              alt="Código QR para pagar con Yape"
+                              style={{ maxWidth: "220px", width: "100%", borderRadius: "12px" }}
+                            />
+                            <p className="item-description" style={{ marginTop: "0.5rem" }}>
+                              Escanea con Yape y paga <strong>S/ {v.total?.toFixed(2)}</strong>. Pasa a
+                              recogerlo al gimnasio -- ahí se confirma tu pago.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                     {v.estado === "CONFIRMADA" && (
                       <p className="success-message" style={{ marginTop: "0.75rem", textAlign: "center" }}>
@@ -332,8 +328,6 @@ function Tienda() {
         <h3>Gleyfor<span>Gym</span></h3>
         <p>© 2026 Todos los derechos reservados</p>
       </footer>
-
-      <CheckoutModal info={checkoutInfo} onClose={() => setCheckoutInfo(null)} />
     </div>
   );
 }

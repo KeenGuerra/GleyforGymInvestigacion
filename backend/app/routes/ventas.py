@@ -620,7 +620,7 @@ def solicitar_venta(
 def confirmar_venta(
     id_venta: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(requerir_roles("ADMIN"))
+    usuario: dict = Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))
 ):
     venta = db.query(models.Venta).filter(
         models.Venta.id_venta == id_venta
