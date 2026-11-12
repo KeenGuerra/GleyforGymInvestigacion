@@ -36,12 +36,15 @@ function Reportes() {
   const [limpiandoTiempos, setLimpiandoTiempos] = useState(false);
   const [resultadoLimpieza, setResultadoLimpieza] = useState("");
 
-  const generarReporte = async () => {
-    if (!desde || !hasta) {
+  const generarReporte = async (rangoOverride) => {
+    const rangoDesde = rangoOverride?.desde ?? desde;
+    const rangoHasta = rangoOverride?.hasta ?? hasta;
+
+    if (!rangoDesde || !rangoHasta) {
       setError("Selecciona una fecha de inicio y de fin");
       return;
     }
-    if (desde > hasta) {
+    if (rangoDesde > rangoHasta) {
       setError("La fecha de inicio no puede ser posterior a la fecha de fin");
       return;
     }
@@ -51,10 +54,10 @@ function Reportes() {
       setError("");
 
       const [resIngresos, resAsistencias, resProductos, resMetodoPago] = await Promise.all([
-        api.get("/reportes/ingresos", { params: { desde, hasta } }),
-        api.get("/reportes/asistencias", { params: { desde, hasta } }),
-        api.get("/reportes/productos-mas-vendidos", { params: { desde, hasta } }),
-        api.get("/reportes/ventas-por-metodo-pago", { params: { desde, hasta } }),
+        api.get("/reportes/ingresos", { params: { desde: rangoDesde, hasta: rangoHasta } }),
+        api.get("/reportes/asistencias", { params: { desde: rangoDesde, hasta: rangoHasta } }),
+        api.get("/reportes/productos-mas-vendidos", { params: { desde: rangoDesde, hasta: rangoHasta } }),
+        api.get("/reportes/ventas-por-metodo-pago", { params: { desde: rangoDesde, hasta: rangoHasta } }),
       ]);
 
       setIngresos(resIngresos.data);
@@ -67,6 +70,29 @@ function Reportes() {
     } finally {
       setCargando(false);
     }
+  };
+
+  const aLlaveFecha = (fecha) => fecha.toISOString().slice(0, 10);
+
+  const aplicarAtajo = (tipo) => {
+    const hoy = new Date();
+    let inicio;
+    if (tipo === "hoy") {
+      inicio = hoy;
+    } else if (tipo === "semana") {
+      // Lunes de esta semana (si hoy es domingo, retrocede 6 días).
+      const diaSemana = hoy.getDay();
+      const diasDesdeLunes = diaSemana === 0 ? 6 : diaSemana - 1;
+      inicio = new Date(hoy);
+      inicio.setDate(hoy.getDate() - diasDesdeLunes);
+    } else {
+      inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    }
+
+    const nuevoRango = { desde: aLlaveFecha(inicio), hasta: aLlaveFecha(hoy) };
+    setDesde(nuevoRango.desde);
+    setHasta(nuevoRango.hasta);
+    generarReporte(nuevoRango);
   };
 
   const exportarIngresos = () => {
@@ -446,8 +472,17 @@ function Reportes() {
         </div>
 
         <div className="form-actions">
-          <button className="btn-primary" disabled={cargando} onClick={generarReporte}>
+          <button className="btn-primary" disabled={cargando} onClick={() => generarReporte()}>
             {cargando ? "Generando..." : "Generar reporte"}
+          </button>
+          <button className="btn-secondary" disabled={cargando} onClick={() => aplicarAtajo("hoy")}>
+            Hoy
+          </button>
+          <button className="btn-secondary" disabled={cargando} onClick={() => aplicarAtajo("semana")}>
+            Esta semana
+          </button>
+          <button className="btn-secondary" disabled={cargando} onClick={() => aplicarAtajo("mes")}>
+            Este mes
           </button>
         </div>
       </section>
@@ -462,8 +497,16 @@ function Reportes() {
           </div>
 
           <p>
-            Total del período: <strong>S/ {Number(ingresos.total).toFixed(2)}</strong>
+            Total de membresías del período: <strong>S/ {Number(ingresos.total).toFixed(2)}</strong>
           </p>
+          {ventasPorMetodo && (
+            <p>
+              Ingresos totales del período (membresías + ventas de productos):{" "}
+              <strong>
+                S/ {(Number(ingresos.total) + Number(ventasPorMetodo.total || 0)).toFixed(2)}
+              </strong>
+            </p>
+          )}
 
           {ingresos.por_dia.length === 0 ? (
             <p className="empty-message">No hay ingresos registrados en este rango.</p>

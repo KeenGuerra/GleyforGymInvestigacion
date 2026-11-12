@@ -72,6 +72,48 @@ describe("Reportes Page Component", () => {
     });
   });
 
+  it("shows the combined total (memberships + product sales) once both load", async () => {
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Generar reporte"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Ingresos totales del período (membresías + ventas de productos):")
+      ).toBeDefined();
+      expect(screen.getByText("S/ 600.50")).toBeDefined();
+    });
+  });
+
+  it("fills the date range with today's date and generates the report when clicking 'Hoy'", async () => {
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Hoy"));
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Desde").value).toBe(hoy);
+      expect(screen.getByLabelText("Hasta").value).toBe(hoy);
+      expect(api.get).toHaveBeenCalledWith(
+        "/reportes/ingresos",
+        expect.objectContaining({ params: { desde: hoy, hasta: hoy } })
+      );
+    });
+  });
+
+  it("fills the date range with the first day of the month when clicking 'Este mes'", async () => {
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Este mes"));
+
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Desde").value).toBe(primerDia);
+      expect(api.get).toHaveBeenCalledWith(
+        "/reportes/ingresos",
+        expect.objectContaining({ params: expect.objectContaining({ desde: primerDia }) })
+      );
+    });
+  });
+
   it("shows a validation error when the date range is missing", async () => {
     render(<Reportes />);
 
