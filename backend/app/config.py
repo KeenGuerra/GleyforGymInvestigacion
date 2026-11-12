@@ -64,3 +64,10 @@ CLAUDE_MODEL_IA = os.getenv("CLAUDE_MODEL_IA", "claude-haiku-5-5")
 
 # CORS Origins - default allows all for development, but customizable via env
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+
+# Datos del negocio para el membrete de los comprobantes de pago en PDF (ver
+# app/recibos.py). No son obligatorios para que el sistema funcione, pero sin
+# ellos el comprobante queda sin RUC -- solo configurables por si cambian de
+# razón social sin tener que tocar código.
+RUC_EMPRESA = os.getenv("RUC_EMPRESA", "20610357629")
+RAZON_SOCIAL = os.getenv("RAZON_SOCIAL", "Ingeniería e Inversiones Mosquera A L E.I.R.L.")

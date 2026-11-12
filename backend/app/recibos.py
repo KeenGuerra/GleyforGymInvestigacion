@@ -7,6 +7,26 @@ from reportlab.lib.units import cm
 # pyrefly: ignore [missing-import]
 from reportlab.pdfgen import canvas
 
+from app import config
+
+IGV_TASA = 0.18
+
+# Texto que debe aparecer, tal cual, al pie de todo comprobante -- GLEYFORGYM
+# no es un emisor electrónico autorizado por SUNAT (sin esa autorización, no
+# se le puede llamar "boleta" ni "factura" a ningún documento sin incumplir
+# la norma), así que todo lo que se genera acá es un "comprobante de pago"
+# interno, con toda la información de una venta real (RUC, IGV, etc.) pero
+# sin la serie/correlativo ni el QR que solo un emisor autorizado puede dar.
+AVISO_LEGAL = "Comprobante de pago interno -- no es boleta ni factura electrónica (SUNAT)."
+
+
+def _desglose_igv(total_con_igv: float) -> tuple[float, float]:
+    """`total_con_igv` ya incluye el IGV (los precios del catálogo se cargan
+    así, como es usual al vender al público). Devuelve (op. gravada, IGV)."""
+    op_gravada = round(total_con_igv / (1 + IGV_TASA), 2)
+    igv = round(total_con_igv - op_gravada, 2)
+    return op_gravada, igv
+
 
 def _linea(c: canvas.Canvas, y: float, etiqueta: str, valor: str) -> float:
     c.setFont("Helvetica-Bold", 10)
@@ -16,20 +36,31 @@ def _linea(c: canvas.Canvas, y: float, etiqueta: str, valor: str) -> float:
     return y - 0.7 * cm
 
 
+def _encabezado_comprobante(c: canvas.Canvas, ancho: float, alto: float, subtitulo: str) -> float:
+    """Membrete compartido por todo comprobante de pago en A5: nombre
+    comercial grande, razón social y RUC debajo (igual que cualquier
+    comprobante real), y el título "COMPROBANTE DE PAGO" -- nunca "boleta"
+    ni "factura", ver AVISO_LEGAL."""
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(ancho / 2, alto - 1.6 * cm, "GLEYFORGYM")
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(ancho / 2, alto - 2.15 * cm, config.RAZON_SOCIAL)
+    c.drawCentredString(ancho / 2, alto - 2.6 * cm, f"RUC: {config.RUC_EMPRESA}")
+    c.setFont("Helvetica-Bold", 11)
+    c.drawCentredString(ancho / 2, alto - 3.4 * cm, "COMPROBANTE DE PAGO")
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(ancho / 2, alto - 3.95 * cm, subtitulo)
+    return alto - 5 * cm
+
+
 def generar_recibo_pago(pago, cliente) -> bytes:
-    """Recibo simple en PDF para un pago. No reemplaza una boleta/factura
-    electrónica formal (SUNAT); es un comprobante interno descargable."""
+    """Comprobante de pago en PDF para el pago de una membresía."""
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A5)
     ancho, alto = A5
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(ancho / 2, alto - 2 * cm, "GLEYFORGYM")
-    c.setFont("Helvetica", 11)
-    c.drawCentredString(ancho / 2, alto - 2.7 * cm, "Recibo de pago")
-
-    y = alto - 4 * cm
-    y = _linea(c, y, "N° de recibo:", f"RECIBO-{pago.id_pago:06d}")
+    y = _encabezado_comprobante(c, ancho, alto, "Pago de membresía")
+    y = _linea(c, y, "N° de comprobante:", f"PAGO-{pago.id_pago:06d}")
     y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
     y = _linea(c, y, "DNI:", cliente.dni or "-")
     y = _linea(c, y, "Fecha de pago:", str(pago.fecha_pago))
@@ -54,7 +85,7 @@ def generar_recibo_pago(pago, cliente) -> bytes:
         y = _linea(c, y, "Observación:", pago.observacion)
 
     c.setFont("Helvetica-Oblique", 8)
-    c.drawCentredString(ancho / 2, 1.5 * cm, "Comprobante interno, no válido como boleta o factura electrónica.")
+    c.drawCentredString(ancho / 2, 1.5 * cm, AVISO_LEGAL)
 
     c.showPage()
     c.save()
@@ -63,20 +94,15 @@ def generar_recibo_pago(pago, cliente) -> bytes:
 
 
 def generar_boleta_venta(venta, cliente) -> bytes:
-    """Comprobante en PDF para una venta de productos (suplementos). Mismo
-    estilo y mismo disclaimer que generar_recibo_pago; antes no existía
-    ningún comprobante descargable para una Venta."""
+    """Comprobante en PDF para una venta de productos (suplementos), con el
+    desglose de IGV -- precio_venta ya lo incluye, así que se calcula hacia
+    atrás a partir del total (ver _desglose_igv)."""
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A5)
     ancho, alto = A5
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(ancho / 2, alto - 2 * cm, "GLEYFORGYM")
-    c.setFont("Helvetica", 11)
-    c.drawCentredString(ancho / 2, alto - 2.7 * cm, "Boleta de venta")
-
-    y = alto - 4 * cm
-    y = _linea(c, y, "N° de boleta:", f"BOLETA-{venta.id_venta:06d}")
+    y = _encabezado_comprobante(c, ancho, alto, "Venta de productos")
+    y = _linea(c, y, "N° de comprobante:", f"VENTA-{venta.id_venta:06d}")
     if cliente:
         y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
         y = _linea(c, y, "DNI:", cliente.dni or "-")
@@ -107,6 +133,11 @@ def generar_boleta_venta(venta, cliente) -> bytes:
     c.setFont("Helvetica", 10)
     y = _linea(c, y, "Subtotal:", f"S/ {venta.subtotal:.2f}")
     y = _linea(c, y, "Descuento:", f"S/ {venta.descuento:.2f}")
+
+    op_gravada, igv = _desglose_igv(venta.total)
+    y = _linea(c, y, "Op. gravada:", f"S/ {op_gravada:.2f}")
+    y = _linea(c, y, f"IGV ({int(IGV_TASA * 100)}%):", f"S/ {igv:.2f}")
+
     c.setFont("Helvetica-Bold", 11)
     c.drawString(2 * cm, y, "Total:")
     c.drawString(6 * cm, y, f"S/ {venta.total:.2f}")
@@ -117,7 +148,7 @@ def generar_boleta_venta(venta, cliente) -> bytes:
         y = _linea(c, y, "Observaciones:", venta.observaciones)
 
     c.setFont("Helvetica-Oblique", 8)
-    c.drawCentredString(ancho / 2, 1.5 * cm, "Comprobante interno, no válido como boleta o factura electrónica.")
+    c.drawCentredString(ancho / 2, 1.5 * cm, AVISO_LEGAL)
 
     c.showPage()
     c.save()
