@@ -4,11 +4,13 @@ import logging
 # pyrefly: ignore [missing-import]
 import httpx
 # pyrefly: ignore [missing-import]
-from reportlab.lib.pagesizes import A4, A5
+from reportlab.lib.pagesizes import A4
 # pyrefly: ignore [missing-import]
-from reportlab.lib.units import cm
+from reportlab.lib.units import cm, mm
 # pyrefly: ignore [missing-import]
 from reportlab.lib.utils import ImageReader
+# pyrefly: ignore [missing-import]
+from reportlab.pdfbase.pdfmetrics import stringWidth
 # pyrefly: ignore [missing-import]
 from reportlab.pdfgen import canvas
 
@@ -18,6 +20,16 @@ logger = logging.getLogger("gleyforgym")
 
 IGV_TASA = 0.18
 TIMEOUT_IMAGEN_SEGUNDOS = 5.0
+
+# Comprobantes de pago (membresía y venta de productos) en formato ticket de
+# 80mm -- el que de verdad se usa en mostradores con impresora térmica POS en
+# Perú (SUNAT no exige un tamaño de papel, solo el contenido). Es un rollo
+# continuo, no una hoja fija, así que el PDF se arma de ancho fijo pero con
+# el alto justo para su contenido (ver _TicketBuilder) en vez de un tamaño A4/
+# A5 con salto de página.
+ANCHO_TICKET = 80 * mm
+MARGEN_TICKET = 4 * mm
+ANCHO_UTIL_TICKET = ANCHO_TICKET - 2 * MARGEN_TICKET
 
 # Texto que debe aparecer, tal cual, al pie de todo comprobante -- GLEYFORGYM
 # no es un emisor electrónico autorizado por SUNAT (sin esa autorización, no
@@ -44,35 +56,116 @@ def _linea(c: canvas.Canvas, y: float, etiqueta: str, valor: str) -> float:
     return y - 0.7 * cm
 
 
-def _encabezado_comprobante(c: canvas.Canvas, ancho: float, alto: float, subtitulo: str) -> float:
-    """Membrete compartido por todo comprobante de pago en A5: nombre
-    comercial grande, razón social y RUC debajo (igual que cualquier
-    comprobante real), y el título "COMPROBANTE DE PAGO" -- nunca "boleta"
-    ni "factura", ver AVISO_LEGAL."""
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(ancho / 2, alto - 1.6 * cm, "GLEYFORGYM")
-    c.setFont("Helvetica", 8)
-    c.drawCentredString(ancho / 2, alto - 2.15 * cm, config.RAZON_SOCIAL)
-    c.drawCentredString(ancho / 2, alto - 2.6 * cm, f"RUC: {config.RUC_EMPRESA}")
-    c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(ancho / 2, alto - 3.4 * cm, "COMPROBANTE DE PAGO")
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(ancho / 2, alto - 3.95 * cm, subtitulo)
-    return alto - 5 * cm
+def _envolver_texto(texto: str, fuente: str, tamano: int, ancho_max: float) -> list[str]:
+    """Parte `texto` en las líneas que hagan falta para que ninguna supere
+    `ancho_max` -- necesario en el ticket de 80mm, donde hasta la razón
+    social o el nombre de un cliente/producto largo no entran en una sola
+    línea de ~72mm útiles."""
+    palabras = texto.split()
+    if not palabras:
+        return [""]
+
+    lineas: list[str] = []
+    actual = palabras[0]
+    for palabra in palabras[1:]:
+        candidato = f"{actual} {palabra}"
+        if stringWidth(candidato, fuente, tamano) <= ancho_max:
+            actual = candidato
+        else:
+            lineas.append(actual)
+            actual = palabra
+    lineas.append(actual)
+    return lineas
+
+
+class _TicketBuilder:
+    """Arma un comprobante de pago en formato ticket (80mm) en dos pasos:
+    primero se agregan todas las líneas (con su propio ajuste de texto), y
+    recién con el total de líneas ya conocido se calcula el alto exacto del
+    PDF -- a diferencia de A4/A5 (tamaño fijo, con salto de página si hace
+    falta), un ticket es un rollo continuo: no tiene "páginas", solo el
+    largo que su contenido necesite."""
+
+    INTERLINEADO = 0.42 * cm
+
+    def __init__(self):
+        self._bloques: list[tuple[str, str, int, bool] | tuple[None, None, float, None]] = []
+
+    def _agregar(self, texto: str, fuente: str, tamano: int, centrado: bool) -> None:
+        for linea in _envolver_texto(texto, fuente, tamano, ANCHO_UTIL_TICKET):
+            self._bloques.append((linea, fuente, tamano, centrado))
+
+    def centrado(self, texto: str, fuente: str = "Helvetica", tamano: int = 8) -> None:
+        self._agregar(texto, fuente, tamano, True)
+
+    def izquierda(self, texto: str, fuente: str = "Helvetica", tamano: int = 8) -> None:
+        self._agregar(texto, fuente, tamano, False)
+
+    def espacio(self, alto: float = 0.2 * cm) -> None:
+        self._bloques.append((None, None, alto, None))
+
+    def alto_contenido(self) -> float:
+        total = 0.0
+        for texto, _fuente, tamano_o_alto, _centrado in self._bloques:
+            total += tamano_o_alto if texto is None else self.INTERLINEADO
+        return total
+
+    def renderizar(self, c: canvas.Canvas, ancho: float, y_inicio: float) -> None:
+        y = y_inicio
+        for texto, fuente, tamano_o_alto, centrado in self._bloques:
+            if texto is None:
+                y -= tamano_o_alto
+                continue
+            c.setFont(fuente, tamano_o_alto)
+            if centrado:
+                c.drawCentredString(ancho / 2, y, texto)
+            else:
+                c.drawString(MARGEN_TICKET, y, texto)
+            y -= self.INTERLINEADO
+
+
+def _agregar_encabezado_ticket(builder: _TicketBuilder, subtitulo: str) -> None:
+    """Membrete compartido por todo comprobante de pago: nombre comercial,
+    razón social y RUC (igual que cualquier comprobante real), y el título
+    "COMPROBANTE DE PAGO" -- nunca "boleta" ni "factura", ver AVISO_LEGAL."""
+    builder.centrado("GLEYFORGYM", fuente="Helvetica-Bold", tamano=13)
+    builder.centrado(config.RAZON_SOCIAL, tamano=7)
+    builder.centrado(f"RUC: {config.RUC_EMPRESA}", tamano=7)
+    builder.espacio(0.15 * cm)
+    builder.centrado("COMPROBANTE DE PAGO", fuente="Helvetica-Bold", tamano=9)
+    builder.centrado(subtitulo, tamano=8)
+    builder.espacio(0.25 * cm)
+
+
+def _agregar_pie_ticket(builder: _TicketBuilder) -> None:
+    builder.espacio(0.25 * cm)
+    builder.centrado(AVISO_LEGAL, fuente="Helvetica-Oblique", tamano=6)
+
+
+def _renderizar_ticket(builder: _TicketBuilder) -> bytes:
+    margen_vertical = 0.6 * cm
+    alto_total = builder.alto_contenido() + 2 * margen_vertical
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=(ANCHO_TICKET, alto_total))
+    builder.renderizar(c, ANCHO_TICKET, alto_total - margen_vertical)
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer.read()
 
 
 def generar_recibo_pago(pago, cliente) -> bytes:
-    """Comprobante de pago en PDF para el pago de una membresía."""
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A5)
-    ancho, alto = A5
+    """Comprobante de pago en PDF (formato ticket 80mm) para el pago de una
+    membresía."""
+    builder = _TicketBuilder()
+    _agregar_encabezado_ticket(builder, "Pago de membresía")
 
-    y = _encabezado_comprobante(c, ancho, alto, "Pago de membresía")
-    y = _linea(c, y, "N° de comprobante:", f"PAGO-{pago.id_pago:06d}")
-    y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
-    y = _linea(c, y, "DNI:", cliente.dni or "-")
-    y = _linea(c, y, "Fecha de pago:", str(pago.fecha_pago))
-    y = _linea(c, y, "Método de pago:", pago.metodo_pago)
+    builder.izquierda(f"N° de comprobante: PAGO-{pago.id_pago:06d}")
+    builder.izquierda(f"Cliente: {cliente.nombres} {cliente.apellidos}")
+    builder.izquierda(f"DNI: {cliente.dni or '-'}")
+    builder.izquierda(f"Fecha de pago: {pago.fecha_pago}")
+    builder.izquierda(f"Método de pago: {pago.metodo_pago}")
 
     # Si el pago corresponde a una membresía, se muestra el plan y el
     # periodo que cubre -- antes el recibo no decía qué se había pagado.
@@ -80,88 +173,61 @@ def generar_recibo_pago(pago, cliente) -> bytes:
     if cliente_membresia:
         nombre_plan = cliente_membresia.membresia.nombre if cliente_membresia.membresia else None
         if nombre_plan:
-            y = _linea(c, y, "Membresía:", nombre_plan)
+            builder.izquierda(f"Membresía: {nombre_plan}")
         if cliente_membresia.fecha_inicio and cliente_membresia.fecha_fin:
-            y = _linea(
-                c, y, "Periodo cubierto:",
-                f"{cliente_membresia.fecha_inicio} al {cliente_membresia.fecha_fin}",
+            builder.izquierda(
+                f"Periodo cubierto: {cliente_membresia.fecha_inicio} al {cliente_membresia.fecha_fin}"
             )
 
-    y = _linea(c, y, "Monto:", f"S/ {pago.monto:.2f}")
-    y = _linea(c, y, "Estado:", pago.estado)
+    builder.espacio(0.15 * cm)
+    builder.izquierda(f"Monto: S/ {pago.monto:.2f}", fuente="Helvetica-Bold", tamano=10)
+    builder.izquierda(f"Estado: {pago.estado}")
     if pago.observacion:
-        y = _linea(c, y, "Observación:", pago.observacion)
+        builder.izquierda(f"Observación: {pago.observacion}")
 
-    c.setFont("Helvetica-Oblique", 8)
-    c.drawCentredString(ancho / 2, 1.5 * cm, AVISO_LEGAL)
-
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-    return buffer.read()
+    _agregar_pie_ticket(builder)
+    return _renderizar_ticket(builder)
 
 
 def generar_boleta_venta(venta, cliente) -> bytes:
-    """Comprobante en PDF para una venta de productos (suplementos), con el
-    desglose de IGV -- precio_venta ya lo incluye, así que se calcula hacia
-    atrás a partir del total (ver _desglose_igv)."""
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A5)
-    ancho, alto = A5
+    """Comprobante en PDF (formato ticket 80mm) para una venta de productos
+    (suplementos), con el desglose de IGV -- precio_venta ya lo incluye, así
+    que se calcula hacia atrás a partir del total (ver _desglose_igv)."""
+    builder = _TicketBuilder()
+    _agregar_encabezado_ticket(builder, "Venta de productos")
 
-    y = _encabezado_comprobante(c, ancho, alto, "Venta de productos")
-    y = _linea(c, y, "N° de comprobante:", f"VENTA-{venta.id_venta:06d}")
+    builder.izquierda(f"N° de comprobante: VENTA-{venta.id_venta:06d}")
     if cliente:
-        y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
-        y = _linea(c, y, "DNI:", cliente.dni or "-")
+        builder.izquierda(f"Cliente: {cliente.nombres} {cliente.apellidos}")
+        builder.izquierda(f"DNI: {cliente.dni or '-'}")
     else:
-        y = _linea(c, y, "Cliente:", "Venta general (sin cliente registrado)")
-    y = _linea(c, y, "Fecha:", str(venta.fecha_venta))
-    y = _linea(c, y, "Método de pago:", venta.metodo_pago)
-    y -= 0.3 * cm
+        builder.izquierda("Cliente: Venta general (sin cliente registrado)")
+    builder.izquierda(f"Fecha: {venta.fecha_venta}")
+    builder.izquierda(f"Método de pago: {venta.metodo_pago}")
+    builder.espacio(0.15 * cm)
 
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(2 * cm, y, "Producto")
-    c.drawString(9.5 * cm, y, "Cant.")
-    c.drawString(11.5 * cm, y, "P. unit.")
-    c.drawString(14 * cm, y, "Subtotal")
-    y -= 0.6 * cm
-    c.setFont("Helvetica", 9)
-
+    builder.izquierda("Detalle:", fuente="Helvetica-Bold", tamano=8)
     for detalle in venta.detalles:
-        y = _nueva_pagina_si_hace_falta(c, y, alto)
         nombre = detalle.producto.nombre if detalle.producto else f"Producto #{detalle.id_producto}"
-        c.drawString(2 * cm, y, nombre[:40])
-        c.drawString(9.5 * cm, y, f"{detalle.cantidad:g}")
-        c.drawString(11.5 * cm, y, f"S/ {detalle.precio_unitario:.2f}")
-        c.drawString(14 * cm, y, f"S/ {detalle.subtotal:.2f}")
-        y -= 0.55 * cm
+        builder.izquierda(nombre, fuente="Helvetica-Bold", tamano=8)
+        builder.izquierda(
+            f"  {detalle.cantidad:g} x S/ {detalle.precio_unitario:.2f} = S/ {detalle.subtotal:.2f}"
+        )
 
-    y -= 0.3 * cm
-    c.setFont("Helvetica", 10)
-    y = _linea(c, y, "Subtotal:", f"S/ {venta.subtotal:.2f}")
-    y = _linea(c, y, "Descuento:", f"S/ {venta.descuento:.2f}")
+    builder.espacio(0.15 * cm)
+    builder.izquierda(f"Subtotal: S/ {venta.subtotal:.2f}")
+    builder.izquierda(f"Descuento: S/ {venta.descuento:.2f}")
 
     op_gravada, igv = _desglose_igv(venta.total)
-    y = _linea(c, y, "Op. gravada:", f"S/ {op_gravada:.2f}")
-    y = _linea(c, y, f"IGV ({int(IGV_TASA * 100)}%):", f"S/ {igv:.2f}")
-
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(2 * cm, y, "Total:")
-    c.drawString(6 * cm, y, f"S/ {venta.total:.2f}")
-    y -= 0.7 * cm
+    builder.izquierda(f"Op. gravada: S/ {op_gravada:.2f}")
+    builder.izquierda(f"IGV ({int(IGV_TASA * 100)}%): S/ {igv:.2f}")
+    builder.izquierda(f"Total: S/ {venta.total:.2f}", fuente="Helvetica-Bold", tamano=10)
 
     if venta.observaciones:
-        c.setFont("Helvetica", 9)
-        y = _linea(c, y, "Observaciones:", venta.observaciones)
+        builder.izquierda(f"Observaciones: {venta.observaciones}")
 
-    c.setFont("Helvetica-Oblique", 8)
-    c.drawCentredString(ancho / 2, 1.5 * cm, AVISO_LEGAL)
-
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-    return buffer.read()
+    _agregar_pie_ticket(builder)
+    return _renderizar_ticket(builder)
 
 
 def _encabezado_a4(c: canvas.Canvas, ancho: float, alto: float, titulo: str) -> float:
