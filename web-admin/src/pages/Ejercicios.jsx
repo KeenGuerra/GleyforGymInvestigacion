@@ -5,6 +5,7 @@ import { OBJETIVOS, NIVELES, GRUPOS_MUSCULARES, RESTRICCIONES_MEDICAS, codigosAT
 function Ejercicios() {
   const [ejercicios, setEjercicios] = useState([]);
   const [video, setVideo] = useState(null);
+  const [imagenRef, setImagenRef] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
@@ -12,6 +13,7 @@ function Ejercicios() {
   const [editandoId, setEditandoId] = useState(null);
 
   const fileRef = useRef(null);
+  const fileRefImagen = useRef(null);
 
   const formInicial = {
     nombre: "",
@@ -56,11 +58,13 @@ function Ejercicios() {
   const limpiarFormulario = () => {
     setForm(formInicial);
     setVideo(null);
+    setImagenRef(null);
     setError("");
     setMostrarFormulario(false);
     setEditandoId(null);
 
     if (fileRef.current) fileRef.current.value = "";
+    if (fileRefImagen.current) fileRefImagen.current.value = "";
   };
 
   const iniciarEdicion = (ejercicio) => {
@@ -75,6 +79,7 @@ function Ejercicios() {
       restricciones: ejercicio.restricciones || "",
     });
     setVideo(null);
+    setImagenRef(null);
     setEditandoId(ejercicio.id_ejercicio);
     setError("");
     setMostrarFormulario(true);
@@ -119,6 +124,7 @@ function Ejercicios() {
         });
 
         if (video) data.append("video", video);
+        if (imagenRef) data.append("imagen", imagenRef);
 
         await api.post("/ejercicios/", data, {
           headers: { "Content-Type": "multipart/form-data" },
@@ -273,21 +279,34 @@ function Ejercicios() {
             {editandoId ? (
               <div className="form-field field-large">
                 <p className="muted-text" style={{ margin: 0 }}>
-                  El video no se puede cambiar desde aquí. Para reemplazarlo, desactiva este
-                  ejercicio y registra uno nuevo con el video actualizado.
+                  El video y la imagen no se pueden cambiar desde aquí. Para reemplazarlos,
+                  desactiva este ejercicio y registra uno nuevo con los archivos actualizados.
                 </p>
               </div>
             ) : (
-              <div className="form-field">
-                <label htmlFor="video">Video</label>
-                <input
-                  id="video"
-                  ref={fileRef}
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setVideo(e.target.files[0] || null)}
-                />
-              </div>
+              <>
+                <div className="form-field">
+                  <label htmlFor="video">Video</label>
+                  <input
+                    id="video"
+                    ref={fileRef}
+                    type="file"
+                    accept="video/*"
+                    onChange={(e) => setVideo(e.target.files[0] || null)}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="imagen">Imagen de referencia (para el PDF de la rutina)</label>
+                  <input
+                    id="imagen"
+                    ref={fileRefImagen}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImagenRef(e.target.files[0] || null)}
+                  />
+                </div>
+              </>
             )}
 
             <div className="form-field field-large">
@@ -361,6 +380,12 @@ function Ejercicios() {
                     <div className="empty-video">Sin video</div>
                   )}
                 </div>
+
+                {e.imagen_referencial_url && (
+                  <div className="image-preview">
+                    <img src={e.imagen_referencial_url} alt={`Referencia de ${e.nombre}`} />
+                  </div>
+                )}
 
                 <div className="tags-row">
                   <span className="badge">{e.nivel || "SIN NIVEL"}</span>

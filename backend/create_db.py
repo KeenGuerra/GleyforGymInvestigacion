@@ -101,6 +101,10 @@ def initialize_tables():
         # los que solo se venden en el mostrador (ver Producto.visible_tienda
         # en models.py).
         ("productos", "visible_tienda", "BOOLEAN DEFAULT TRUE"),
+        # Imagen fija de referencia por ejercicio, para el PDF de la rutina
+        # (ver Ejercicio.imagen_referencial_url en models.py).
+        ("ejercicios", "imagen_referencial_url", "TEXT"),
+        ("ejercicios", "cloudinary_public_id_imagen", "VARCHAR(255)"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:

@@ -548,6 +548,8 @@ class EjercicioBase(BaseModel):
     instrucciones: Optional[str] = None
     video_url: Optional[str] = None
     cloudinary_public_id: Optional[str] = None
+    imagen_referencial_url: Optional[str] = None
+    cloudinary_public_id_imagen: Optional[str] = None
     estado: EstadoGeneral = "ACTIVO"
     restricciones: Optional[str] = None  # códigos de constants.RESTRICCIONES_MEDICAS que este ejercicio agrava
 
@@ -565,6 +567,8 @@ class EjercicioUpdate(BaseModel):
     instrucciones: Optional[str] = None
     video_url: Optional[str] = None
     cloudinary_public_id: Optional[str] = None
+    imagen_referencial_url: Optional[str] = None
+    cloudinary_public_id_imagen: Optional[str] = None
     estado: Optional[EstadoGeneral] = None
     restricciones: Optional[str] = None
 

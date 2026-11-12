@@ -321,6 +321,11 @@ class Ejercicio(Base):
     instrucciones = Column(Text, nullable=True)
     video_url = Column(Text, nullable=True)
     cloudinary_public_id = Column(String(255), nullable=True)
+    # Imagen fija de referencia (ej. foto de la postura del ejercicio), para
+    # usar en el PDF de la rutina -- un PDF no reproduce el video, y un GIF
+    # ahí se vería como una sola imagen fija de todas formas.
+    imagen_referencial_url = Column(Text, nullable=True)
+    cloudinary_public_id_imagen = Column(String(255), nullable=True)
     estado = Column(String(20), default="ACTIVO")
     restricciones = Column(String, nullable=True)  # códigos de app.constants.RESTRICCIONES_MEDICAS que este ejercicio puede agravar (ej. RODILLA)
 

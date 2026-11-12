@@ -1,15 +1,23 @@
 import io
+import logging
 
+# pyrefly: ignore [missing-import]
+import httpx
 # pyrefly: ignore [missing-import]
 from reportlab.lib.pagesizes import A4, A5
 # pyrefly: ignore [missing-import]
 from reportlab.lib.units import cm
 # pyrefly: ignore [missing-import]
+from reportlab.lib.utils import ImageReader
+# pyrefly: ignore [missing-import]
 from reportlab.pdfgen import canvas
 
 from app import config
 
+logger = logging.getLogger("gleyforgym")
+
 IGV_TASA = 0.18
+TIMEOUT_IMAGEN_SEGUNDOS = 5.0
 
 # Texto que debe aparecer, tal cual, al pie de todo comprobante -- GLEYFORGYM
 # no es un emisor electrónico autorizado por SUNAT (sin esa autorización, no
@@ -171,6 +179,23 @@ def _nueva_pagina_si_hace_falta(c: canvas.Canvas, y: float, alto: float, margen_
     return y
 
 
+def _obtener_imagen_reader(url: str | None) -> "ImageReader | None":
+    """Descarga la imagen de referencia de un ejercicio para incrustarla en
+    el PDF de la rutina. Nunca lanza -- si no hay url, la descarga falla o
+    tarda más de la cuenta, el PDF se sigue generando sin esa imagen (mismo
+    criterio que "Sin video" en DetalleRutina.jsx: la ausencia de un recurso
+    opcional no debe romper la descarga)."""
+    if not url:
+        return None
+    try:
+        respuesta = httpx.get(url, timeout=TIMEOUT_IMAGEN_SEGUNDOS)
+        respuesta.raise_for_status()
+        return ImageReader(io.BytesIO(respuesta.content))
+    except Exception:
+        logger.warning("No se pudo descargar la imagen de referencia del ejercicio: %s", url)
+        return None
+
+
 def generar_pdf_rutina(rutina, cliente) -> bytes:
     """PDF descargable de una rutina de entrenamiento, agrupada por día de
     la semana (mismo orden que ya usa GET /rutinas/{id}/detalle)."""
@@ -191,9 +216,15 @@ def generar_pdf_rutina(rutina, cliente) -> bytes:
         rutina.ejercicios, key=lambda x: (x.dia_semana or "", x.orden or 0)
     )
 
+    ALTO_IMAGEN_EJERCICIO = 1.6 * cm
+
     dia_actual = None
     for item in ejercicios_ordenados:
-        y = _nueva_pagina_si_hace_falta(c, y, alto)
+        imagen = _obtener_imagen_reader(
+            item.ejercicio.imagen_referencial_url if item.ejercicio else None
+        )
+        margen_fila = (ALTO_IMAGEN_EJERCICIO + 0.4 * cm) if imagen else 2.5 * cm
+        y = _nueva_pagina_si_hace_falta(c, y, alto, margen_inferior=margen_fila)
 
         if item.dia_semana != dia_actual:
             dia_actual = item.dia_semana
@@ -207,10 +238,25 @@ def generar_pdf_rutina(rutina, cliente) -> bytes:
         if item.descanso_segundos:
             detalle += f" — descanso {item.descanso_segundos}s"
 
+        texto_x = 2.5 * cm
+        altura_fila = 0.6 * cm
+
+        if imagen:
+            try:
+                c.drawImage(
+                    imagen, 2.3 * cm, y - ALTO_IMAGEN_EJERCICIO + 0.3 * cm,
+                    width=ALTO_IMAGEN_EJERCICIO, height=ALTO_IMAGEN_EJERCICIO,
+                    preserveAspectRatio=True, mask="auto",
+                )
+                texto_x = 2.3 * cm + ALTO_IMAGEN_EJERCICIO + 0.3 * cm
+                altura_fila = ALTO_IMAGEN_EJERCICIO + 0.3 * cm
+            except Exception:
+                logger.warning("No se pudo incrustar la imagen de referencia del ejercicio en el PDF")
+
         c.setFont("Helvetica", 10)
-        c.drawString(2.5 * cm, y, f"• {nombre}")
+        c.drawString(texto_x, y, f"• {nombre}")
         c.drawString(11 * cm, y, detalle)
-        y -= 0.6 * cm
+        y -= altura_fila
 
     if not ejercicios_ordenados:
         c.setFont("Helvetica-Oblique", 10)

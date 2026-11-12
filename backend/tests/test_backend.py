@@ -1245,6 +1245,24 @@ def test_ejercicio_video_no_cloudinary():
     assert "Error subiendo video" in response.json()["detail"] or "configurado" in response.json()["detail"]
 
 
+def test_ejercicio_imagen_referencial_no_cloudinary():
+    """La imagen de referencia (para el PDF de la rutina, ver app/recibos.py)
+    se sube con el mismo mecanismo que el video -- sin Cloudinary configurado
+    debe fallar igual, no quedarse a medias con el ejercicio creado."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+    files = {"imagen": ("postura.jpg", b"fake-image-content", "image/jpeg")}
+    data = {
+        "nombre": "Sentadilla con Imagen",
+        "grupo_muscular": "Cuádriceps",
+        "nivel": "Intermedio",
+        "estado": "ACTIVO"
+    }
+    response = client.post("/ejercicios/", data=data, files=files, headers=headers)
+    assert response.status_code == 500
+    assert "Error subiendo imagen" in response.json()["detail"] or "configurado" in response.json()["detail"]
+
+
 def test_cliente_membresias_extra_coverage():
     populate_db_for_coverage()
     headers = get_auth_headers()

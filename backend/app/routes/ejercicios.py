@@ -37,7 +37,7 @@ if cloudinary_url:
     dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR"))],
     responses={
         401: {"description": "Token inválido o expirado"},
-        500: {"description": "Cloudinary no configurado o error al subir el video"}
+        500: {"description": "Cloudinary no configurado o error al subir el video/imagen"}
     }
 )
 async def crear_ejercicio(
@@ -50,7 +50,8 @@ async def crear_ejercicio(
     instrucciones: Annotated[str | None, Form()] = None,
     estado: Annotated[str, Form()] = "ACTIVO",
     restricciones: Annotated[str | None, Form()] = None,
-    video: Annotated[UploadFile | None, File()] = None
+    video: Annotated[UploadFile | None, File()] = None,
+    imagen: Annotated[UploadFile | None, File()] = None,
 ):
     video_url = None
     public_id = None
@@ -78,6 +79,32 @@ async def crear_ejercicio(
                 detail=f"Error subiendo video: {str(e)}"
             )
 
+    imagen_referencial_url = None
+    public_id_imagen = None
+
+    if imagen:
+        if not cloudinary_url:
+            raise HTTPException(
+                status_code=500,
+                detail="Cloudinary no está configurado. Revisa CLOUDINARY_URL en .env"
+            )
+
+        try:
+            resultado_imagen = cloudinary.uploader.upload(
+                imagen.file,
+                resource_type="image",
+                folder="gleyforgym/ejercicios"
+            )
+
+            imagen_referencial_url = resultado_imagen.get("secure_url")
+            public_id_imagen = resultado_imagen.get("public_id")
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error subiendo imagen: {str(e)}"
+            )
+
     nuevo = models.Ejercicio(
         nombre=nombre,
         grupo_muscular=grupo_muscular,
@@ -87,6 +114,8 @@ async def crear_ejercicio(
         instrucciones=instrucciones,
         video_url=video_url,
         cloudinary_public_id=public_id,
+        imagen_referencial_url=imagen_referencial_url,
+        cloudinary_public_id_imagen=public_id_imagen,
         estado=estado,
         restricciones=restricciones
     )

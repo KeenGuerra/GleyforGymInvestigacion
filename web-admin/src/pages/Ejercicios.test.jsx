@@ -24,6 +24,7 @@ const mockEjercicios = [
     descripcion: "Un gran ejercicio",
     instrucciones: "Baja y sube",
     video_url: "http://example.com/video.mp4",
+    imagen_referencial_url: "http://example.com/postura.jpg",
   },
 ];
 
@@ -76,7 +77,7 @@ describe("Ejercicios Page Component", () => {
     });
   });
 
-  it("submits the form successfully with video file", async () => {
+  it("submits the form successfully with video file and reference image", async () => {
     api.post.mockResolvedValue({ data: {} });
     render(<Ejercicios />);
 
@@ -85,18 +86,25 @@ describe("Ejercicios Page Component", () => {
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Curl de bíceps" } });
     fireEvent.change(screen.getByLabelText("Grupo muscular"), { target: { value: "Bíceps" } });
     fireEvent.change(screen.getByLabelText("Nivel"), { target: { value: "Principiante" } });
-    
+
     // Select video file
     const file = new File(["test"], "test.mp4", { type: "video/mp4" });
     const videoInput = screen.getByLabelText("Video");
-    
     fireEvent.change(videoInput, { target: { files: [file] } });
-    
+
+    // Select reference image
+    const imagen = new File(["img"], "postura.jpg", { type: "image/jpeg" });
+    const imagenInput = screen.getByLabelText("Imagen de referencia (para el PDF de la rutina)");
+    fireEvent.change(imagenInput, { target: { files: [imagen] } });
+
     fireEvent.click(screen.getByRole("button", { name: "Guardar ejercicio" }));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalled();
     });
+    const formData = api.post.mock.calls[0][1];
+    expect(formData.get("video")).toBe(file);
+    expect(formData.get("imagen")).toBe(imagen);
   });
 
   it("handles cancel button properly", async () => {
@@ -201,6 +209,30 @@ describe("Ejercicios Page Component", () => {
     });
   });
 
+  it("shows the reference image when the exercise has one", async () => {
+    render(<Ejercicios />);
+    await waitFor(() => {
+      expect(screen.getByAltText("Referencia de Sentadilla")).toBeDefined();
+    });
+  });
+
+  it("hides the reference image when the exercise doesn't have one", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/ejercicios/")) {
+        return Promise.resolve({
+          data: [{ ...mockEjercicios[0], imagen_referencial_url: null }]
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Ejercicios />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Sentadilla").length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByAltText("Referencia de Sentadilla")).toBeNull();
+  });
+
   it("shows error if exercise creation fails", async () => {
     api.post.mockRejectedValue({
       response: { data: { detail: "El nombre de ejercicio ya existe" } }
@@ -231,8 +263,9 @@ describe("Ejercicios Page Component", () => {
     expect(screen.getByRole("heading", { name: "Editar ejercicio" })).toBeDefined();
     expect(screen.getByLabelText("Nombre").value).toBe("Sentadilla");
     expect(screen.queryByLabelText("Video")).toBeNull();
+    expect(screen.queryByLabelText("Imagen de referencia (para el PDF de la rutina)")).toBeNull();
     expect(
-      screen.getByText(/El video no se puede cambiar desde aquí/)
+      screen.getByText(/El video y la imagen no se pueden cambiar desde aquí/)
     ).toBeDefined();
   });
 
