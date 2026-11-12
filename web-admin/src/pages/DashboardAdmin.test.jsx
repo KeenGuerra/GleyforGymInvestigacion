@@ -45,6 +45,14 @@ describe("DashboardAdmin Page Component", () => {
     });
   });
 
+  it("renders the income and attendance charts for the last 7 days", async () => {
+    render(<DashboardAdmin />);
+    await waitFor(() => {
+      expect(screen.getByText("Ingresos de los últimos 7 días")).toBeDefined();
+      expect(screen.getByText("Asistencias de los últimos 7 días")).toBeDefined();
+    });
+  });
+
   it("shows a membership expiring soon in the alert card", async () => {
     const hoy = new Date();
     const enTresDias = new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000)

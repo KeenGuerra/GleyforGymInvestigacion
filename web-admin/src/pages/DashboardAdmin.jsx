@@ -4,6 +4,8 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -96,6 +98,28 @@ function DashboardAdmin() {
       .substring(0, 2)
       .toUpperCase();
   };
+
+  const ultimosNDias = (n) => {
+    const dias = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dias.push(d.toISOString().slice(0, 10));
+    }
+    return dias;
+  };
+
+  const ingresosPorDia = ultimosNDias(7).map((fecha) => ({
+    fecha: fecha.slice(5),
+    monto: pagosValidos
+      .filter((p) => (p.fecha_pago || "").slice(0, 10) === fecha)
+      .reduce((total, p) => total + Number(p.monto || 0), 0),
+  }));
+
+  const asistenciasPorDia = ultimosNDias(7).map((fecha) => ({
+    fecha: fecha.slice(5),
+    cantidad: asistencias.filter((a) => (a.fecha || "").slice(0, 10) === fecha).length,
+  }));
 
   const actividadReciente = [
     ...asistencias.slice(0, 4).map((a) => ({
@@ -207,6 +231,46 @@ function DashboardAdmin() {
           </aside>
         </section>
       )}
+
+      <section className="content-grid">
+        <div className="table-card">
+          <div className="card-header">
+            <div>
+              <h2>Ingresos de los últimos 7 días</h2>
+              <p>Pagos de membresía registrados por día.</p>
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={ingresosPorDia} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="fecha" />
+              <YAxis allowDecimals={false} />
+              <Tooltip formatter={(valor) => `S/ ${Number(valor).toFixed(2)}`} />
+              <Line type="monotone" dataKey="monto" name="Ingresos (S/)" stroke="#ff8a3d" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="table-card">
+          <div className="card-header">
+            <div>
+              <h2>Asistencias de los últimos 7 días</h2>
+              <p>Cantidad de asistencias registradas por día.</p>
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={asistenciasPorDia} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="fecha" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="cantidad" name="Asistencias" fill="#4dabf7" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
       <section className="quick-actions-grid">
         <button className="card quick-action" onClick={() => navigate("/cliente-membresias")}>
