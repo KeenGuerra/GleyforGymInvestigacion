@@ -8,10 +8,30 @@ function DetalleRutina() {
   const navigate = useNavigate();
 
   const [rutina, setRutina] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [descargando, setDescargando] = useState(false);
   const [errorDescarga, setErrorDescarga] = useState("");
+
+  const enviarRutinaPorWhatsApp = () => {
+    const telefono = (cliente?.telefono || "").trim();
+    if (!(telefono.length === 9 && /^\d+$/.test(telefono))) {
+      setErrorDescarga("Este cliente no tiene un teléfono válido de 9 dígitos registrado.");
+      return;
+    }
+    const primerNombre = (cliente?.nombres || "").split(" ")[0] || "";
+    // Mensaje corto, no la lista completa de ejercicios -- wa.me no permite
+    // adjuntar el PDF y repetir todos los ejercicios en el texto se ve igual
+    // de feo que mostrarlos todos de golpe en pantalla.
+    const mensaje =
+      `¡Hola ${primerNombre}! 👋\n\n` +
+      `Tu rutina *${rutina.nombre || ""}* (${rutina.nivel || ""}, ${rutina.objetivo || ""}) ya está lista 💪\n\n` +
+      "Entra a la app para verla completa.\n\n" +
+      "*GLEYFORGYM* 🏋️";
+    const url = `https://wa.me/51${telefono}?text=${encodeURIComponent(mensaje)}`;
+    globalThis.open(url, "_blank");
+  };
 
   const descargarPdf = async () => {
     try {
@@ -35,6 +55,15 @@ function DetalleRutina() {
 
         const res = await api.get(`/rutinas/${id}/detalle`);
         setRutina(res.data);
+
+        if (res.data?.id_cliente) {
+          try {
+            const resCliente = await api.get(`/clientes/${res.data.id_cliente}/detalle`);
+            setCliente(resCliente.data);
+          } catch (errorCliente) {
+            console.error("Error al cargar el cliente de la rutina:", errorCliente);
+          }
+        }
       } catch (error) {
         console.error("Error al cargar rutina:", error);
         setError("No se pudo cargar el detalle de la rutina.");
@@ -62,6 +91,9 @@ function DetalleRutina() {
         <div style={{ display: "flex", gap: "12px" }}>
           <button className="btn-secondary" disabled={descargando} onClick={descargarPdf}>
             {descargando ? "Generando..." : "Descargar PDF"}
+          </button>
+          <button className="btn-secondary" onClick={enviarRutinaPorWhatsApp}>
+            Enviar por WhatsApp
           </button>
           <button className="btn-secondary" onClick={() => navigate(-1)}>
             Volver
