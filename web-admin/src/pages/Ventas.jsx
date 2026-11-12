@@ -109,6 +109,23 @@ function Ventas() {
     finally { setProcesando(null); }
   };
 
+  const enviarConfirmacionWhatsApp = (venta) => {
+    const cliente = clientes.find((c) => c.id_cliente === venta.id_cliente);
+    const telefono = (cliente?.telefono || "").trim();
+    if (!(telefono.length === 9 && /^\d+$/.test(telefono))) {
+      setError(`${venta.nombre_cliente || "Este cliente"} no tiene un teléfono válido de 9 dígitos registrado.`);
+      return;
+    }
+    const primerNombre = (venta.nombre_cliente || "").split(" ")[0] || "";
+    const mensaje =
+      `¡Hola ${primerNombre}! 👋\n\n` +
+      `Confirmamos tu pago de *S/ ${Number(venta.total || 0).toFixed(2)}* por Yape ✅\n\n` +
+      "Ya puedes pasar a recogerlo al gimnasio.\n\n" +
+      "*GLEYFORGYM* 🏋️";
+    const url = `https://wa.me/51${telefono}?text=${encodeURIComponent(mensaje)}`;
+    globalThis.open(url, "_blank");
+  };
+
   const entregar = async (id) => {
     if (!globalThis.confirm("¿Marcar esta venta como entregada? El cliente ya pasó a recogerla.")) return;
     try { setProcesando(id); await api.post(`/ventas/${id}/entregar`); await cargar(); }
@@ -278,9 +295,14 @@ function Ventas() {
                   {(v.estado === "CONFIRMADA" || v.estado === "ENTREGADA") && (
                     <>
                       {v.estado === "CONFIRMADA" && (
-                        <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => entregar(v.id_venta)}>
-                          {procesando === v.id_venta ? "Marcando..." : "Marcar como entregado"}
-                        </button>
+                        <>
+                          <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => entregar(v.id_venta)}>
+                            {procesando === v.id_venta ? "Marcando..." : "Marcar como entregado"}
+                          </button>
+                          <button className="btn-secondary" onClick={() => enviarConfirmacionWhatsApp(v)}>
+                            Avisar por WhatsApp
+                          </button>
+                        </>
                       )}
                       <button className="btn-secondary" onClick={() => descargarBoleta(v.id_venta)}>
                         Descargar boleta

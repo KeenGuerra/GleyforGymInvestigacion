@@ -18,11 +18,12 @@ vi.mock("../utils/descargarArchivo", () => ({
 const mockProductosDisponibles = [
   { id_producto: 1, nombre: "Proteína Whey", precio_venta: 90, stock_actual: 10 },
 ];
-const mockClientes = [{ id_cliente: 1, nombres: "Ana", apellidos: "López" }];
+const mockClientes = [{ id_cliente: 1, nombres: "Ana", apellidos: "López", telefono: "987654321" }];
 const mockResumen = { ventas_hoy: 2, ingresos_hoy: 180, ventas_mes: 20, ingresos_mes: 1800 };
 
 const mockVentaPendiente = {
   id_venta: 1,
+  id_cliente: 1,
   nombre_cliente: "Ana López",
   estado: "PENDIENTE",
   total: 90,
@@ -206,6 +207,53 @@ describe("Ventas Page Component", () => {
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/1/entregar");
     });
+  });
+
+  it("sends a WhatsApp confirmation to the client for a confirmed sale", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    mockApiGet([{ ...mockVentaPendiente, estado: "CONFIRMADA" }]);
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Avisar por WhatsApp")).toBeDefined());
+    fireEvent.click(screen.getByText("Avisar por WhatsApp"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const [url, target] = openSpy.mock.calls[0];
+    expect(url).toContain("https://wa.me/51987654321?text=");
+    const mensaje = decodeURIComponent(url.split("text=")[1]);
+    expect(mensaje).toBe(
+      "¡Hola Ana! 👋\n\n" +
+      "Confirmamos tu pago de *S/ 90.00* por Yape ✅\n\n" +
+      "Ya puedes pasar a recogerlo al gimnasio.\n\n" +
+      "*GLEYFORGYM* 🏋️"
+    );
+    expect(target).toBe("_blank");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("blocks the WhatsApp confirmation when the client has no valid 9-digit phone", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    api.get.mockImplementation((url) => {
+      if (url === "/ventas/") return Promise.resolve({ data: [{ ...mockVentaPendiente, estado: "CONFIRMADA" }] });
+      if (url === "/productos/disponibles") return Promise.resolve({ data: mockProductosDisponibles });
+      if (url === "/clientes/") return Promise.resolve({ data: [{ ...mockClientes[0], telefono: null }] });
+      if (url === "/ventas/resumen") return Promise.resolve({ data: mockResumen });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Ventas />);
+    await waitFor(() => expect(screen.getByText("Avisar por WhatsApp")).toBeDefined());
+    fireEvent.click(screen.getByText("Avisar por WhatsApp"));
+
+    expect(openSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText(/no tiene un teléfono válido de 9 dígitos/)).toBeDefined();
+    });
+
+    vi.unstubAllGlobals();
   });
 
   it("allows downloading the boleta and anular for an already delivered sale, but not marking it as delivered again", async () => {
