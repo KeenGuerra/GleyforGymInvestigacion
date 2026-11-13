@@ -25,16 +25,23 @@ function DashboardAdmin() {
   const [pagos, setPagos] = useState([]);
   const [asistencias, setAsistencias] = useState([]);
   const [kpis, setKpis] = useState(null);
+  const [productosMasVendidos, setProductosMasVendidos] = useState([]);
 
   const cargarDatos = useCallback(async () => {
     try {
-      const [resClientes, resClienteMembresias, resPagos, resAsistencias, resKpis] =
+      const hoyISO = new Date().toISOString().slice(0, 10);
+      const primerDiaMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        .toISOString()
+        .slice(0, 10);
+
+      const [resClientes, resClienteMembresias, resPagos, resAsistencias, resKpis, resProductos] =
         await Promise.all([
           api.get("/clientes/"),
           api.get("/cliente-membresias/"),
           api.get("/pagos/"),
           api.get("/asistencias/"),
           api.get("/reportes/kpis"),
+          api.get("/reportes/productos-mas-vendidos", { params: { desde: primerDiaMes, hasta: hoyISO } }),
         ]);
 
       setClientes(resClientes.data);
@@ -42,6 +49,7 @@ function DashboardAdmin() {
       setPagos(resPagos.data);
       setAsistencias(resAsistencias.data);
       setKpis(Array.isArray(resKpis.data) ? null : resKpis.data);
+      setProductosMasVendidos(resProductos.data);
     } catch (error) {
       console.error("Error al cargar dashboard:", error);
       mostrarError("No se pudo cargar el dashboard.");
@@ -121,6 +129,14 @@ function DashboardAdmin() {
     cantidad: asistencias.filter((a) => (a.fecha || "").slice(0, 10) === fecha).length,
   }));
 
+  // Qué tan sana está la base de socios de un vistazo -- más útil que
+  // comparar clientes contra rutinas IA, dos cosas sin relación entre sí.
+  const ESTADOS_MEMBRESIA = ["ACTIVA", "PAUSADA", "PENDIENTE", "TERMINADA", "CANCELADA"];
+  const membresiasPorEstado = ESTADOS_MEMBRESIA.map((estado) => ({
+    estado,
+    cantidad: membresiasCliente.filter((m) => m.estado === estado).length,
+  }));
+
   const actividadReciente = [
     ...asistencias.slice(0, 4).map((a) => ({
       id: `a-${a.id_asistencia}`,
@@ -182,24 +198,18 @@ function DashboardAdmin() {
           <div className="table-card">
             <div className="card-header">
               <div>
-                <h2>KPIs del gimnasio</h2>
-                <p>Clientes activos vs. rutinas generadas por IA.</p>
+                <h2>Membresías por estado</h2>
+                <p>Cuántas activas, pausadas o por renovar tiene el gimnasio ahora.</p>
               </div>
             </div>
 
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={[
-                  { nombre: "Clientes activos", valor: kpis.clientes_activos || 0 },
-                  { nombre: "Rutinas IA", valor: kpis.rutinas_generadas_ia || 0 },
-                ]}
-                margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-              >
+              <BarChart data={membresiasPorEstado} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="nombre" />
+                <XAxis dataKey="estado" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="valor" fill="#ff8a3d" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="cantidad" name="Membresías" fill="#ff8a3d" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -269,6 +279,32 @@ function DashboardAdmin() {
               <Bar dataKey="cantidad" name="Asistencias" fill="#4dabf7" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        <div className="table-card">
+          <div className="card-header">
+            <div>
+              <h2>Productos más vendidos</h2>
+              <p>Este mes, por unidades vendidas.</p>
+            </div>
+          </div>
+
+          {productosMasVendidos.length === 0 ? (
+            <p className="empty-message">No hay ventas de productos registradas este mes.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart
+                data={[...productosMasVendidos].sort((a, b) => b.cantidad_vendida - a.cantidad_vendida).slice(0, 5)}
+                margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="producto" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="cantidad_vendida" name="Unidades vendidas" fill="#51cf66" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </section>
 

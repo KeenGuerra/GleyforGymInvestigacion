@@ -105,9 +105,59 @@ describe("DashboardAdmin Page Component", () => {
     render(<DashboardAdmin />);
 
     await waitFor(() => {
-      expect(screen.getByText("KPIs del gimnasio")).toBeDefined();
+      expect(screen.getByText("Membresías por estado")).toBeDefined();
       expect(screen.getByText("S/ 450.50")).toBeDefined();
       expect(screen.getByText("18.4% grasa")).toBeDefined();
+    });
+  });
+
+  it("counts cliente-membresias by estado for the 'Membresías por estado' chart", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/cliente-membresias/")) {
+        return Promise.resolve({
+          data: [
+            { id_cliente_membresia: 1, id_cliente: 1, estado: "ACTIVA" },
+            { id_cliente_membresia: 2, id_cliente: 2, estado: "ACTIVA" },
+            { id_cliente_membresia: 3, id_cliente: 3, estado: "PAUSADA" },
+          ],
+        });
+      }
+      if (url.includes("/reportes/kpis")) {
+        return Promise.resolve({ data: { clientes_activos: 2 } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<DashboardAdmin />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Membresías por estado")).toBeDefined();
+    });
+  });
+
+  it("renders the best-selling products chart for the current month", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/reportes/productos-mas-vendidos")) {
+        return Promise.resolve({
+          data: [{ producto: "Proteína Whey", cantidad_vendida: 10, ingresos: 500 }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<DashboardAdmin />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Productos más vendidos")).toBeDefined();
+    });
+    expect(screen.queryByText("No hay ventas de productos registradas este mes.")).toBeNull();
+  });
+
+  it("shows an empty message when there are no best-selling products this month", async () => {
+    render(<DashboardAdmin />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No hay ventas de productos registradas este mes.")).toBeDefined();
     });
   });
 
