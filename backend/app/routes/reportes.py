@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 from typing import Annotated, Optional
 
 from app.database import get_db
-from app import models
+from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
 from app.constants import ESTADO_REVISION_PENDIENTE
@@ -601,3 +601,128 @@ def reporte_ventas_por_metodo_pago(db: Annotated[Session, Depends(get_db)], desd
     total = round(sum(fila["monto"] for fila in por_metodo), 2)
 
     return {"desde": str(desde), "hasta": str(hasta), "total": total, "por_metodo": por_metodo}
+
+
+# =========================
+# AVISOS MASIVOS POR WHATSAPP
+# =========================
+# El envío sigue siendo manual (un link wa.me por persona, ver Reportes.jsx
+# -- WhatsApp no deja mandar de verdad en masa sin su API de pago). Estos dos
+# endpoints solo evitan que el staff le mande el mismo aviso dos veces el
+# mismo día al recorrer una lista larga (ej. un aviso de feriado a todos los
+# clientes activos).
+
+@router.post("/whatsapp/registrar-envio", response_model=schemas.EnvioWhatsAppResponse)
+def registrar_envio_whatsapp(
+    datos: schemas.EnvioWhatsAppCreate,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    nuevo = models.EnvioWhatsApp(
+        id_cliente=datos.id_cliente,
+        tipo=datos.tipo,
+        id_usuario=usuario_actual.get("id_usuario"),
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return nuevo
+
+
+@router.get("/whatsapp/enviados-hoy")
+def listar_enviados_hoy(db: Annotated[Session, Depends(get_db)], tipo: schemas.TipoAvisoWhatsApp):
+    """IDs de cliente que ya recibieron este tipo de aviso HOY -- no "para
+    siempre": un feriado es puntual, el próximo no debe quedar bloqueado por
+    el envío de hoy."""
+    inicio_dia = datetime.combine(date.today(), datetime.min.time())
+    fin_dia = datetime.combine(date.today(), datetime.max.time())
+
+    filas = (
+        db.query(models.EnvioWhatsApp.id_cliente)
+        .filter(
+            models.EnvioWhatsApp.tipo == tipo,
+            models.EnvioWhatsApp.fecha_envio >= inicio_dia,
+            models.EnvioWhatsApp.fecha_envio <= fin_dia,
+        )
+        .distinct()
+        .all()
+    )
+    return [id_cliente for (id_cliente,) in filas]
+
+
+@router.get("/cumpleanos-hoy")
+def reporte_cumpleanos_hoy(db: Annotated[Session, Depends(get_db)]):
+    """Clientes ACTIVO cuyo mes y día de nacimiento coinciden con hoy
+    (sin importar el año)."""
+    hoy = date.today()
+    clientes = (
+        db.query(models.Cliente)
+        .filter(
+            models.Cliente.estado == "ACTIVO",
+            models.Cliente.fecha_nacimiento.isnot(None),
+            func.extract("month", models.Cliente.fecha_nacimiento) == hoy.month,
+            func.extract("day", models.Cliente.fecha_nacimiento) == hoy.day,
+        )
+        .all()
+    )
+    return [
+        {
+            "id_cliente": c.id_cliente,
+            "nombre_cliente": f"{c.nombres} {c.apellidos}",
+            "telefono_cliente": c.telefono,
+        }
+        for c in clientes
+    ]
+
+
+@router.get("/socios-nuevos")
+def reporte_socios_nuevos(db: Annotated[Session, Depends(get_db)], dias: int = 7):
+    """Clientes ACTIVO registrados en los últimos `dias` días -- base de la
+    sección "Bienvenida a socio nuevo" en Reportes.jsx."""
+    limite = datetime.now() - timedelta(days=dias)
+    clientes = (
+        db.query(models.Cliente)
+        .filter(
+            models.Cliente.estado == "ACTIVO",
+            models.Cliente.fecha_registro >= limite,
+        )
+        .order_by(models.Cliente.fecha_registro.desc())
+        .all()
+    )
+    return [
+        {
+            "id_cliente": c.id_cliente,
+            "nombre_cliente": f"{c.nombres} {c.apellidos}",
+            "telefono_cliente": c.telefono,
+            "fecha_registro": c.fecha_registro.isoformat() if c.fecha_registro else None,
+        }
+        for c in clientes
+    ]
+
+
+@router.get("/clientes-inactivos")
+def reporte_clientes_inactivos(db: Annotated[Session, Depends(get_db)], dias: int = 15):
+    """Clientes ACTIVO cuya última asistencia (o ninguna) es anterior a
+    `dias` días."""
+    limite = date.today() - timedelta(days=dias)
+    clientes_activos = db.query(models.Cliente).filter(models.Cliente.estado == "ACTIVO").all()
+
+    resultado = []
+    for c in clientes_activos:
+        ultima = (
+            db.query(func.max(models.Asistencia.fecha))
+            .filter(
+                models.Asistencia.id_cliente == c.id_cliente,
+                models.Asistencia.estado == "ACTIVO",
+            )
+            .scalar()
+        )
+        if ultima is None or ultima <= limite:
+            resultado.append({
+                "id_cliente": c.id_cliente,
+                "nombre_cliente": f"{c.nombres} {c.apellidos}",
+                "telefono_cliente": c.telefono,
+                "ultima_asistencia": ultima.isoformat() if ultima else None,
+            })
+
+    return resultado

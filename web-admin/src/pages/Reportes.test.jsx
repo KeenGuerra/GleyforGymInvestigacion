@@ -7,6 +7,7 @@ import api from "../api/api";
 vi.mock("../api/api", () => ({
   default: {
     get: vi.fn(),
+    post: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -39,11 +40,13 @@ const mockVentasPorMetodo = {
 describe("Reportes Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    api.post.mockResolvedValue({ data: {} });
     api.get.mockImplementation((url) => {
       if (url === "/reportes/ingresos") return Promise.resolve({ data: mockIngresos });
       if (url === "/reportes/asistencias") return Promise.resolve({ data: mockAsistencias });
       if (url === "/reportes/productos-mas-vendidos") return Promise.resolve({ data: mockProductosMasVendidos });
       if (url === "/reportes/ventas-por-metodo-pago") return Promise.resolve({ data: mockVentasPorMetodo });
+      if (url === "/reportes/whatsapp/enviados-hoy") return Promise.resolve({ data: [] });
       return Promise.resolve({ data: [] });
     });
   });
@@ -407,7 +410,40 @@ describe("Reportes Page Component", () => {
     );
     expect(target).toBe("_blank");
 
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/reportes/whatsapp/registrar-envio", {
+        id_cliente: 1, tipo: "VENCIMIENTO",
+      });
+      expect(screen.getByText("Reenviar por WhatsApp")).toBeDefined();
+    });
+
     vi.unstubAllGlobals();
+  });
+
+  it("shows 'Enviado hoy' for a membership whose client already got this reminder today", async () => {
+    api.get.mockImplementation((url, config) => {
+      if (url === "/reportes/membresias-por-vencer") {
+        return Promise.resolve({
+          data: [{
+            id_cliente_membresia: 10, id_cliente: 1, nombre_cliente: "Juan Perez",
+            telefono_cliente: "987654321", nombre_membresia: "Plan Mensual",
+            fecha_fin: "2026-06-20", dias_restantes: 3,
+          }],
+        });
+      }
+      if (url === "/reportes/whatsapp/enviados-hoy" && config?.params?.tipo === "VENCIMIENTO") {
+        return Promise.resolve({ data: [1] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("✓ Enviado hoy")).toBeDefined();
+      expect(screen.getByText("Reenviar por WhatsApp")).toBeDefined();
+    });
   });
 
   it("blocks the WhatsApp reminder when the client has no valid 9-digit phone", async () => {
@@ -488,6 +524,12 @@ describe("Reportes Page Component", () => {
       "*GLEYFORGYM* 🏋️"
     );
 
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/reportes/whatsapp/registrar-envio", {
+        id_cliente: 1, tipo: "SALDO_PENDIENTE",
+      });
+    });
+
     vi.unstubAllGlobals();
   });
 
@@ -511,5 +553,168 @@ describe("Reportes Page Component", () => {
     await waitFor(() => {
       expect(screen.getByText("No se pudo consultar los saldos pendientes")).toBeDefined();
     });
+  });
+
+  it("shows today's birthdays and sends a WhatsApp greeting, marking it as sent", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/cumpleanos-hoy") {
+        return Promise.resolve({
+          data: [{ id_cliente: 5, nombre_cliente: "Maria Lopez", telefono_cliente: "999888777" }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar cumpleaños"));
+
+    await waitFor(() => expect(screen.getByText("Maria Lopez")).toBeDefined());
+    fireEvent.click(screen.getByText("Enviar saludo por WhatsApp"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const mensaje = decodeURIComponent(openSpy.mock.calls[0][0].split("text=")[1]);
+    expect(mensaje).toContain("¡Feliz cumpleaños, Maria!");
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/reportes/whatsapp/registrar-envio", {
+        id_cliente: 5, tipo: "CUMPLEANOS",
+      });
+    });
+
+    vi.unstubAllGlobals();
+  });
+
+  it("shows an empty message when nobody has a birthday today", async () => {
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar cumpleaños"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Nadie cumple años hoy.")).toBeDefined();
+    });
+  });
+
+  it("shows new members and sends a WhatsApp welcome message", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    api.get.mockImplementation((url, config) => {
+      if (url === "/reportes/socios-nuevos") {
+        expect(config.params.dias).toBe(7);
+        return Promise.resolve({
+          data: [{ id_cliente: 6, nombre_cliente: "Pedro Ramos", telefono_cliente: "988777666" }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar socios nuevos"));
+
+    await waitFor(() => expect(screen.getByText("Pedro Ramos")).toBeDefined());
+    fireEvent.click(screen.getByText("Enviar bienvenida por WhatsApp"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const mensaje = decodeURIComponent(openSpy.mock.calls[0][0].split("text=")[1]);
+    expect(mensaje).toContain("¡Bienvenido a GLEYFORGYM, Pedro!");
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/reportes/whatsapp/registrar-envio", {
+        id_cliente: 6, tipo: "BIENVENIDA",
+      });
+    });
+
+    vi.unstubAllGlobals();
+  });
+
+  it("shows inactive clients and sends a WhatsApp message", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/clientes-inactivos") {
+        return Promise.resolve({
+          data: [{
+            id_cliente: 7, nombre_cliente: "Luis Soto", telefono_cliente: "977666555",
+            ultima_asistencia: "2026-05-01",
+          }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar inactivos"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Luis Soto")).toBeDefined();
+      expect(screen.getByText("Última vez: 2026-05-01")).toBeDefined();
+    });
+    fireEvent.click(screen.getByText("Enviar mensaje por WhatsApp"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const mensaje = decodeURIComponent(openSpy.mock.calls[0][0].split("text=")[1]);
+    expect(mensaje).toContain("¡Te extrañamos, Luis!");
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/reportes/whatsapp/registrar-envio", {
+        id_cliente: 7, tipo: "INACTIVIDAD",
+      });
+    });
+
+    vi.unstubAllGlobals();
+  });
+
+  it("shows 'Nunca asistió' for an inactive client with no attendance at all", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/clientes-inactivos") {
+        return Promise.resolve({
+          data: [{ id_cliente: 8, nombre_cliente: "Rosa Diaz", telefono_cliente: "966555444", ultima_asistencia: null }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Consultar inactivos"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Nunca asistió")).toBeDefined();
+    });
+  });
+
+  it("loads active clients for the holiday broadcast and sends the same custom message to each", async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    api.get.mockImplementation((url, config) => {
+      if (url === "/clientes/") {
+        expect(config.params.estado).toBe("ACTIVO");
+        return Promise.resolve({
+          data: [{ id_cliente: 9, nombres: "Carla", apellidos: "Nuñez", telefono: "955444333" }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Cargar clientes activos"));
+
+    await waitFor(() => expect(screen.getByText("Carla Nuñez")).toBeDefined());
+
+    const textarea = screen.getByLabelText("Mensaje para todos");
+    fireEvent.change(textarea, { target: { value: "Mañana el gym cierra por feriado." } });
+
+    fireEvent.click(screen.getByText("Enviar por WhatsApp"));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const [url] = openSpy.mock.calls[0];
+    expect(url).toContain("https://wa.me/51955444333?text=");
+    expect(decodeURIComponent(url.split("text=")[1])).toBe("Mañana el gym cierra por feriado.");
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/reportes/whatsapp/registrar-envio", {
+        id_cliente: 9, tipo: "FERIADO",
+      });
+    });
+
+    vi.unstubAllGlobals();
   });
 });

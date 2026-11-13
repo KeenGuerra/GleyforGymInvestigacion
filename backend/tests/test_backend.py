@@ -1782,6 +1782,103 @@ def test_reporte_saldos_pendientes():
     assert client.get("/reportes/saldos-pendientes", headers=headers_cliente).status_code == 403
 
 
+def test_registrar_y_consultar_envio_whatsapp_no_repite_el_mismo_dia():
+    """Base de "ya enviado hoy" en Reportes.jsx: registrar un envío lo hace
+    aparecer en enviados-hoy para ESE tipo, pero no para otro -- así un
+    cliente puede recibir, el mismo día, un aviso de vencimiento Y uno de
+    feriado sin que uno bloquee al otro."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    res_vacio = client.get("/reportes/whatsapp/enviados-hoy?tipo=FERIADO", headers=headers)
+    assert res_vacio.status_code == 200
+    assert res_vacio.json() == []
+
+    res_registrar = client.post(
+        "/reportes/whatsapp/registrar-envio",
+        json={"id_cliente": 1, "tipo": "FERIADO"},
+        headers=headers,
+    )
+    assert res_registrar.status_code == 200
+    assert res_registrar.json()["id_cliente"] == 1
+    assert res_registrar.json()["tipo"] == "FERIADO"
+
+    res_enviados = client.get("/reportes/whatsapp/enviados-hoy?tipo=FERIADO", headers=headers)
+    assert res_enviados.json() == [1]
+
+    # Un tipo distinto no se mezcla con el anterior.
+    res_otro_tipo = client.get("/reportes/whatsapp/enviados-hoy?tipo=CUMPLEANOS", headers=headers)
+    assert res_otro_tipo.json() == []
+
+
+def test_reporte_cumpleanos_hoy():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+    hoy = date.today()
+
+    db = TestingSessionLocal()
+    cliente = db.query(models.Cliente).first()
+    cliente.fecha_nacimiento = date(hoy.year - 25, hoy.month, hoy.day)
+    db.commit()
+    db.close()
+
+    res = client.get("/reportes/cumpleanos-hoy", headers=headers)
+    assert res.status_code == 200
+    filas = res.json()
+    assert len(filas) == 1
+    assert filas[0]["id_cliente"] == 1
+    assert filas[0]["nombre_cliente"] == "Juan Perez"
+
+    # Si no es su cumpleaños, no aparece.
+    db = TestingSessionLocal()
+    cliente = db.query(models.Cliente).first()
+    cliente.fecha_nacimiento = date(hoy.year - 25, hoy.month, hoy.day) - timedelta(days=5)
+    db.commit()
+    db.close()
+    assert client.get("/reportes/cumpleanos-hoy", headers=headers).json() == []
+
+
+def test_reporte_socios_nuevos():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    db = TestingSessionLocal()
+    cliente = db.query(models.Cliente).first()
+    cliente.fecha_registro = datetime.now() - timedelta(days=2)
+    db.commit()
+    db.close()
+
+    res = client.get("/reportes/socios-nuevos?dias=7", headers=headers)
+    assert res.status_code == 200
+    filas = res.json()
+    assert len(filas) == 1
+    assert filas[0]["id_cliente"] == 1
+
+    # Fuera de la ventana de días -> no aparece.
+    assert client.get("/reportes/socios-nuevos?dias=1", headers=headers).json() == []
+
+
+def test_reporte_clientes_inactivos():
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    # Sin ninguna asistencia registrada -> ya cuenta como inactivo.
+    res = client.get("/reportes/clientes-inactivos?dias=15", headers=headers)
+    assert res.status_code == 200
+    filas = res.json()
+    assert len(filas) == 1
+    assert filas[0]["id_cliente"] == 1
+    assert filas[0]["ultima_asistencia"] is None
+
+    # Con una asistencia reciente, ya no aparece.
+    client.post(
+        "/asistencias/",
+        json={"id_cliente": 1, "fecha": str(date.today()), "hora_entrada": "08:00:00"},
+        headers=headers,
+    )
+    assert client.get("/reportes/clientes-inactivos?dias=15", headers=headers).json() == []
+
+
 def test_verificar_correo():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")

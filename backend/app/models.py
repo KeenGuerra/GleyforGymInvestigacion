@@ -571,6 +571,22 @@ class RegistroTiempoSistema(Base):
     fecha = Column(DateTime, default=datetime.now)
 
 
+class EnvioWhatsApp(Base):
+    """Registro de qué aviso por WhatsApp (tipo libre: VENCIMIENTO,
+    SALDO_PENDIENTE, FERIADO, CUMPLEANOS, BIENVENIDA, INACTIVIDAD) se le
+    mandó a qué cliente y cuándo -- el envío real sigue siendo manual (un
+    link wa.me por persona, ver Reportes.jsx), esto solo evita que el staff
+    le mande el mismo aviso dos veces el mismo día sin darse cuenta al
+    recorrer una lista larga."""
+    __tablename__ = "envios_whatsapp"
+
+    id_envio = Column(Integer, primary_key=True, index=True)
+    id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=False)
+    tipo = Column(String(30), nullable=False)
+    fecha_envio = Column(DateTime, default=datetime.now)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+
+
 class ConteoInventario(Base):
     """Conteo físico de inventario (soporta la ficha F-16, indicador I16:
     exactitud del inventario). Cada conteo guarda, por producto, el stock que

@@ -28,6 +28,32 @@ function Reportes() {
   const [cargandoSaldos, setCargandoSaldos] = useState(false);
   const [mensajesSaldo, setMensajesSaldo] = useState({});
 
+  // { TIPO: [id_cliente, ...] } -- a quién ya se le mandó cada tipo de aviso
+  // HOY, para no repetirle el mismo mensaje dos veces (ver backend
+  // /reportes/whatsapp/enviados-hoy).
+  const [enviadosHoy, setEnviadosHoy] = useState({});
+
+  const [cumpleanosHoy, setCumpleanosHoy] = useState(null);
+  const [cargandoCumpleanos, setCargandoCumpleanos] = useState(false);
+  const [mensajesCumpleanos, setMensajesCumpleanos] = useState({});
+
+  const [diasSocios, setDiasSocios] = useState(7);
+  const [sociosNuevos, setSociosNuevos] = useState(null);
+  const [cargandoSocios, setCargandoSocios] = useState(false);
+  const [mensajesBienvenida, setMensajesBienvenida] = useState({});
+
+  const [diasInactividad, setDiasInactividad] = useState(15);
+  const [clientesInactivos, setClientesInactivos] = useState(null);
+  const [cargandoInactivos, setCargandoInactivos] = useState(false);
+  const [mensajesInactivos, setMensajesInactivos] = useState({});
+
+  const [clientesParaFeriado, setClientesParaFeriado] = useState(null);
+  const [cargandoFeriado, setCargandoFeriado] = useState(false);
+  const [mensajeFeriado, setMensajeFeriado] = useState(
+    "¡Hola! 👋\n\nTe avisamos que por feriado el gimnasio tendrá un horario especial. " +
+    "Cualquier consulta, escríbenos.\n\n*GLEYFORGYM* 🏋️"
+  );
+
   const [corteTiempos, setCorteTiempos] = useState(() => {
     const fecha = new Date();
     fecha.setDate(fecha.getDate() - 30);
@@ -343,6 +369,7 @@ function Reportes() {
         mensajesIniciales[fila.id_cliente_membresia] = mensajePredeterminado(fila);
       });
       setMensajes(mensajesIniciales);
+      await cargarEnviadosHoy("VENCIMIENTO");
     } catch (err) {
       console.error(err);
       setError("No se pudo consultar las membresías por vencer");
@@ -370,7 +397,31 @@ function Reportes() {
     );
   };
 
-  const enviarWhatsApp = (fila, mensaje) => {
+  // Un envío "masivo" acá sigue siendo un link wa.me por persona (WhatsApp no
+  // deja mandar de verdad en masa sin su API de pago) -- lo único que evita
+  // repetirle el mismo aviso dos veces a la misma persona el mismo día es
+  // que el backend recuerda a quién ya se le marcó "enviado" hoy.
+  const cargarEnviadosHoy = async (tipo) => {
+    try {
+      const res = await api.get("/reportes/whatsapp/enviados-hoy", { params: { tipo } });
+      setEnviadosHoy((prev) => ({ ...prev, [tipo]: res.data }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const yaEnviadoHoy = (tipo, idCliente) => (enviadosHoy[tipo] || []).includes(idCliente);
+
+  const registrarEnvio = async (tipo, idCliente) => {
+    try {
+      await api.post("/reportes/whatsapp/registrar-envio", { id_cliente: idCliente, tipo });
+      setEnviadosHoy((prev) => ({ ...prev, [tipo]: [...(prev[tipo] || []), idCliente] }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const enviarWhatsApp = (fila, mensaje, tipo) => {
     const telefono = (fila.telefono_cliente || "").trim();
     if (!(telefono.length === 9 && /^\d+$/.test(telefono))) {
       setError(`${fila.nombre_cliente || "Este cliente"} no tiene un teléfono válido de 9 dígitos registrado.`);
@@ -378,10 +429,11 @@ function Reportes() {
     }
     const url = `https://wa.me/51${telefono}?text=${encodeURIComponent(mensaje)}`;
     globalThis.open(url, "_blank");
+    if (tipo) registrarEnvio(tipo, fila.id_cliente);
   };
 
   const enviarRecordatorioWhatsApp = (fila) => {
-    enviarWhatsApp(fila, mensajes[fila.id_cliente_membresia] ?? mensajePredeterminado(fila));
+    enviarWhatsApp(fila, mensajes[fila.id_cliente_membresia] ?? mensajePredeterminado(fila), "VENCIMIENTO");
   };
 
   const consultarSaldosPendientes = async () => {
@@ -396,6 +448,7 @@ function Reportes() {
         mensajesIniciales[fila.id_cliente_membresia] = mensajePredeterminadoSaldo(fila);
       });
       setMensajesSaldo(mensajesIniciales);
+      await cargarEnviadosHoy("SALDO_PENDIENTE");
     } catch (err) {
       console.error(err);
       setError("No se pudo consultar los saldos pendientes");
@@ -415,7 +468,7 @@ function Reportes() {
   };
 
   const enviarRecordatorioSaldoWhatsApp = (fila) => {
-    enviarWhatsApp(fila, mensajesSaldo[fila.id_cliente_membresia] ?? mensajePredeterminadoSaldo(fila));
+    enviarWhatsApp(fila, mensajesSaldo[fila.id_cliente_membresia] ?? mensajePredeterminadoSaldo(fila), "SALDO_PENDIENTE");
   };
 
   const exportarSaldosPendientes = () => {
@@ -430,6 +483,132 @@ function Reportes() {
       ],
       saldosPendientes || []
     );
+  };
+
+  const mensajePredeterminadoCumpleanos = (fila) => {
+    const primerNombre = (fila.nombre_cliente || "").split(" ")[0] || "";
+    return (
+      `¡Feliz cumpleaños, ${primerNombre}! 🎉🎂\n\n` +
+      "Todo el equipo de GLEYFORGYM te desea un gran día. ¡Sigue entrenando con toda la energía! 💪\n\n" +
+      "*GLEYFORGYM* 🏋️"
+    );
+  };
+
+  const consultarCumpleanosHoy = async () => {
+    try {
+      setCargandoCumpleanos(true);
+      setError("");
+      const res = await api.get("/reportes/cumpleanos-hoy");
+      setCumpleanosHoy(res.data);
+
+      const mensajesIniciales = {};
+      res.data.forEach((fila) => {
+        mensajesIniciales[fila.id_cliente] = mensajePredeterminadoCumpleanos(fila);
+      });
+      setMensajesCumpleanos(mensajesIniciales);
+      await cargarEnviadosHoy("CUMPLEANOS");
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo consultar los cumpleaños de hoy");
+    } finally {
+      setCargandoCumpleanos(false);
+    }
+  };
+
+  const enviarCumpleanosWhatsApp = (fila) => {
+    enviarWhatsApp(fila, mensajesCumpleanos[fila.id_cliente] ?? mensajePredeterminadoCumpleanos(fila), "CUMPLEANOS");
+  };
+
+  const mensajePredeterminadoBienvenida = (fila) => {
+    const primerNombre = (fila.nombre_cliente || "").split(" ")[0] || "";
+    return (
+      `¡Bienvenido a GLEYFORGYM, ${primerNombre}! 💪\n\n` +
+      "Nos alegra tenerte en el equipo. Cualquier duda sobre tu plan, rutina o la app, el staff te ayuda con gusto.\n\n" +
+      "*GLEYFORGYM* 🏋️"
+    );
+  };
+
+  const consultarSociosNuevos = async () => {
+    try {
+      setCargandoSocios(true);
+      setError("");
+      const res = await api.get("/reportes/socios-nuevos", { params: { dias: diasSocios } });
+      setSociosNuevos(res.data);
+
+      const mensajesIniciales = {};
+      res.data.forEach((fila) => {
+        mensajesIniciales[fila.id_cliente] = mensajePredeterminadoBienvenida(fila);
+      });
+      setMensajesBienvenida(mensajesIniciales);
+      await cargarEnviadosHoy("BIENVENIDA");
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo consultar los socios nuevos");
+    } finally {
+      setCargandoSocios(false);
+    }
+  };
+
+  const enviarBienvenidaWhatsApp = (fila) => {
+    enviarWhatsApp(fila, mensajesBienvenida[fila.id_cliente] ?? mensajePredeterminadoBienvenida(fila), "BIENVENIDA");
+  };
+
+  const mensajePredeterminadoInactivo = (fila) => {
+    const primerNombre = (fila.nombre_cliente || "").split(" ")[0] || "";
+    return (
+      `¡Te extrañamos, ${primerNombre}! 👋\n\n` +
+      "Hace rato no te vemos por el gimnasio. ¿Todo bien? Te esperamos para seguir entrenando 💪\n\n" +
+      "*GLEYFORGYM* 🏋️"
+    );
+  };
+
+  const consultarClientesInactivos = async () => {
+    try {
+      setCargandoInactivos(true);
+      setError("");
+      const res = await api.get("/reportes/clientes-inactivos", { params: { dias: diasInactividad } });
+      setClientesInactivos(res.data);
+
+      const mensajesIniciales = {};
+      res.data.forEach((fila) => {
+        mensajesIniciales[fila.id_cliente] = mensajePredeterminadoInactivo(fila);
+      });
+      setMensajesInactivos(mensajesIniciales);
+      await cargarEnviadosHoy("INACTIVIDAD");
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo consultar los clientes inactivos");
+    } finally {
+      setCargandoInactivos(false);
+    }
+  };
+
+  const enviarInactivoWhatsApp = (fila) => {
+    enviarWhatsApp(fila, mensajesInactivos[fila.id_cliente] ?? mensajePredeterminadoInactivo(fila), "INACTIVIDAD");
+  };
+
+  const consultarClientesParaFeriado = async () => {
+    try {
+      setCargandoFeriado(true);
+      setError("");
+      const res = await api.get("/clientes/", { params: { estado: "ACTIVO" } });
+      const normalizados = res.data.map((c) => ({
+        id_cliente: c.id_cliente,
+        nombre_cliente: `${c.nombres || ""} ${c.apellidos || ""}`.trim(),
+        telefono_cliente: c.telefono,
+      }));
+      setClientesParaFeriado(normalizados);
+      await cargarEnviadosHoy("FERIADO");
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo cargar la lista de clientes activos");
+    } finally {
+      setCargandoFeriado(false);
+    }
+  };
+
+  const enviarFeriadoWhatsApp = (fila) => {
+    enviarWhatsApp(fila, mensajeFeriado, "FERIADO");
   };
 
   return (
@@ -675,6 +854,9 @@ function Reportes() {
                 <article className="card item-card" key={fila.id_cliente_membresia}>
                   <div className="item-card-top">
                     <span className="badge badge-warning">{fila.dias_restantes} día(s)</span>
+                    {yaEnviadoHoy("VENCIMIENTO", fila.id_cliente) && (
+                      <span className="badge badge-success">✓ Enviado hoy</span>
+                    )}
                   </div>
                   <h3>{fila.nombre_cliente || `Cliente #${fila.id_cliente}`}</h3>
                   <p className="item-description">
@@ -694,7 +876,7 @@ function Reportes() {
                   </div>
                   <div className="item-actions">
                     <button className="btn-primary" onClick={() => enviarRecordatorioWhatsApp(fila)}>
-                      Enviar recordatorio por WhatsApp
+                      {yaEnviadoHoy("VENCIMIENTO", fila.id_cliente) ? "Reenviar por WhatsApp" : "Enviar recordatorio por WhatsApp"}
                     </button>
                   </div>
                 </article>
@@ -744,6 +926,9 @@ function Reportes() {
                       <span className="badge badge-warning">
                         Falta S/ {Number(fila.saldo_pendiente).toFixed(2)}
                       </span>
+                      {yaEnviadoHoy("SALDO_PENDIENTE", fila.id_cliente) && (
+                        <span className="badge badge-success">✓ Enviado hoy</span>
+                      )}
                     </div>
                     <h3>{fila.nombre_cliente || `Cliente #${fila.id_cliente}`}</h3>
                     <p className="item-description">
@@ -764,13 +949,250 @@ function Reportes() {
                     </div>
                     <div className="item-actions">
                       <button className="btn-primary" onClick={() => enviarRecordatorioSaldoWhatsApp(fila)}>
-                        Enviar recordatorio por WhatsApp
+                        {yaEnviadoHoy("SALDO_PENDIENTE", fila.id_cliente) ? "Reenviar por WhatsApp" : "Enviar recordatorio por WhatsApp"}
                       </button>
                     </div>
                   </article>
                 ))}
               </div>
             </>
+          )
+        )}
+      </section>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Cumpleaños de hoy</h2>
+            <p>Clientes que cumplen años hoy -- salúdalos por WhatsApp.</p>
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button className="btn-primary" disabled={cargandoCumpleanos} onClick={consultarCumpleanosHoy}>
+            {cargandoCumpleanos ? "Consultando..." : "Consultar cumpleaños"}
+          </button>
+        </div>
+
+        {cumpleanosHoy && (
+          cumpleanosHoy.length === 0 ? (
+            <p className="empty-message">Nadie cumple años hoy.</p>
+          ) : (
+            <div className="cards-grid">
+              {cumpleanosHoy.map((fila) => (
+                <article className="card item-card" key={fila.id_cliente}>
+                  <div className="item-card-top">
+                    <span className="badge">🎂 Hoy</span>
+                    {yaEnviadoHoy("CUMPLEANOS", fila.id_cliente) && (
+                      <span className="badge badge-success">✓ Enviado hoy</span>
+                    )}
+                  </div>
+                  <h3>{fila.nombre_cliente}</h3>
+                  <p className="item-description">Teléfono: {fila.telefono_cliente || "no registrado"}</p>
+                  <div className="form-field">
+                    <label htmlFor={`mensaje-cumple-${fila.id_cliente}`}>Mensaje</label>
+                    <textarea
+                      id={`mensaje-cumple-${fila.id_cliente}`}
+                      rows={3}
+                      value={mensajesCumpleanos[fila.id_cliente] ?? mensajePredeterminadoCumpleanos(fila)}
+                      onChange={(e) =>
+                        setMensajesCumpleanos({ ...mensajesCumpleanos, [fila.id_cliente]: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="item-actions">
+                    <button className="btn-primary" onClick={() => enviarCumpleanosWhatsApp(fila)}>
+                      {yaEnviadoHoy("CUMPLEANOS", fila.id_cliente) ? "Reenviar por WhatsApp" : "Enviar saludo por WhatsApp"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
+        )}
+      </section>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Bienvenida a socios nuevos</h2>
+            <p>Clientes registrados en los últimos días -- dales la bienvenida por WhatsApp.</p>
+          </div>
+        </div>
+
+        <div className="form-grid">
+          <div className="form-field">
+            <label htmlFor="dias_socios">Días hacia atrás</label>
+            <input
+              id="dias_socios"
+              type="number"
+              min="1"
+              value={diasSocios}
+              onChange={(e) => setDiasSocios(Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button className="btn-primary" disabled={cargandoSocios} onClick={consultarSociosNuevos}>
+            {cargandoSocios ? "Consultando..." : "Consultar socios nuevos"}
+          </button>
+        </div>
+
+        {sociosNuevos && (
+          sociosNuevos.length === 0 ? (
+            <p className="empty-message">No hay socios nuevos en ese rango de días.</p>
+          ) : (
+            <div className="cards-grid">
+              {sociosNuevos.map((fila) => (
+                <article className="card item-card" key={fila.id_cliente}>
+                  <div className="item-card-top">
+                    <span className="badge">Nuevo socio</span>
+                    {yaEnviadoHoy("BIENVENIDA", fila.id_cliente) && (
+                      <span className="badge badge-success">✓ Enviado hoy</span>
+                    )}
+                  </div>
+                  <h3>{fila.nombre_cliente}</h3>
+                  <p className="item-description">Teléfono: {fila.telefono_cliente || "no registrado"}</p>
+                  <div className="form-field">
+                    <label htmlFor={`mensaje-bienvenida-${fila.id_cliente}`}>Mensaje</label>
+                    <textarea
+                      id={`mensaje-bienvenida-${fila.id_cliente}`}
+                      rows={3}
+                      value={mensajesBienvenida[fila.id_cliente] ?? mensajePredeterminadoBienvenida(fila)}
+                      onChange={(e) =>
+                        setMensajesBienvenida({ ...mensajesBienvenida, [fila.id_cliente]: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="item-actions">
+                    <button className="btn-primary" onClick={() => enviarBienvenidaWhatsApp(fila)}>
+                      {yaEnviadoHoy("BIENVENIDA", fila.id_cliente) ? "Reenviar por WhatsApp" : "Enviar bienvenida por WhatsApp"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
+        )}
+      </section>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Clientes inactivos</h2>
+            <p>Clientes activos que no asisten hace un tiempo -- recupéralos con un mensaje.</p>
+          </div>
+        </div>
+
+        <div className="form-grid">
+          <div className="form-field">
+            <label htmlFor="dias_inactividad">Días sin asistir</label>
+            <input
+              id="dias_inactividad"
+              type="number"
+              min="1"
+              value={diasInactividad}
+              onChange={(e) => setDiasInactividad(Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button className="btn-primary" disabled={cargandoInactivos} onClick={consultarClientesInactivos}>
+            {cargandoInactivos ? "Consultando..." : "Consultar inactivos"}
+          </button>
+        </div>
+
+        {clientesInactivos && (
+          clientesInactivos.length === 0 ? (
+            <p className="empty-message">No hay clientes inactivos en ese rango de días.</p>
+          ) : (
+            <div className="cards-grid">
+              {clientesInactivos.map((fila) => (
+                <article className="card item-card" key={fila.id_cliente}>
+                  <div className="item-card-top">
+                    <span className="badge badge-warning">
+                      {fila.ultima_asistencia ? `Última vez: ${fila.ultima_asistencia}` : "Nunca asistió"}
+                    </span>
+                    {yaEnviadoHoy("INACTIVIDAD", fila.id_cliente) && (
+                      <span className="badge badge-success">✓ Enviado hoy</span>
+                    )}
+                  </div>
+                  <h3>{fila.nombre_cliente}</h3>
+                  <p className="item-description">Teléfono: {fila.telefono_cliente || "no registrado"}</p>
+                  <div className="form-field">
+                    <label htmlFor={`mensaje-inactivo-${fila.id_cliente}`}>Mensaje</label>
+                    <textarea
+                      id={`mensaje-inactivo-${fila.id_cliente}`}
+                      rows={3}
+                      value={mensajesInactivos[fila.id_cliente] ?? mensajePredeterminadoInactivo(fila)}
+                      onChange={(e) =>
+                        setMensajesInactivos({ ...mensajesInactivos, [fila.id_cliente]: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="item-actions">
+                    <button className="btn-primary" onClick={() => enviarInactivoWhatsApp(fila)}>
+                      {yaEnviadoHoy("INACTIVIDAD", fila.id_cliente) ? "Reenviar por WhatsApp" : "Enviar mensaje por WhatsApp"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
+        )}
+      </section>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Feriados y comunicados (a todos los clientes activos)</h2>
+            <p>
+              Escribe un mensaje y envíaselo uno por uno a todos los clientes activos --
+              los que ya se marcan "Enviado hoy" no se te van a pasar dos veces.
+            </p>
+          </div>
+        </div>
+
+        <div className="form-field field-large">
+          <label htmlFor="mensaje_feriado">Mensaje para todos</label>
+          <textarea
+            id="mensaje_feriado"
+            rows={3}
+            value={mensajeFeriado}
+            onChange={(e) => setMensajeFeriado(e.target.value)}
+          />
+        </div>
+
+        <div className="form-actions">
+          <button className="btn-primary" disabled={cargandoFeriado} onClick={consultarClientesParaFeriado}>
+            {cargandoFeriado ? "Cargando..." : "Cargar clientes activos"}
+          </button>
+        </div>
+
+        {clientesParaFeriado && (
+          clientesParaFeriado.length === 0 ? (
+            <p className="empty-message">No hay clientes activos.</p>
+          ) : (
+            <div className="cards-grid">
+              {clientesParaFeriado.map((fila) => (
+                <article className="card item-card" key={fila.id_cliente}>
+                  <div className="item-card-top">
+                    {yaEnviadoHoy("FERIADO", fila.id_cliente) && (
+                      <span className="badge badge-success">✓ Enviado hoy</span>
+                    )}
+                  </div>
+                  <h3>{fila.nombre_cliente}</h3>
+                  <p className="item-description">Teléfono: {fila.telefono_cliente || "no registrado"}</p>
+                  <div className="item-actions">
+                    <button className="btn-primary" onClick={() => enviarFeriadoWhatsApp(fila)}>
+                      {yaEnviadoHoy("FERIADO", fila.id_cliente) ? "Reenviar por WhatsApp" : "Enviar por WhatsApp"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
           )
         )}
       </section>

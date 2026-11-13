@@ -996,6 +996,29 @@ class RegistroAuditoriaResponse(BaseModel):
 
 
 # =========================
+# AVISOS POR WHATSAPP (registro de envíos, ver app/models.py::EnvioWhatsApp)
+# =========================
+
+TipoAvisoWhatsApp = Literal[
+    "VENCIMIENTO", "SALDO_PENDIENTE", "FERIADO", "CUMPLEANOS", "BIENVENIDA", "INACTIVIDAD",
+]
+
+
+class EnvioWhatsAppCreate(BaseModel):
+    id_cliente: int
+    tipo: TipoAvisoWhatsApp
+
+
+class EnvioWhatsAppResponse(BaseModel):
+    id_envio: int
+    id_cliente: int
+    tipo: str
+    fecha_envio: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =========================
 # AVISOS
 # =========================
 
