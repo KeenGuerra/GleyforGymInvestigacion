@@ -603,6 +603,164 @@ def reporte_ventas_por_metodo_pago(db: Annotated[Session, Depends(get_db)], desd
     return {"desde": str(desde), "hasta": str(hasta), "total": total, "por_metodo": por_metodo}
 
 
+@router.get("/compras")
+def obtener_reporte_compras(
+    db: Annotated[Session, Depends(get_db)],
+    desde: date,
+    hasta: date,
+):
+    """Egresos (compras CONFIRMADA a proveedores) agrupados por día dentro
+    del rango [desde, hasta] -- el complemento que le faltaba a /ingresos:
+    hasta ahora solo se podía ver lo que entra (pagos, ventas), nunca lo que
+    sale en compra de mercadería."""
+    fin_dia = datetime.combine(hasta, datetime.max.time())
+
+    filas = (
+        db.query(func.date(models.Compra.fecha_compra), func.coalesce(func.sum(models.Compra.total), 0))
+        .filter(
+            models.Compra.estado == "CONFIRMADA",
+            models.Compra.fecha_compra >= desde,
+            models.Compra.fecha_compra <= fin_dia,
+        )
+        .group_by(func.date(models.Compra.fecha_compra))
+        .order_by(func.date(models.Compra.fecha_compra))
+        .all()
+    )
+    por_dia = [{"fecha": str(fecha), "monto": round(monto, 2)} for fecha, monto in filas]
+
+    filas_proveedor = (
+        db.query(
+            models.Proveedor.razon_social,
+            func.coalesce(func.sum(models.Compra.total), 0),
+            func.count(models.Compra.id_compra),
+        )
+        .join(models.Compra, models.Compra.id_proveedor == models.Proveedor.id_proveedor)
+        .filter(
+            models.Compra.estado == "CONFIRMADA",
+            models.Compra.fecha_compra >= desde,
+            models.Compra.fecha_compra <= fin_dia,
+        )
+        .group_by(models.Proveedor.razon_social)
+        .order_by(func.sum(models.Compra.total).desc())
+        .all()
+    )
+    por_proveedor = [
+        {"proveedor": razon_social, "monto": round(monto, 2), "cantidad": cantidad}
+        for razon_social, monto, cantidad in filas_proveedor
+    ]
+
+    total = round(sum(fila["monto"] for fila in por_dia), 2)
+
+    return {"desde": str(desde), "hasta": str(hasta), "total": total, "por_dia": por_dia, "por_proveedor": por_proveedor}
+
+
+@router.get("/resumen-general")
+def reporte_resumen_general(
+    db: Annotated[Session, Depends(get_db)],
+    desde: date,
+    hasta: date,
+):
+    """Vista consolidada del negocio en el rango [desde, hasta]: ingresos
+    (pagos de membresía + ventas de productos), egresos (compras a
+    proveedores), utilidad neta, y los indicadores operativos que de otro
+    modo habría que revisar reporte por reporte para tener una foto completa
+    del gimnasio en un periodo dado."""
+    fin_dia = datetime.combine(hasta, datetime.max.time())
+
+    ingresos_pagos = (
+        db.query(func.coalesce(func.sum(models.Pago.monto), 0))
+        .filter(
+            models.Pago.estado == "PAGADO",
+            models.Pago.fecha_pago >= desde,
+            models.Pago.fecha_pago <= hasta,
+        )
+        .scalar()
+    ) or 0
+
+    ingresos_ventas = (
+        db.query(func.coalesce(func.sum(models.Venta.total), 0))
+        .filter(
+            models.Venta.estado.in_(["CONFIRMADA", "ENTREGADA"]),
+            models.Venta.fecha_venta >= desde,
+            models.Venta.fecha_venta <= fin_dia,
+        )
+        .scalar()
+    ) or 0
+
+    egresos_compras = (
+        db.query(func.coalesce(func.sum(models.Compra.total), 0))
+        .filter(
+            models.Compra.estado == "CONFIRMADA",
+            models.Compra.fecha_compra >= desde,
+            models.Compra.fecha_compra <= fin_dia,
+        )
+        .scalar()
+    ) or 0
+
+    ingresos_totales = round(ingresos_pagos + ingresos_ventas, 2)
+    egresos_totales = round(egresos_compras, 2)
+
+    asistencias_periodo = (
+        db.query(func.count(models.Asistencia.id_asistencia))
+        .filter(
+            models.Asistencia.estado != "ANULADO",
+            models.Asistencia.fecha >= desde,
+            models.Asistencia.fecha <= hasta,
+        )
+        .scalar()
+    ) or 0
+
+    clientes_nuevos_periodo = (
+        db.query(func.count(models.Cliente.id_cliente))
+        .filter(
+            models.Cliente.fecha_registro >= datetime.combine(desde, datetime.min.time()),
+            models.Cliente.fecha_registro <= fin_dia,
+        )
+        .scalar()
+    ) or 0
+
+    # "Vencida en el periodo" = su fecha_fin cae dentro del rango, sin
+    # importar si el staff ya la marcó TERMINADA o si sigue como ACTIVA
+    # porque nadie la actualizó a mano todavía (no hay cron en este
+    # proyecto). CANCELADA no cuenta: eso es un corte anticipado, no un
+    # vencimiento natural del plan.
+    membresias_vencidas_periodo = (
+        db.query(func.count(models.ClienteMembresia.id_cliente_membresia))
+        .filter(
+            models.ClienteMembresia.fecha_fin >= desde,
+            models.ClienteMembresia.fecha_fin <= hasta,
+            models.ClienteMembresia.estado.in_(["ACTIVA", "TERMINADA"]),
+        )
+        .scalar()
+    ) or 0
+
+    # Punto en el tiempo (no depende del rango de fechas): cuántos productos
+    # están hoy en o por debajo de su stock mínimo.
+    productos_stock_bajo = (
+        db.query(func.count(models.Inventario.id_inventario))
+        .filter(models.Inventario.stock_actual <= models.Inventario.stock_minimo)
+        .scalar()
+    ) or 0
+
+    return {
+        "desde": str(desde),
+        "hasta": str(hasta),
+        "ingresos": {
+            "pagos_membresia": round(ingresos_pagos, 2),
+            "ventas_productos": round(ingresos_ventas, 2),
+            "total": ingresos_totales,
+        },
+        "egresos": {
+            "compras_proveedores": egresos_totales,
+        },
+        "utilidad_neta": round(ingresos_totales - egresos_totales, 2),
+        "asistencias_periodo": asistencias_periodo,
+        "clientes_nuevos_periodo": clientes_nuevos_periodo,
+        "membresias_vencidas_periodo": membresias_vencidas_periodo,
+        "productos_stock_bajo": productos_stock_bajo,
+    }
+
+
 # =========================
 # AVISOS MASIVOS POR WHATSAPP
 # =========================

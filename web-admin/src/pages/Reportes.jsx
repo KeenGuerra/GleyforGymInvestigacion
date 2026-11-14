@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
 import { formatearFecha } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function primerDiaDelMes() {
   const hoy = new Date();
@@ -9,9 +11,12 @@ function primerDiaDelMes() {
 }
 
 function Reportes() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [desde, setDesde] = useState(primerDiaDelMes());
   const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
+  const [resumenGeneral, setResumenGeneral] = useState(null);
   const [ingresos, setIngresos] = useState(null);
+  const [compras, setCompras] = useState(null);
   const [asistencias, setAsistencias] = useState(null);
   const [productosMasVendidos, setProductosMasVendidos] = useState(null);
   const [ventasPorMetodo, setVentasPorMetodo] = useState(null);
@@ -79,14 +84,18 @@ function Reportes() {
       setCargando(true);
       setError("");
 
-      const [resIngresos, resAsistencias, resProductos, resMetodoPago] = await Promise.all([
+      const [resResumen, resIngresos, resCompras, resAsistencias, resProductos, resMetodoPago] = await Promise.all([
+        api.get("/reportes/resumen-general", { params: { desde: rangoDesde, hasta: rangoHasta } }),
         api.get("/reportes/ingresos", { params: { desde: rangoDesde, hasta: rangoHasta } }),
+        api.get("/reportes/compras", { params: { desde: rangoDesde, hasta: rangoHasta } }),
         api.get("/reportes/asistencias", { params: { desde: rangoDesde, hasta: rangoHasta } }),
         api.get("/reportes/productos-mas-vendidos", { params: { desde: rangoDesde, hasta: rangoHasta } }),
         api.get("/reportes/ventas-por-metodo-pago", { params: { desde: rangoDesde, hasta: rangoHasta } }),
       ]);
 
+      setResumenGeneral(resResumen.data);
       setIngresos(resIngresos.data);
+      setCompras(resCompras.data);
       setAsistencias(resAsistencias.data);
       setProductosMasVendidos(resProductos.data);
       setVentasPorMetodo(resMetodoPago.data);
@@ -129,6 +138,39 @@ function Reportes() {
         { etiqueta: "Monto (S/)", valor: "monto" },
       ],
       ingresos?.por_dia || []
+    );
+  };
+
+  const exportarCompras = () => {
+    exportarCsv(
+      `compras-${desde}-a-${hasta}.csv`,
+      [
+        { etiqueta: "Fecha", valor: "fecha" },
+        { etiqueta: "Monto (S/)", valor: "monto" },
+      ],
+      compras?.por_dia || []
+    );
+  };
+
+  const exportarResumenGeneral = () => {
+    if (!resumenGeneral?.ingresos) return;
+    exportarCsv(
+      `resumen-general-${desde}-a-${hasta}.csv`,
+      [
+        { etiqueta: "Concepto", valor: "concepto" },
+        { etiqueta: "Valor", valor: "valor" },
+      ],
+      [
+        { concepto: "Ingresos por membresías (S/)", valor: resumenGeneral.ingresos.pagos_membresia },
+        { concepto: "Ingresos por ventas de productos (S/)", valor: resumenGeneral.ingresos.ventas_productos },
+        { concepto: "Ingresos totales (S/)", valor: resumenGeneral.ingresos.total },
+        { concepto: "Egresos por compras a proveedores (S/)", valor: resumenGeneral.egresos.compras_proveedores },
+        { concepto: "Utilidad neta (S/)", valor: resumenGeneral.utilidad_neta },
+        { concepto: "Asistencias en el período", valor: resumenGeneral.asistencias_periodo },
+        { concepto: "Clientes nuevos en el período", valor: resumenGeneral.clientes_nuevos_periodo },
+        { concepto: "Membresías vencidas en el período", valor: resumenGeneral.membresias_vencidas_periodo },
+        { concepto: "Productos con stock bajo (hoy)", valor: resumenGeneral.productos_stock_bajo },
+      ]
     );
   };
 
@@ -241,11 +283,10 @@ function Reportes() {
       setError("Selecciona una fecha de corte");
       return;
     }
-    if (
-      !globalThis.confirm(
-        `Esto elimina para siempre los registros de tiempo de respuesta (F-04) anteriores al ${corteTiempos}. No se puede deshacer. ¿Continuar?`
-      )
-    ) {
+    const confirmado = await confirmarAccion(
+      `Esto elimina para siempre los registros de tiempo de respuesta (F-04) anteriores al ${corteTiempos}. No se puede deshacer. ¿Continuar?`
+    );
+    if (!confirmado) {
       return;
     }
 
@@ -666,6 +707,58 @@ function Reportes() {
         </div>
       </section>
 
+      {resumenGeneral && resumenGeneral.ingresos && (
+        <section className="table-card">
+          <div className="table-header">
+            <h2>Resumen general del período</h2>
+            <button className="btn-secondary" onClick={exportarResumenGeneral}>
+              Exportar CSV
+            </button>
+          </div>
+
+          <div className="stats-grid">
+            <div className="stat-card highlight">
+              <span>Ingresos totales</span>
+              <strong>S/ {Number(resumenGeneral.ingresos.total).toFixed(2)}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Egresos (compras)</span>
+              <strong>S/ {Number(resumenGeneral.egresos.compras_proveedores).toFixed(2)}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Utilidad neta</span>
+              <strong className={resumenGeneral.utilidad_neta < 0 ? "stat-danger" : undefined}>
+                S/ {Number(resumenGeneral.utilidad_neta).toFixed(2)}
+              </strong>
+            </div>
+            <div className="stat-card">
+              <span>Asistencias</span>
+              <strong>{resumenGeneral.asistencias_periodo}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Clientes nuevos</span>
+              <strong>{resumenGeneral.clientes_nuevos_periodo}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Membresías vencidas</span>
+              <strong>{resumenGeneral.membresias_vencidas_periodo}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Stock bajo (hoy)</span>
+              <strong className={resumenGeneral.productos_stock_bajo > 0 ? "stat-warning" : undefined}>
+                {resumenGeneral.productos_stock_bajo}
+              </strong>
+            </div>
+          </div>
+
+          <p className="item-description">
+            Ingresos: S/ {Number(resumenGeneral.ingresos.pagos_membresia).toFixed(2)} por membresías
+            {" "}+ S/ {Number(resumenGeneral.ingresos.ventas_productos).toFixed(2)} por ventas de productos.
+            El stock bajo es una foto de hoy, no depende del rango de fechas elegido.
+          </p>
+        </section>
+      )}
+
       {ingresos && (
         <section className="table-card">
           <div className="table-header">
@@ -678,14 +771,6 @@ function Reportes() {
           <p>
             Total de membresías del período: <strong>S/ {Number(ingresos.total).toFixed(2)}</strong>
           </p>
-          {ventasPorMetodo && (
-            <p>
-              Ingresos totales del período (membresías + ventas de productos):{" "}
-              <strong>
-                S/ {(Number(ingresos.total) + Number(ventasPorMetodo.total || 0)).toFixed(2)}
-              </strong>
-            </p>
-          )}
 
           {ingresos.por_dia.length === 0 ? (
             <p className="empty-message">No hay ingresos registrados en este rango.</p>
@@ -706,6 +791,66 @@ function Reportes() {
                 ))}
               </tbody>
             </table>
+          )}
+        </section>
+      )}
+
+      {compras && Array.isArray(compras.por_dia) && (
+        <section className="table-card">
+          <div className="table-header">
+            <h2>Compras / Gastos a proveedores</h2>
+            <button className="btn-secondary" onClick={exportarCompras}>
+              Exportar CSV
+            </button>
+          </div>
+
+          <p>
+            Total del período: <strong>S/ {Number(compras.total).toFixed(2)}</strong>
+          </p>
+
+          {compras.por_dia.length === 0 ? (
+            <p className="empty-message">No hay compras confirmadas en este rango.</p>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {compras.por_dia.map((fila) => (
+                  <tr key={fila.fecha}>
+                    <td>{fila.fecha}</td>
+                    <td>S/ {Number(fila.monto).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {(compras.por_proveedor || []).length > 0 && (
+            <>
+              <h3 className="detail-heading">Por proveedor</h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th>Monto</th>
+                    <th>N° de compras</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {compras.por_proveedor.map((fila) => (
+                    <tr key={fila.proveedor}>
+                      <td>{fila.proveedor}</td>
+                      <td>S/ {Number(fila.monto).toFixed(2)}</td>
+                      <td>{fila.cantidad}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           )}
         </section>
       )}
@@ -1261,6 +1406,8 @@ function Reportes() {
 
         {resultadoLimpieza && <p className="empty-message">{resultadoLimpieza}</p>}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

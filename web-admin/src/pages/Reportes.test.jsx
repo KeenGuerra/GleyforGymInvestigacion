@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Reportes from "./Reportes";
 import api from "../api/api";
 
@@ -37,12 +37,34 @@ const mockVentasPorMetodo = {
   por_metodo: [{ metodo_pago: "EFECTIVO", monto: 250, cantidad: 5 }],
 };
 
+const mockResumenGeneral = {
+  desde: "2026-06-01",
+  hasta: "2026-06-30",
+  ingresos: { pagos_membresia: 350.5, ventas_productos: 250, total: 600.5 },
+  egresos: { compras_proveedores: 100 },
+  utilidad_neta: 500.5,
+  asistencias_periodo: 3,
+  clientes_nuevos_periodo: 2,
+  membresias_vencidas_periodo: 1,
+  productos_stock_bajo: 0,
+};
+
+const mockCompras = {
+  desde: "2026-06-01",
+  hasta: "2026-06-30",
+  total: 100,
+  por_dia: [{ fecha: "2026-06-05", monto: 100 }],
+  por_proveedor: [{ proveedor: "Distribuidora Fit SAC", monto: 100, cantidad: 1 }],
+};
+
 describe("Reportes Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     api.post.mockResolvedValue({ data: {} });
     api.get.mockImplementation((url) => {
+      if (url === "/reportes/resumen-general") return Promise.resolve({ data: mockResumenGeneral });
       if (url === "/reportes/ingresos") return Promise.resolve({ data: mockIngresos });
+      if (url === "/reportes/compras") return Promise.resolve({ data: mockCompras });
       if (url === "/reportes/asistencias") return Promise.resolve({ data: mockAsistencias });
       if (url === "/reportes/productos-mas-vendidos") return Promise.resolve({ data: mockProductosMasVendidos });
       if (url === "/reportes/ventas-por-metodo-pago") return Promise.resolve({ data: mockVentasPorMetodo });
@@ -75,15 +97,14 @@ describe("Reportes Page Component", () => {
     });
   });
 
-  it("shows the combined total (memberships + product sales) once both load", async () => {
+  it("shows the consolidated general report with combined income, expenses and net profit", async () => {
     render(<Reportes />);
     fireEvent.click(screen.getByText("Generar reporte"));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Ingresos totales del período (membresías + ventas de productos):")
-      ).toBeDefined();
+      expect(screen.getByText("Resumen general del período")).toBeDefined();
       expect(screen.getByText("S/ 600.50")).toBeDefined();
+      expect(screen.getByText("S/ 500.50")).toBeDefined();
     });
   });
 
@@ -321,7 +342,6 @@ describe("Reportes Page Component", () => {
   it("deletes old response-time records on confirm and shows how many were removed", async () => {
     api.get.mockResolvedValue({ data: [] });
     api.delete.mockResolvedValue({ data: { eliminados: 42 } });
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
 
     render(<Reportes />);
     await waitFor(() => expect(screen.getByText("Eliminar registros antiguos")).toBeDefined());
@@ -330,6 +350,9 @@ describe("Reportes Page Component", () => {
       target: { value: "2026-10-01" },
     });
     fireEvent.click(screen.getByText("Eliminar registros antiguos"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/reportes/sistema/tiempos-respuesta", {
@@ -341,26 +364,29 @@ describe("Reportes Page Component", () => {
 
   it("does not delete old response-time records if the user cancels the confirmation", async () => {
     api.get.mockResolvedValue({ data: [] });
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
 
     render(<Reportes />);
     await waitFor(() => expect(screen.getByText("Eliminar registros antiguos")).toBeDefined());
 
     fireEvent.click(screen.getByText("Eliminar registros antiguos"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 
   it("shows an error when deleting old response-time records fails", async () => {
     api.get.mockResolvedValue({ data: [] });
     api.delete.mockRejectedValue(new Error("delete failed"));
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
 
     render(<Reportes />);
     await waitFor(() => expect(screen.getByText("Eliminar registros antiguos")).toBeDefined());
 
     fireEvent.click(screen.getByText("Eliminar registros antiguos"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("No se pudo limpiar los registros de tiempo de respuesta")).toBeDefined();
