@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Asistencias from "./Asistencias";
 import api from "../api/api";
 
@@ -121,7 +121,6 @@ describe("Asistencias Page Component", () => {
   });
 
   it("deletes an assistance on confirmation successfully", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
 
     render(<Asistencias />);
@@ -131,13 +130,15 @@ describe("Asistencias Page Component", () => {
 
     fireEvent.click(screen.getByText("Eliminar"));
 
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/asistencias/10");
     });
   });
 
   it("handles delete failure on confirmation", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockRejectedValue(new Error("Delete Error"));
 
     render(<Asistencias />);
@@ -147,13 +148,15 @@ describe("Asistencias Page Component", () => {
 
     fireEvent.click(screen.getByText("Eliminar"));
 
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(screen.getByText("Error al eliminar asistencia")).toBeDefined();
     });
   });
 
   it("does not delete if confirmation is cancelled", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<Asistencias />);
 
     await waitFor(() => {
@@ -161,6 +164,10 @@ describe("Asistencias Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Eliminar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 });

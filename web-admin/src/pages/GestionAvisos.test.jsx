@@ -103,13 +103,15 @@ describe("GestionAvisos Page Component", () => {
   });
 
   it("deactivates an aviso after confirmation", async () => {
-    globalThis.confirm = vi.fn(() => true);
     api.delete.mockResolvedValue({ data: {} });
 
     render(<GestionAvisos />);
     await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
 
     fireEvent.click(screen.getByText("Desactivar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/avisos/1");

@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Nutricion() {
   const navigate = useNavigate();
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
 
   const [clientes, setClientes] = useState([]);
   const [planes, setPlanes] = useState([]);
@@ -85,10 +88,10 @@ function Nutricion() {
   };
 
   const desactivarPlan = async (idPlan) => {
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       "¿Seguro que deseas desactivar este plan nutricional?"
     );
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.delete(`/nutricion/${idPlan}`);
@@ -263,6 +266,8 @@ function Nutricion() {
           </table>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

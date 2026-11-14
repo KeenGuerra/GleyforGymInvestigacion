@@ -5,10 +5,13 @@ import { descargarBlob } from "../utils/descargarArchivo";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 import CheckoutModal from "../components/CheckoutModal";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 const PAGOS_POR_PAGINA = 20;
 
 function Pagos() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [pagos, setPagos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [asignaciones, setAsignaciones] = useState([]);
@@ -153,7 +156,7 @@ function Pagos() {
   };
 
   const anularPago = async (id_pago) => {
-    if (!globalThis.confirm("¿Seguro que deseas anular este pago?")) return;
+    if (!(await confirmarAccion("¿Seguro que deseas anular este pago?"))) return;
 
     try {
       await api.delete(`/pagos/${id_pago}`);
@@ -446,6 +449,7 @@ function Pagos() {
       </section>
 
       <CheckoutModal info={checkoutInfo} onClose={() => setCheckoutInfo(null)} />
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

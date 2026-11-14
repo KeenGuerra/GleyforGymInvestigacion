@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Membresias from "./Membresias";
 import api from "../api/api";
 
@@ -106,7 +106,6 @@ describe("Membresias Page Component", () => {
   });
 
   it("desactivates membership on confirm and handles API error", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
 
     render(<Membresias />);
@@ -115,6 +114,8 @@ describe("Membresias Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Desactivar"));
+    let dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/membresias/1");
@@ -123,6 +124,8 @@ describe("Membresias Page Component", () => {
     // Error case
     api.delete.mockRejectedValue(new Error("Network Error"));
     fireEvent.click(screen.getByText("Desactivar"));
+    dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("No se pudo desactivar la membresía")).toBeDefined();
@@ -145,7 +148,6 @@ describe("Membresias Page Component", () => {
   });
 
   it("does not deactivate membership if confirm is rejected", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<Membresias />);
 
     await waitFor(() => {
@@ -153,6 +155,9 @@ describe("Membresias Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Desactivar"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 });

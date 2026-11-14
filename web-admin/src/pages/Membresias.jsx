@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Membresias() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [membresias, setMembresias] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -100,11 +103,11 @@ function Membresias() {
   };
 
   const desactivarMembresia = async (id) => {
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       "¿Seguro que deseas desactivar esta membresía?"
     );
 
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.delete(`/membresias/${id}`);
@@ -365,6 +368,8 @@ function Membresias() {
           </div>
         )}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

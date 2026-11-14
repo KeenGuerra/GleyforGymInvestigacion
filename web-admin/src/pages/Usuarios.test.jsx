@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Usuarios from "./Usuarios";
 import api from "../api/api";
 
@@ -139,7 +139,6 @@ describe("Usuarios Page Component", () => {
   });
 
   it("desactivates user on confirm and handles API error", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
 
     render(<Usuarios />);
@@ -148,6 +147,8 @@ describe("Usuarios Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Desactivar"));
+    let dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/usuarios/1");
@@ -156,6 +157,8 @@ describe("Usuarios Page Component", () => {
     // Error case
     api.delete.mockRejectedValue(new Error("Network Error"));
     fireEvent.click(screen.getByText("Desactivar"));
+    dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("Error al desactivar usuario")).toBeDefined();
@@ -178,7 +181,6 @@ describe("Usuarios Page Component", () => {
   });
 
   it("does not deactivate user if confirm is cancelled", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<Usuarios />);
 
     await waitFor(() => {
@@ -186,6 +188,9 @@ describe("Usuarios Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Desactivar"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 

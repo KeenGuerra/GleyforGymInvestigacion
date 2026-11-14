@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   OBJETIVOS,
   NIVELES,
@@ -16,6 +18,7 @@ const CLIENTES_POR_PAGINA = 20;
 
 function Clientes() {
   const navigate = useNavigate();
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
 
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -194,13 +197,13 @@ function Clientes() {
   const cambiarEstadoCliente = async (cliente) => {
     const nuevoEstado = cliente.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
 
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       `¿Seguro que deseas ${
         nuevoEstado === "ACTIVO" ? "activar" : "desactivar"
       } este cliente?`
     );
 
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.put(`/clientes/${cliente.id_cliente}`, {
@@ -664,6 +667,8 @@ function Clientes() {
           </button>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

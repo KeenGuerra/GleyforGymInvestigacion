@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Entrenadores() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [entrenadores, setEntrenadores] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
@@ -124,7 +127,7 @@ function Entrenadores() {
   };
 
   const desactivar = async (id) => {
-    if (!globalThis.confirm("¿Seguro que deseas desactivar a este entrenador?")) return;
+    if (!(await confirmarAccion("¿Seguro que deseas desactivar a este entrenador?"))) return;
 
     try {
       await api.delete(`/entrenadores/${id}`);
@@ -362,6 +365,8 @@ function Entrenadores() {
           </table>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

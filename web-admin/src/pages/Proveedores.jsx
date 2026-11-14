@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Proveedores() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [proveedores, setProveedores] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -47,7 +50,7 @@ function Proveedores() {
   };
 
   const desactivar = async (id) => {
-    if (!globalThis.confirm("¿Desactivar proveedor?")) return;
+    if (!(await confirmarAccion("¿Desactivar proveedor?"))) return;
     try { await api.delete(`/proveedores/${id}`); await cargar(); } catch { setError("Error al desactivar"); }
   };
 
@@ -127,6 +130,8 @@ function Proveedores() {
           </div>
         )}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

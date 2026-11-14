@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import ClienteMembresias from "./ClienteMembresias";
 import api from "../api/api";
 
@@ -138,7 +138,6 @@ describe("ClienteMembresias Page Component", () => {
   });
 
   it("pauses and reactivates a membership on confirm", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.put.mockResolvedValue({ data: {} });
     render(<ClienteMembresias />);
 
@@ -148,7 +147,9 @@ describe("ClienteMembresias Page Component", () => {
 
     fireEvent.click(screen.getByText("Pausar"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.put).toHaveBeenCalledWith("/cliente-membresias/12", {
         estado: "PAUSADA",
@@ -157,7 +158,6 @@ describe("ClienteMembresias Page Component", () => {
   });
 
   it("cancels assignment on confirm", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
     render(<ClienteMembresias />);
 
@@ -167,14 +167,15 @@ describe("ClienteMembresias Page Component", () => {
 
     fireEvent.click(screen.getByText("Cancelar", { selector: "button" }));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/cliente-membresias/12");
     });
   });
 
   it("does not cancel or change state if confirmation is rejected", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<ClienteMembresias />);
 
     await waitFor(() => {
@@ -182,6 +183,10 @@ describe("ClienteMembresias Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Pausar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.put).not.toHaveBeenCalled();
   });
 
@@ -198,7 +203,6 @@ describe("ClienteMembresias Page Component", () => {
     api.put.mockRejectedValue({
       response: { data: { detail: "Failed to update membership status" } }
     });
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
 
     render(<ClienteMembresias />);
     await waitFor(() => {
@@ -206,6 +210,9 @@ describe("ClienteMembresias Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Pausar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("Error al cambiar estado de la membresía")).toBeDefined();

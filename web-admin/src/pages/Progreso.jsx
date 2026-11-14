@@ -2,8 +2,11 @@ import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Progreso() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [progresos, setProgresos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -183,10 +186,10 @@ function Progreso() {
   };
 
   const eliminarProgreso = async (id) => {
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       "¿Seguro que deseas eliminar este registro?"
     );
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.delete(`/progreso/${id}`);
@@ -509,6 +512,8 @@ function Progreso() {
           </table>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

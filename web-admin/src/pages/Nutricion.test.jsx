@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Nutricion from "./Nutricion";
 import api from "../api/api";
@@ -151,14 +151,15 @@ describe("Nutricion Page Component", () => {
   });
 
   it("deactivates a plan on confirm", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
     renderNutricion();
 
     await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
     fireEvent.click(screen.getByText("Desactivar"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/nutricion/10");
     });
@@ -186,23 +187,26 @@ describe("Nutricion Page Component", () => {
   });
 
   it("does not deactivate a plan if the user cancels the confirmation", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     renderNutricion();
 
     await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
     fireEvent.click(screen.getByText("Desactivar"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 
   it("shows an error when deactivating a plan fails", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockRejectedValue(new Error("Delete Error"));
     renderNutricion();
 
     await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
     fireEvent.click(screen.getByText("Desactivar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("Error al desactivar plan")).toBeDefined();

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Ejercicios from "./Ejercicios";
 import api from "../api/api";
 
@@ -117,7 +117,6 @@ describe("Ejercicios Page Component", () => {
   });
 
   it("desactivates an exercise on confirmation", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
 
     render(<Ejercicios />);
@@ -128,7 +127,9 @@ describe("Ejercicios Page Component", () => {
 
     fireEvent.click(screen.getByText("Desactivar"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/ejercicios/1");
     });
@@ -155,8 +156,6 @@ describe("Ejercicios Page Component", () => {
   });
 
   it("does not deactivate an exercise if confirmation is cancelled", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-
     render(<Ejercicios />);
 
     await waitFor(() => {
@@ -165,7 +164,9 @@ describe("Ejercicios Page Component", () => {
 
     fireEvent.click(screen.getByText("Desactivar"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 
@@ -291,7 +292,6 @@ describe("Ejercicios Page Component", () => {
   });
 
   it("shows error if exercise deactivation fails", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockRejectedValue(new Error("Delete Error"));
 
     render(<Ejercicios />);
@@ -300,6 +300,9 @@ describe("Ejercicios Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Desactivar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("No se pudo desactivar el ejercicio")).toBeDefined();

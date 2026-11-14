@@ -2,8 +2,11 @@ import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function ClienteMembresias() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [asignaciones, setAsignaciones] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [membresias, setMembresias] = useState([]);
@@ -156,11 +159,11 @@ function ClienteMembresias() {
   };
 
   const cancelarAsignacion = async (id) => {
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       "¿Seguro que deseas cancelar esta membresía?"
     );
 
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.delete(`/cliente-membresias/${id}`);
@@ -174,13 +177,13 @@ function ClienteMembresias() {
   const pausarOReactivar = async (item) => {
     const nuevoEstado = item.estado === "PAUSADA" ? "ACTIVA" : "PAUSADA";
 
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       `¿Seguro que deseas ${
         nuevoEstado === "PAUSADA" ? "pausar" : "reactivar"
       } esta membresía?`
     );
 
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.put(`/cliente-membresias/${item.id_cliente_membresia}`, {
@@ -477,6 +480,8 @@ function ClienteMembresias() {
           </table>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

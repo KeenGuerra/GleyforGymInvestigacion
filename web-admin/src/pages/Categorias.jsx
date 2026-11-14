@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Categorias() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [categorias, setCategorias] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -89,7 +92,7 @@ function Categorias() {
   };
 
   const desactivar = async (id) => {
-    if (!globalThis.confirm("¿Seguro que deseas desactivar esta categoría?")) return;
+    if (!(await confirmarAccion("¿Seguro que deseas desactivar esta categoría?"))) return;
     try {
       await api.delete(`/categorias/${id}`);
       await cargar();
@@ -200,6 +203,8 @@ function Categorias() {
           </div>
         )}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Entrenadores from "./Entrenadores";
 import api from "../api/api";
 
@@ -136,13 +136,15 @@ describe("Entrenadores Page Component", () => {
   });
 
   it("deactivates a trainer on confirm", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
 
     render(<Entrenadores />);
     await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
 
     fireEvent.click(screen.getByText("Desactivar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/entrenadores/1");
@@ -165,11 +167,13 @@ describe("Entrenadores Page Component", () => {
   });
 
   it("does not deactivate when confirm is cancelled", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     render(<Entrenadores />);
 
     await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
     fireEvent.click(screen.getByText("Desactivar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
 
     expect(api.delete).not.toHaveBeenCalled();
   });

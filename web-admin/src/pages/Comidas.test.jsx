@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Comidas from "./Comidas";
 import api from "../api/api";
 
@@ -116,12 +116,14 @@ describe("Comidas Page Component", () => {
   });
 
   it("deactivates a meal on confirm", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
     render(<Comidas />);
 
     await waitFor(() => expect(screen.getByText("Desactivar")).toBeDefined());
     fireEvent.click(screen.getByText("Desactivar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/comidas/1");

@@ -3,8 +3,11 @@ import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Asistencias() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [asistencias, setAsistencias] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -129,8 +132,8 @@ function Asistencias() {
   };
 
   const eliminarAsistencia = async (id) => {
-    const confirmar = globalThis.confirm("¿Seguro que deseas eliminar esta asistencia?");
-    if (!confirmar) return;
+    const confirmado = await confirmarAccion("¿Seguro que deseas eliminar esta asistencia?");
+    if (!confirmado) return;
 
     try {
       await api.delete(`/asistencias/${id}`);
@@ -388,6 +391,8 @@ function Asistencias() {
           </table>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

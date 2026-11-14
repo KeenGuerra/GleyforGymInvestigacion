@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Clientes from "./Clientes";
 import api from "../api/api";
 
@@ -180,7 +180,6 @@ describe("Clientes Page Component", () => {
   });
 
   it("toggles client active/inactive status on confirmation", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.put.mockResolvedValue({ data: {} });
 
     render(<Clientes />);
@@ -189,7 +188,9 @@ describe("Clientes Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Desactivar"));
-    expect(globalThis.confirm).toHaveBeenCalled();
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.put).toHaveBeenCalled();

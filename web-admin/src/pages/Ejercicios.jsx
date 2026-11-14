@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "../api/api";
 import { OBJETIVOS, NIVELES, GRUPOS_MUSCULARES, RESTRICCIONES_MEDICAS, codigosATexto, textoACodigos } from "../constants/opciones";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Ejercicios() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [ejercicios, setEjercicios] = useState([]);
   const [video, setVideo] = useState(null);
   const [imagenRef, setImagenRef] = useState(null);
@@ -142,10 +145,10 @@ function Ejercicios() {
   };
 
   const desactivar = async (id) => {
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       "¿Seguro que deseas desactivar este ejercicio?"
     );
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.delete(`/ejercicios/${id}`);
@@ -437,6 +440,8 @@ function Ejercicios() {
           </div>
         )}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

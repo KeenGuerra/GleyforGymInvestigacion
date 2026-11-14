@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Progreso from "./Progreso";
 import api from "../api/api";
 
@@ -198,7 +198,6 @@ describe("Progreso Page Component", () => {
   });
 
   it("deletes a progress entry on confirmation", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
 
     render(<Progreso />);
@@ -209,15 +208,15 @@ describe("Progreso Page Component", () => {
 
     fireEvent.click(screen.getByText("Eliminar"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/progreso/1");
     });
   });
 
   it("does not delete if confirmation is cancelled", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-
     render(<Progreso />);
 
     await waitFor(() => {
@@ -226,7 +225,9 @@ describe("Progreso Page Component", () => {
 
     fireEvent.click(screen.getByText("Eliminar"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 

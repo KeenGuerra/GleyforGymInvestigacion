@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Rutinas() {
   const navigate = useNavigate();
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
 
   const [clientes, setClientes] = useState([]);
   const [rutinas, setRutinas] = useState([]);
@@ -93,8 +96,8 @@ function Rutinas() {
   };
 
   const desactivarRutina = async (id) => {
-    const confirmar = globalThis.confirm("¿Seguro que deseas desactivar esta rutina?");
-    if (!confirmar) return;
+    const confirmado = await confirmarAccion("¿Seguro que deseas desactivar esta rutina?");
+    if (!confirmado) return;
 
     try {
       await api.delete(`/rutinas/${id}`);
@@ -277,6 +280,8 @@ function Rutinas() {
           </table>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

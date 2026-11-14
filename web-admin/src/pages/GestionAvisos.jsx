@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { formatearFecha } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 const TIPOS = ["HORARIO", "COACHES", "BAILE", "COMUNICADO", "EVENTO"];
 const hoy = new Date().toISOString().slice(0, 10);
 
 function GestionAvisos() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [avisos, setAvisos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
@@ -100,7 +103,7 @@ function GestionAvisos() {
   };
 
   const desactivar = async (id) => {
-    if (!globalThis.confirm("¿Seguro que deseas desactivar este aviso?")) return;
+    if (!(await confirmarAccion("¿Seguro que deseas desactivar este aviso?"))) return;
 
     try {
       await api.delete(`/avisos/${id}`);
@@ -304,6 +307,8 @@ function GestionAvisos() {
           </div>
         )}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

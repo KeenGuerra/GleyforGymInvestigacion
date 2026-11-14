@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Usuarios() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [usuarios, setUsuarios] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState("");
@@ -110,11 +113,11 @@ function Usuarios() {
   };
 
   const desactivar = async (id) => {
-    const confirmar = globalThis.confirm(
+    const confirmado = await confirmarAccion(
       "¿Seguro que deseas desactivar este usuario?"
     );
 
-    if (!confirmar) return;
+    if (!confirmado) return;
 
     try {
       await api.delete(`/usuarios/${id}`);
@@ -448,6 +451,8 @@ function Usuarios() {
           </table>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

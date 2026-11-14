@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Pagos from "./Pagos";
 import api from "../api/api";
 
@@ -252,7 +252,6 @@ describe("Pagos Page Component", () => {
   });
 
   it("anulates a payment with confirmation", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockResolvedValue({ data: {} });
 
     render(<Pagos />);
@@ -263,15 +262,15 @@ describe("Pagos Page Component", () => {
 
     fireEvent.click(screen.getByText("Anular"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith("/pagos/1");
     });
   });
 
   it("does not anulate a payment if confirmation is cancelled", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-
     render(<Pagos />);
 
     await waitFor(() => {
@@ -280,7 +279,9 @@ describe("Pagos Page Component", () => {
 
     fireEvent.click(screen.getByText("Anular"));
 
-    expect(globalThis.confirm).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Cancelar"));
+
     expect(api.delete).not.toHaveBeenCalled();
   });
 
@@ -358,7 +359,6 @@ describe("Pagos Page Component", () => {
   });
 
   it("shows error if payment anulation fails", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.delete.mockRejectedValue(new Error("Anulate Error"));
 
     render(<Pagos />);
@@ -368,6 +368,9 @@ describe("Pagos Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Anular"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("Error al anular el pago")).toBeDefined();

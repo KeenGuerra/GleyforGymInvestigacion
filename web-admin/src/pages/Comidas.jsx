@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { OBJETIVOS, RESTRICCIONES_ALIMENTARIAS, codigosATexto, textoACodigos } from "../constants/opciones";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Comidas() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [comidas, setComidas] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -137,8 +140,8 @@ function Comidas() {
   };
 
   const desactivar = async (id) => {
-    const confirmar = globalThis.confirm("¿Seguro que deseas desactivar esta comida?");
-    if (!confirmar) return;
+    const confirmado = await confirmarAccion("¿Seguro que deseas desactivar esta comida?");
+    if (!confirmado) return;
 
     try {
       await api.delete(`/comidas/${id}`);
@@ -437,6 +440,8 @@ function Comidas() {
           </div>
         )}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }
