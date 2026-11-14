@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Ventas from "./Ventas";
 import api from "../api/api";
 
@@ -16,7 +16,7 @@ vi.mock("../utils/descargarArchivo", () => ({
 }));
 
 const mockProductosDisponibles = [
-  { id_producto: 1, nombre: "Proteína Whey", precio_venta: 90, stock_actual: 10 },
+  { id_producto: 1, nombre: "Proteína Whey", precio_venta: 90, stock_actual: 10, codigo_barras: "7501234567890" },
 ];
 const mockClientes = [{ id_cliente: 1, nombres: "Ana", apellidos: "López", telefono: "987654321" }];
 const mockResumen = { ventas_hoy: 2, ingresos_hoy: 180, ventas_mes: 20, ingresos_mes: 1800 };
@@ -38,6 +38,12 @@ function mockApiGet(ventas = [mockVentaPendiente]) {
     if (url === "/productos/disponibles") return Promise.resolve({ data: mockProductosDisponibles });
     if (url === "/clientes/") return Promise.resolve({ data: mockClientes });
     if (url === "/ventas/resumen") return Promise.resolve({ data: mockResumen });
+    if (url === "/productos/por-codigo/7501234567890") {
+      return Promise.resolve({ data: mockProductosDisponibles[0] });
+    }
+    if (url === "/productos/por-codigo/0000000000000") {
+      return Promise.reject({ response: { status: 404 } });
+    }
     return Promise.resolve({ data: [] });
   });
 }
@@ -117,6 +123,70 @@ describe("Ventas Page Component", () => {
     });
   });
 
+  it("adds a product to the detail by scanning its barcode", async () => {
+    api.post.mockResolvedValue({ data: {} });
+    render(<Ventas />);
+
+    fireEvent.click(screen.getByText("+ Nueva venta"));
+    await waitFor(() => expect(screen.getByText("Confirmar venta")).toBeDefined());
+
+    const scanInput = screen.getByPlaceholderText(/Apunta el lector aquí/);
+    fireEvent.change(scanInput, { target: { value: "7501234567890" } });
+    fireEvent.keyDown(scanInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/productos/por-codigo/7501234567890");
+      expect(scanInput.value).toBe("");
+    });
+
+    fireEvent.click(screen.getByText("Confirmar venta"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/ventas/", {
+        id_cliente: null,
+        metodo_pago: "EFECTIVO",
+        descuento: 0,
+        observaciones: null,
+        detalles: [{ id_producto: 1, cantidad: 1 }],
+      });
+    });
+  });
+
+  it("scanning the same barcode twice increases the quantity instead of adding a duplicate row", async () => {
+    const { container } = render(<Ventas />);
+
+    fireEvent.click(screen.getByText("+ Nueva venta"));
+    await waitFor(() => expect(screen.getByText("Confirmar venta")).toBeDefined());
+
+    const scanInput = screen.getByPlaceholderText(/Apunta el lector aquí/);
+    fireEvent.change(scanInput, { target: { value: "7501234567890" } });
+    fireEvent.keyDown(scanInput, { key: "Enter" });
+    await waitFor(() => expect(scanInput.value).toBe(""));
+
+    fireEvent.change(scanInput, { target: { value: "7501234567890" } });
+    fireEvent.keyDown(scanInput, { key: "Enter" });
+
+    await waitFor(() => {
+      const cantidadInput = container.querySelector('input[type="number"][min="1"]');
+      expect(cantidadInput.value).toBe("2");
+    });
+  });
+
+  it("shows an error when the scanned barcode doesn't match any product", async () => {
+    render(<Ventas />);
+
+    fireEvent.click(screen.getByText("+ Nueva venta"));
+    await waitFor(() => expect(screen.getByText("Confirmar venta")).toBeDefined());
+
+    const scanInput = screen.getByPlaceholderText(/Apunta el lector aquí/);
+    fireEvent.change(scanInput, { target: { value: "0000000000000" } });
+    fireEvent.keyDown(scanInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(screen.getByText("No hay ningún producto con el código 0000000000000")).toBeDefined();
+    });
+  });
+
   it("only offers EFECTIVO, YAPE and PLIN as payment methods -- the ones the gym actually uses at the counter", async () => {
     const { container } = render(<Ventas />);
     fireEvent.click(screen.getByText("+ Nueva venta"));
@@ -153,12 +223,14 @@ describe("Ventas Page Component", () => {
     // confirma es el personal de mostrador, no solo un ADMIN (ver el
     // comentario y el rol en Ventas.jsx y backend/app/routes/ventas.py).
     localStorage.setItem("rol", "ADMIN");
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockResolvedValue({ data: {} });
 
     render(<Ventas />);
     await waitFor(() => expect(screen.getByText("Confirmar")).toBeDefined());
     fireEvent.click(screen.getByText("Confirmar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/1/confirmar");
@@ -182,7 +254,6 @@ describe("Ventas Page Component", () => {
   });
 
   it("cancels a confirmed sale", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockResolvedValue({ data: {} });
     mockApiGet([{ ...mockVentaPendiente, estado: "CONFIRMADA" }]);
 
@@ -190,19 +261,24 @@ describe("Ventas Page Component", () => {
     await waitFor(() => expect(screen.getByText("Anular")).toBeDefined());
     fireEvent.click(screen.getByText("Anular"));
 
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/1/anular");
     });
   });
 
   it("marks a confirmed sale as delivered", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockResolvedValue({ data: {} });
     mockApiGet([{ ...mockVentaPendiente, estado: "CONFIRMADA" }]);
 
     render(<Ventas />);
     await waitFor(() => expect(screen.getByText("Marcar como entregado")).toBeDefined());
     fireEvent.click(screen.getByText("Marcar como entregado"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/ventas/1/entregar");

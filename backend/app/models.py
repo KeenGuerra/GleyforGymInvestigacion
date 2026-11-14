@@ -375,6 +375,11 @@ class Producto(Base):
     descripcion = Column(Text, nullable=True)
     imagen_url = Column(Text, nullable=True)
     cloudinary_public_id = Column(String(255), nullable=True)
+    # Código EAN/UPC (o uno propio, si el producto no trae uno de fábrica)
+    # para que un lector de código de barras USB/Bluetooth (que escribe el
+    # código como si fuera un teclado) lo agregue directo a una venta o
+    # compra, sin tener que buscarlo manualmente en el selector.
+    codigo_barras = Column(String(50), unique=True, nullable=True, index=True)
     precio_compra = Column(Float, nullable=False, default=0)
     precio_venta = Column(Float, nullable=False, default=0)
     unidad_medida = Column(String(30), nullable=False, default="UNIDAD")

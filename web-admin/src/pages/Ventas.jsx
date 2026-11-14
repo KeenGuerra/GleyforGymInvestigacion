@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
 import { descargarBlob } from "../utils/descargarArchivo";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 const VENTAS_POR_PAGINA = 20;
 
 function Ventas() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const rol = localStorage.getItem("rol");
   const [ventas, setVentas] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -21,6 +24,8 @@ function Ventas() {
 
   const formInicial = { id_cliente: "", metodo_pago: "EFECTIVO", descuento: 0, observaciones: "" };
   const [form, setForm] = useState(formInicial);
+  const [codigoEscaneado, setCodigoEscaneado] = useState("");
+  const [escaneando, setEscaneando] = useState(false);
 
   const cargar = useCallback(async (paginaActual = pagina) => {
     try {
@@ -50,6 +55,49 @@ function Ventas() {
 
   const eliminarDetalle = (index) => {
     setDetalle(detalle.filter((_, i) => i !== index));
+  };
+
+  // Un lector de código de barras USB/Bluetooth "escribe" el código como si
+  // fuera un teclado y termina con Enter -- por eso esto es un input normal
+  // con un onKeyDown, no una integración especial con ningún hardware.
+  const agregarPorCodigo = async () => {
+    const codigo = codigoEscaneado.trim();
+    if (!codigo) return;
+
+    try {
+      setEscaneando(true);
+      setError("");
+      const res = await api.get(`/productos/por-codigo/${encodeURIComponent(codigo)}`);
+      const producto = res.data;
+
+      setDetalle((prev) => {
+        const existente = prev.find((d) => Number(d.id_producto) === producto.id_producto);
+        if (existente) {
+          return prev.map((d) =>
+            Number(d.id_producto) === producto.id_producto
+              ? { ...d, cantidad: Number(d.cantidad) + 1 }
+              : d
+          );
+        }
+        return [...prev, { id_producto: String(producto.id_producto), cantidad: 1 }];
+      });
+      setCodigoEscaneado("");
+    } catch (err) {
+      setError(
+        err.response?.status === 404
+          ? `No hay ningún producto con el código ${codigo}`
+          : "Error al buscar el código de barras"
+      );
+    } finally {
+      setEscaneando(false);
+    }
+  };
+
+  const manejarTeclaEscaneo = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      agregarPorCodigo();
+    }
   };
 
   const getProducto = (id) => productos.find((p) => p.id_producto === Number(id));
@@ -96,14 +144,14 @@ function Ventas() {
   };
 
   const anular = async (id) => {
-    if (!globalThis.confirm("¿Anular esta venta? Se revertirá el inventario.")) return;
+    if (!(await confirmarAccion("¿Anular esta venta? Se revertirá el inventario."))) return;
     try { setProcesando(id); await api.post(`/ventas/${id}/anular`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al anular"); }
     finally { setProcesando(null); }
   };
 
   const confirmar = async (id) => {
-    if (!globalThis.confirm("¿Confirmar esta venta? Se descontará el inventario.")) return;
+    if (!(await confirmarAccion("¿Confirmar esta venta? Se descontará el inventario."))) return;
     try { setProcesando(id); await api.post(`/ventas/${id}/confirmar`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al confirmar"); }
     finally { setProcesando(null); }
@@ -127,7 +175,7 @@ function Ventas() {
   };
 
   const entregar = async (id) => {
-    if (!globalThis.confirm("¿Marcar esta venta como entregada? El cliente ya pasó a recogerla.")) return;
+    if (!(await confirmarAccion("¿Marcar esta venta como entregada? El cliente ya pasó a recogerla."))) return;
     try { setProcesando(id); await api.post(`/ventas/${id}/entregar`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al marcar como entregada"); }
     finally { setProcesando(null); }
@@ -214,12 +262,25 @@ function Ventas() {
             </div>
           </div>
 
-          <h3 style={{ marginTop: "1rem" }}>Detalle de productos</h3>
+          <h3 className="detail-heading">Detalle de productos</h3>
+
+          <div className="form-field field-large">
+            <label>Escanear código de barras</label>
+            <input
+              value={codigoEscaneado}
+              onChange={(e) => setCodigoEscaneado(e.target.value)}
+              onKeyDown={manejarTeclaEscaneo}
+              disabled={escaneando}
+              placeholder="Apunta el lector aquí y escanea, o escribe el código y presiona Enter"
+              autoComplete="off"
+            />
+          </div>
+
           {detalle.map((d, i) => {
             const prod = getProducto(d.id_producto);
             const sub = prod ? Number(d.cantidad) * prod.precio_venta : 0;
             return (
-              <div key={i} className="form-grid" style={{ alignItems: "end", marginBottom: "0.5rem" }}>
+              <div key={i} className="form-grid detail-row">
                 <div className="form-field">
                   <label>Producto</label>
                   <select value={d.id_producto} onChange={(e) => actualizarDetalle(i, "id_producto", e.target.value)}>
@@ -242,9 +303,9 @@ function Ventas() {
             );
           })}
 
-          <button type="button" className="btn-secondary" onClick={agregarDetalle} style={{ marginTop: "0.5rem" }}>+ Agregar producto</button>
+          <button type="button" className="btn-secondary spaced-top-sm" onClick={agregarDetalle}>+ Agregar producto</button>
 
-          <div style={{ textAlign: "right", marginTop: "1rem", fontSize: "1.1rem" }}>
+          <div className="totals-box">
             <p>Subtotal: <strong>S/ {subtotal.toFixed(2)}</strong></p>
             <p>Descuento: <strong>S/ {descuento.toFixed(2)}</strong></p>
             <p>Total: <strong>S/ {total.toFixed(2)}</strong></p>
@@ -278,7 +339,7 @@ function Ventas() {
                 </div>
                 <p className="item-description">{new Date(v.fecha_venta).toLocaleString()}</p>
                 {v.detalles && v.detalles.length > 0 && (
-                  <div style={{ margin: "0.5rem 0" }}>
+                  <div className="sale-details">
                     {v.detalles.map((d) => (
                       <p key={d.id_detalle_venta} className="item-description">
                         {d.nombre_producto} x{d.cantidad} — S/ {d.subtotal?.toFixed(2)}
@@ -336,6 +397,8 @@ function Ventas() {
           </button>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

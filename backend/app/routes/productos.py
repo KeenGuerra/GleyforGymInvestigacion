@@ -46,6 +46,7 @@ async def crear_producto(
     usuario: dict = Depends(requerir_roles("ADMIN")),
     id_categoria: Annotated[Optional[int], Form()] = None,
     descripcion: Annotated[Optional[str], Form()] = None,
+    codigo_barras: Annotated[Optional[str], Form()] = None,
     precio_compra: Annotated[float, Form()] = 0,
     precio_venta: Annotated[float, Form()] = 0,
     unidad_medida: Annotated[str, Form()] = "UNIDAD",
@@ -59,6 +60,12 @@ async def crear_producto(
 ):
     imagen_url = None
     public_id = None
+    codigo_barras = codigo_barras.strip() if codigo_barras else None
+
+    if codigo_barras and db.query(models.Producto).filter(
+        models.Producto.codigo_barras == codigo_barras
+    ).first():
+        raise HTTPException(status_code=400, detail="Ya existe un producto con ese código de barras")
 
     if imagen:
         if not cloudinary_url:
@@ -83,6 +90,7 @@ async def crear_producto(
         descripcion=descripcion,
         imagen_url=imagen_url,
         cloudinary_public_id=public_id,
+        codigo_barras=codigo_barras,
         precio_compra=precio_compra,
         precio_venta=precio_venta,
         unidad_medida=unidad_medida,
@@ -137,6 +145,34 @@ def listar_productos(db: Annotated[Session, Depends(get_db)], skip: int = 0, lim
         db.rollback()
         logger.exception("Error listando productos")
         raise HTTPException(status_code=500, detail="No se pudieron cargar los productos")
+
+
+@router.get(
+    "/por-codigo/{codigo_barras}",
+    response_model=schemas.ProductoResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Producto no encontrado"},
+    },
+)
+def obtener_producto_por_codigo(
+    codigo_barras: str,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Búsqueda exacta por código de barras -- lo que usa el input de
+    escaneo en Ventas.jsx/Compras.jsx: el lector USB/Bluetooth "escribe" el
+    código seguido de Enter como si fuera un teclado, y esto resuelve a qué
+    producto corresponde para agregarlo directo al detalle."""
+    producto = db.query(models.Producto).filter(
+        models.Producto.codigo_barras == codigo_barras,
+        models.Producto.estado == "ACTIVO",
+    ).first()
+
+    if not producto:
+        raise HTTPException(status_code=404, detail="No se encontró ningún producto con ese código de barras")
+
+    return _producto_con_stock(db, producto)
 
 
 @router.get(
@@ -208,6 +244,7 @@ async def actualizar_producto(
     nombre: Annotated[Optional[str], Form()] = None,
     id_categoria: Annotated[Optional[int], Form()] = None,
     descripcion: Annotated[Optional[str], Form()] = None,
+    codigo_barras: Annotated[Optional[str], Form()] = None,
     precio_compra: Annotated[Optional[float], Form()] = None,
     precio_venta: Annotated[Optional[float], Form()] = None,
     unidad_medida: Annotated[Optional[str], Form()] = None,
@@ -231,6 +268,14 @@ async def actualizar_producto(
         producto.id_categoria = id_categoria
     if descripcion is not None:
         producto.descripcion = descripcion
+    if codigo_barras is not None:
+        codigo_barras = codigo_barras.strip() or None
+        if codigo_barras and db.query(models.Producto).filter(
+            models.Producto.codigo_barras == codigo_barras,
+            models.Producto.id_producto != id_producto,
+        ).first():
+            raise HTTPException(status_code=400, detail="Ya existe un producto con ese código de barras")
+        producto.codigo_barras = codigo_barras
     if precio_compra is not None:
         producto.precio_compra = precio_compra
     if precio_venta is not None:
@@ -321,6 +366,7 @@ def _producto_con_stock(db: Session, producto: models.Producto) -> schemas.Produ
         descripcion=producto.descripcion,
         imagen_url=getattr(producto, "imagen_url", None),
         cloudinary_public_id=getattr(producto, "cloudinary_public_id", None),
+        codigo_barras=getattr(producto, "codigo_barras", None),
         precio_compra=producto.precio_compra,
         precio_venta=producto.precio_venta,
         unidad_medida=producto.unidad_medida,

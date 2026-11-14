@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { formatearFecha } from "../utils/formatearFecha";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Compras() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [compras, setCompras] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -15,6 +18,8 @@ function Compras() {
 
   const formInicial = { id_proveedor: "", observaciones: "" };
   const [form, setForm] = useState(formInicial);
+  const [codigoEscaneado, setCodigoEscaneado] = useState("");
+  const [escaneando, setEscaneando] = useState(false);
 
   const cargar = async () => {
     try {
@@ -41,6 +46,52 @@ function Compras() {
 
   const eliminarDetalle = (index) => {
     setDetalle(detalle.filter((_, i) => i !== index));
+  };
+
+  // Un lector de código de barras USB/Bluetooth "escribe" el código como si
+  // fuera un teclado y termina con Enter -- por eso esto es un input normal
+  // con un onKeyDown, no una integración especial con ningún hardware.
+  const agregarPorCodigo = async () => {
+    const codigo = codigoEscaneado.trim();
+    if (!codigo) return;
+
+    try {
+      setEscaneando(true);
+      setError("");
+      const res = await api.get(`/productos/por-codigo/${encodeURIComponent(codigo)}`);
+      const producto = res.data;
+
+      setDetalle((prev) => {
+        const existente = prev.find((d) => Number(d.id_producto) === producto.id_producto);
+        if (existente) {
+          return prev.map((d) =>
+            Number(d.id_producto) === producto.id_producto
+              ? { ...d, cantidad: Number(d.cantidad) + 1 }
+              : d
+          );
+        }
+        return [
+          ...prev,
+          { id_producto: String(producto.id_producto), cantidad: 1, precio_unitario: producto.precio_compra || 0 },
+        ];
+      });
+      setCodigoEscaneado("");
+    } catch (err) {
+      setError(
+        err.response?.status === 404
+          ? `No hay ningún producto con el código ${codigo}`
+          : "Error al buscar el código de barras"
+      );
+    } finally {
+      setEscaneando(false);
+    }
+  };
+
+  const manejarTeclaEscaneo = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      agregarPorCodigo();
+    }
   };
 
   const subtotal = detalle.reduce((sum, d) => sum + (Number(d.cantidad) * Number(d.precio_unitario)), 0);
@@ -79,15 +130,15 @@ function Compras() {
     finally { setCargando(false); }
   };
 
-  const confirmar = async (id) => {
-    if (!globalThis.confirm("¿Confirmar compra? Se actualizará el inventario.")) return;
+  const confirmarCompra = async (id) => {
+    if (!(await confirmarAccion("¿Confirmar compra? Se actualizará el inventario."))) return;
     try { setProcesando(id); await api.post(`/compras/${id}/confirmar`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al confirmar"); }
     finally { setProcesando(null); }
   };
 
   const anular = async (id) => {
-    if (!globalThis.confirm("¿Anular esta compra?")) return;
+    if (!(await confirmarAccion("¿Anular esta compra?"))) return;
     try { setProcesando(id); await api.post(`/compras/${id}/anular`); await cargar(); }
     catch (err) { setError(err.response?.data?.detail || "Error al anular"); }
     finally { setProcesando(null); }
@@ -148,9 +199,22 @@ function Compras() {
             </div>
           </div>
 
-          <h3 style={{ marginTop: "1rem" }}>Detalle de productos</h3>
+          <h3 className="detail-heading">Detalle de productos</h3>
+
+          <div className="form-field field-large">
+            <label>Escanear código de barras</label>
+            <input
+              value={codigoEscaneado}
+              onChange={(e) => setCodigoEscaneado(e.target.value)}
+              onKeyDown={manejarTeclaEscaneo}
+              disabled={escaneando}
+              placeholder="Apunta el lector aquí y escanea, o escribe el código y presiona Enter"
+              autoComplete="off"
+            />
+          </div>
+
           {detalle.map((d, i) => (
-            <div key={i} className="form-grid" style={{ alignItems: "end", marginBottom: "0.5rem" }}>
+            <div key={i} className="form-grid detail-row">
               <div className="form-field">
                 <label>Producto</label>
                 <select value={d.id_producto} onChange={(e) => actualizarDetalle(i, "id_producto", e.target.value)}>
@@ -176,9 +240,9 @@ function Compras() {
             </div>
           ))}
 
-          <button type="button" className="btn-secondary" onClick={agregarDetalle} style={{ marginTop: "0.5rem" }}>+ Agregar producto</button>
+          <button type="button" className="btn-secondary spaced-top-sm" onClick={agregarDetalle}>+ Agregar producto</button>
 
-          <div style={{ textAlign: "right", marginTop: "1rem", fontSize: "1.1rem" }}>
+          <div className="totals-box">
             <p>Subtotal: <strong>S/ {subtotal.toFixed(2)}</strong></p>
             <p>IGV (18%): <strong>S/ {igv.toFixed(2)}</strong></p>
             <p>Total: <strong>S/ {total.toFixed(2)}</strong></p>
@@ -212,7 +276,7 @@ function Compras() {
                 <p className="item-description">Fecha: {formatearFecha(c.fecha_compra)}</p>
                 {c.estado === "PENDIENTE" && (
                   <div className="item-actions">
-                    <button className="btn-primary" disabled={procesando === c.id_compra} onClick={() => confirmar(c.id_compra)}>
+                    <button className="btn-primary" disabled={procesando === c.id_compra} onClick={() => confirmarCompra(c.id_compra)}>
                       {procesando === c.id_compra ? "Confirmando..." : "Confirmar"}
                     </button>
                     <button className="btn-danger" disabled={procesando === c.id_compra} onClick={() => anular(c.id_compra)}>
@@ -225,6 +289,8 @@ function Compras() {
           </div>
         )}
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }

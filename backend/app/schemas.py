@@ -660,6 +660,7 @@ class ProductoCreate(BaseModel):
     descripcion: Optional[str] = None
     imagen_url: Optional[str] = None
     cloudinary_public_id: Optional[str] = None
+    codigo_barras: Optional[str] = None
     precio_compra: float = 0
     precio_venta: float = 0
     unidad_medida: str = "UNIDAD"
@@ -676,6 +677,7 @@ class ProductoUpdate(BaseModel):
     descripcion: Optional[str] = None
     imagen_url: Optional[str] = None
     cloudinary_public_id: Optional[str] = None
+    codigo_barras: Optional[str] = None
     precio_compra: Optional[float] = None
     precio_venta: Optional[float] = None
     unidad_medida: Optional[str] = None

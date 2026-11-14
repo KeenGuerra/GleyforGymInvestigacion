@@ -105,6 +105,9 @@ def initialize_tables():
         # (ver Ejercicio.imagen_referencial_url en models.py).
         ("ejercicios", "imagen_referencial_url", "TEXT"),
         ("ejercicios", "cloudinary_public_id_imagen", "VARCHAR(255)"),
+        # Código de barras para escanear el producto en Ventas/Compras (ver
+        # Producto.codigo_barras en models.py).
+        ("productos", "codigo_barras", "VARCHAR(50)"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:
@@ -152,6 +155,21 @@ def initialize_tables():
                 conn.commit()
         except Exception as e:
             print(f"  No se pudo crear uq_cliente_membresia_activa_o_pendiente: {e}")
+
+    # Índice único para Producto.codigo_barras: create_all() no lo agrega a
+    # una tabla "productos" que ya existía antes de este campo, así que hay
+    # que crearlo a mano igual que la columna. NULL no choca contra NULL en
+    # Postgres/SQLite, así que los productos sin código siguen sin problema.
+    if "productos" in existing_tables:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_productos_codigo_barras "
+                    "ON productos (codigo_barras)"
+                ))
+                conn.commit()
+        except Exception as e:
+            print(f"  No se pudo crear ux_productos_codigo_barras: {e}")
 
     print("Schema migration completed.")
 

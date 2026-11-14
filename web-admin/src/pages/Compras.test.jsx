@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import Compras from "./Compras";
 import api from "../api/api";
 
@@ -12,7 +12,9 @@ vi.mock("../api/api", () => ({
 }));
 
 const mockProveedores = [{ id_proveedor: 1, razon_social: "Nutrición SAC", estado: "ACTIVO" }];
-const mockProductos = [{ id_producto: 1, nombre: "Proteína Whey", estado: "ACTIVO" }];
+const mockProductos = [
+  { id_producto: 1, nombre: "Proteína Whey", estado: "ACTIVO", precio_compra: 30, codigo_barras: "7501234567890" },
+];
 
 const mockCompraPendiente = {
   id_compra: 1,
@@ -29,6 +31,9 @@ function mockApiGet(compras = [mockCompraPendiente]) {
     if (url === "/compras/") return Promise.resolve({ data: compras });
     if (url === "/proveedores/") return Promise.resolve({ data: mockProveedores });
     if (url === "/productos/") return Promise.resolve({ data: mockProductos });
+    if (url === "/productos/por-codigo/7501234567890") {
+      return Promise.resolve({ data: mockProductos[0] });
+    }
     return Promise.resolve({ data: [] });
   });
 }
@@ -107,13 +112,35 @@ describe("Compras Page Component", () => {
     });
   });
 
+  it("adds a product to the detail by scanning its barcode, pre-filling the purchase price", async () => {
+    const { container } = render(<Compras />);
+
+    fireEvent.click(screen.getByText("+ Nueva compra"));
+    await waitFor(() => expect(screen.getByText("Registrar compra")).toBeDefined());
+
+    const scanInput = screen.getByPlaceholderText(/Apunta el lector aquí/);
+    fireEvent.change(scanInput, { target: { value: "7501234567890" } });
+    fireEvent.keyDown(scanInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/productos/por-codigo/7501234567890");
+      expect(scanInput.value).toBe("");
+    });
+
+    const inputs = container.querySelectorAll('input[type="number"]');
+    expect(inputs[0].value).toBe("1");
+    expect(inputs[1].value).toBe("30");
+  });
+
   it("confirms a pending purchase", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockResolvedValue({ data: {} });
 
     render(<Compras />);
     await waitFor(() => expect(screen.getByText("Confirmar")).toBeDefined());
     fireEvent.click(screen.getByText("Confirmar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/compras/1/confirmar");
@@ -121,12 +148,14 @@ describe("Compras Page Component", () => {
   });
 
   it("cancels a pending purchase", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockResolvedValue({ data: {} });
 
     render(<Compras />);
     await waitFor(() => expect(screen.getByText("Anular")).toBeDefined());
     fireEvent.click(screen.getByText("Anular"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/compras/1/anular");
@@ -143,12 +172,14 @@ describe("Compras Page Component", () => {
   });
 
   it("shows an error message when confirming fails", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     api.post.mockRejectedValue({ response: { data: { detail: "Stock insuficiente" } } });
 
     render(<Compras />);
     await waitFor(() => expect(screen.getByText("Confirmar")).toBeDefined());
     fireEvent.click(screen.getByText("Confirmar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
 
     await waitFor(() => {
       expect(screen.getByText("Stock insuficiente")).toBeDefined();

@@ -189,6 +189,74 @@ def test_productos_crud_y_catalogo_publico():
     assert all(p["id_producto"] != id_producto for p in res_disponibles_tras_baja.json())
 
 
+def test_productos_codigo_barras_busqueda_y_duplicado():
+    """GET /productos/por-codigo/{codigo} es lo que usa el input de escaneo
+    en Ventas.jsx/Compras.jsx: el lector USB/Bluetooth escribe el código y un
+    Enter dispara esta búsqueda para agregar el producto automáticamente."""
+    populate_comercio()
+    headers = get_auth_headers()
+
+    res_cat = client.post("/categorias/", json={"nombre": "Suplementos"}, headers=headers)
+    id_categoria = res_cat.json()["id_categoria"]
+
+    res_prod = client.post(
+        "/productos/",
+        data={
+            "nombre": "Proteina Whey 1kg",
+            "id_categoria": str(id_categoria),
+            "precio_compra": "30", "precio_venta": "50",
+            "codigo_barras": "7501234567890",
+        },
+        headers=headers,
+    )
+    assert res_prod.status_code == 200, res_prod.text
+    id_producto = res_prod.json()["id_producto"]
+    assert res_prod.json()["codigo_barras"] == "7501234567890"
+
+    res_busqueda = client.get("/productos/por-codigo/7501234567890", headers=headers)
+    assert res_busqueda.status_code == 200
+    assert res_busqueda.json()["id_producto"] == id_producto
+
+    # Código inexistente -> 404, no una lista vacía ni un 500.
+    assert client.get("/productos/por-codigo/0000000000000", headers=headers).status_code == 404
+
+    # Un segundo producto no puede usar el mismo código de barras.
+    res_duplicado = client.post(
+        "/productos/",
+        data={
+            "nombre": "Creatina 500g",
+            "precio_compra": "20", "precio_venta": "35",
+            "codigo_barras": "7501234567890",
+        },
+        headers=headers,
+    )
+    assert res_duplicado.status_code == 400
+
+    # Editar el código de un producto a uno que ya usa otro también se
+    # rechaza; a uno libre, se acepta.
+    res_otro = client.post(
+        "/productos/",
+        data={"nombre": "Creatina 500g", "precio_compra": "20", "precio_venta": "35"},
+        headers=headers,
+    )
+    id_otro = res_otro.json()["id_producto"]
+
+    res_edit_choca = client.put(
+        f"/productos/{id_otro}", data={"codigo_barras": "7501234567890"}, headers=headers
+    )
+    assert res_edit_choca.status_code == 400
+
+    res_edit_ok = client.put(
+        f"/productos/{id_otro}", data={"codigo_barras": "7509999999999"}, headers=headers
+    )
+    assert res_edit_ok.status_code == 200
+    assert res_edit_ok.json()["codigo_barras"] == "7509999999999"
+
+    # Un producto INACTIVO no debe poder agregarse a una venta escaneándolo.
+    client.delete(f"/productos/{id_producto}", headers=headers)
+    assert client.get("/productos/por-codigo/7501234567890", headers=headers).status_code == 404
+
+
 # ── CP-065: Confirmar compra actualiza inventario ────────────────────────────
 def test_confirmar_compra_incrementa_inventario_y_registra_movimiento():
     populate_comercio()
@@ -1048,6 +1116,99 @@ def test_reporte_productos_mas_vendidos_y_ventas_por_metodo_pago():
     data = res_metodo.json()
     assert data["total"] == 150.0
     assert data["por_metodo"] == [{"metodo_pago": "YAPE", "monto": 150.0, "cantidad": 1}]
+
+
+def test_reporte_compras():
+    """GET /reportes/compras es el complemento que le faltaba a /ingresos:
+    antes no había ninguna forma de ver cuánto sale en compras a
+    proveedores, solo lo que entra."""
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers)
+    id_proveedor = crear_proveedor(headers)
+
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers)
+
+    hoy = date.today().isoformat()
+    res = client.get(f"/reportes/compras?desde={hoy}&hasta={hoy}", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 354.0  # subtotal 300 + IGV 18%
+    assert data["por_dia"] == [{"fecha": hoy, "monto": 354.0}]
+    assert data["por_proveedor"] == [{"proveedor": "Distribuidora Fit SAC", "monto": 354.0, "cantidad": 1}]
+
+    # Una compra PENDIENTE (sin confirmar) no es un egreso real todavía.
+    client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 1, "precio_unitario": 30.0}]},
+        headers=headers,
+    )
+    res_sin_confirmar = client.get(f"/reportes/compras?desde={hoy}&hasta={hoy}", headers=headers)
+    assert res_sin_confirmar.json()["total"] == 354.0
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=2, correo="cliente@gleyforgym.com",
+                           password_hash=encriptar_password("cliente123"), rol="CLIENTE", estado="ACTIVO"))
+    db.commit()
+    db.close()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    res_cliente = client.get(f"/reportes/compras?desde={hoy}&hasta={hoy}", headers=headers_cliente)
+    assert res_cliente.status_code == 403
+
+
+def test_reporte_resumen_general():
+    """GET /reportes/resumen-general consolida ingresos (pagos de membresía +
+    ventas de productos) y egresos (compras a proveedores) en una sola vista,
+    con la utilidad neta ya calculada -- el reporte general que antes no
+    existía."""
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers)
+    id_proveedor = crear_proveedor(headers)
+
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers)
+
+    # Venta de mostrador -> nace ENTREGADA, cuenta como ingreso real de una.
+    client.post(
+        "/ventas/",
+        json={"metodo_pago": "EFECTIVO", "detalles": [{"id_producto": id_producto, "cantidad": 2}]},
+        headers=headers,
+    )
+
+    hoy = date.today().isoformat()
+    res = client.get(f"/reportes/resumen-general?desde={hoy}&hasta={hoy}", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ingresos"]["ventas_productos"] == 100.0  # 2 x S/50
+    assert data["ingresos"]["pagos_membresia"] == 0.0
+    assert data["ingresos"]["total"] == 100.0
+    assert data["egresos"]["compras_proveedores"] == 354.0
+    assert data["utilidad_neta"] == round(100.0 - 354.0, 2)
+    # El stock quedó en 10 tras confirmar la compra -- por encima del mínimo
+    # de 5 que fija crear_producto_con_categoria, así que no cuenta como bajo.
+    assert data["productos_stock_bajo"] == 0
+    assert "asistencias_periodo" in data
+    assert "clientes_nuevos_periodo" in data
+    assert "membresias_vencidas_periodo" in data
+
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=2, correo="cliente@gleyforgym.com",
+                           password_hash=encriptar_password("cliente123"), rol="CLIENTE", estado="ACTIVO"))
+    db.commit()
+    db.close()
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    res_cliente = client.get(f"/reportes/resumen-general?desde={hoy}&hasta={hoy}", headers=headers_cliente)
+    assert res_cliente.status_code == 403
 
 
 def test_resumen_ventas_cuenta_confirmada_y_entregada_juntas():

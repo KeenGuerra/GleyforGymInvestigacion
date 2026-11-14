@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import api from "../api/api";
+import { useConfirmacion } from "../hooks/useConfirmacion";
+import ConfirmModal from "../components/ConfirmModal";
 
 const PRODUCTOS_POR_PAGINA = 20;
 
 function Productos() {
+  const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -19,6 +22,7 @@ function Productos() {
     id_categoria: "",
     nombre: "",
     descripcion: "",
+    codigo_barras: "",
     precio_compra: "",
     precio_venta: "",
     unidad_medida: "UNIDAD",
@@ -95,6 +99,7 @@ function Productos() {
       data.append("nombre", form.nombre);
       if (form.id_categoria) data.append("id_categoria", form.id_categoria);
       data.append("descripcion", form.descripcion || "");
+      data.append("codigo_barras", form.codigo_barras || "");
       data.append("precio_compra", Number(form.precio_compra) || 0);
       data.append("precio_venta", Number(form.precio_venta) || 0);
       data.append("unidad_medida", form.unidad_medida);
@@ -130,6 +135,7 @@ function Productos() {
       id_categoria: p.id_categoria || "",
       nombre: p.nombre,
       descripcion: p.descripcion || "",
+      codigo_barras: p.codigo_barras || "",
       precio_compra: p.precio_compra || "",
       precio_venta: p.precio_venta || "",
       unidad_medida: p.unidad_medida || "UNIDAD",
@@ -145,7 +151,7 @@ function Productos() {
   };
 
   const desactivar = async (id) => {
-    if (!globalThis.confirm("¿Seguro que deseas desactivar este producto?")) return;
+    if (!(await confirmarAccion("¿Seguro que deseas desactivar este producto?"))) return;
     try { await api.delete(`/productos/${id}`); await cargar(); } catch { setError("Error al desactivar"); }
   };
 
@@ -197,6 +203,15 @@ function Productos() {
             <div className="form-field field-large">
               <label>Nombre</label>
               <input name="nombre" value={form.nombre} onChange={cambiar} placeholder="Nombre del producto" />
+            </div>
+            <div className="form-field">
+              <label>Código de barras</label>
+              <input
+                name="codigo_barras"
+                value={form.codigo_barras}
+                onChange={cambiar}
+                placeholder="Escanéalo aquí o escríbelo"
+              />
             </div>
             <div className="form-field">
               <label>Categoría</label>
@@ -308,6 +323,9 @@ function Productos() {
                     )}
                   </div>
                   <h3>{p.nombre}</h3>
+                  {p.codigo_barras && (
+                    <p className="item-description">Código: {p.codigo_barras}</p>
+                  )}
                   <div className="mini-stats-grid">
                     <div><strong>S/{p.precio_venta}</strong><span>Venta</span></div>
                     <div><strong>S/{p.precio_compra}</strong><span>Compra</span></div>
@@ -347,6 +365,8 @@ function Productos() {
           </button>
         </div>
       </section>
+
+      <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );
 }
