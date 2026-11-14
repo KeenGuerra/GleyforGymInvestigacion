@@ -2262,3 +2262,302 @@ tr:hover td {
   transform: translateY(-3px);
   box-shadow: 0 10px 20px rgba(255, 85, 0, 0.3);
 }
+
+.centered {
+  text-align: center;
+}
+
+/* Tienda page -- extracted from inline styles so it shares the same
+   tokens/classes as the rest of the app instead of hardcoding its own. */
+#tienda {
+  min-height: calc(100vh - 76px);
+}
+
+.tienda-search-wrap {
+  max-width: 480px;
+  margin: 0 auto 2rem;
+}
+
+.tienda-guest-notice {
+  text-align: center;
+  color: var(--muted);
+  margin-bottom: 2rem;
+  font-size: 15px;
+}
+
+.tienda-tabs {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.cards-grid > .empty-message {
+  grid-column: 1 / -1;
+}
+
+.tienda-narrow {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 16px 20px;
+}
+
+.cart-item-info {
+  flex: 1;
+}
+
+.cart-item-info h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.cart-item-info p {
+  margin: 0;
+}
+
+.cart-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cart-qty-input {
+  width: 50px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.cart-item-subtotal {
+  min-width: 70px;
+  text-align: right;
+}
+
+.cart-item-remove {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.cart-summary {
+  padding: 24px;
+  margin-top: 1rem;
+}
+
+.cart-summary .form-grid {
+  margin-bottom: 1rem;
+}
+
+.cart-summary .form-actions {
+  justify-content: flex-end;
+}
+
+.payment-method-value {
+  margin: 0;
+  font-weight: 600;
+}
+
+.cart-totals {
+  text-align: right;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.pickup-notice {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 1rem;
+}
+
+.orders-list {
+  grid-template-columns: 1fr;
+}
+
+.order-card {
+  padding: 20px;
+}
+
+.order-stats {
+  margin-top: 0.5rem;
+}
+
+.order-details {
+  margin-top: 0.5rem;
+}
+
+.order-pay-btn {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+.order-qr {
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+.order-qr img {
+  max-width: 220px;
+  width: 100%;
+  border-radius: 12px;
+}
+
+.order-qr p {
+  margin-top: 0.5rem;
+}
+
+.order-status-message {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+/* Inventario page -- extracted from inline styles for the same reason. */
+.stat-danger {
+  color: var(--danger);
+}
+
+.stat-warning {
+  color: var(--warning);
+}
+
+.tabs-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.alert-heading {
+  margin-bottom: 0.5rem;
+}
+
+.alert-heading.spaced {
+  margin: 1rem 0 0.5rem;
+}
+
+.alert-heading.danger {
+  color: var(--danger);
+}
+
+.alert-heading.warning {
+  color: var(--warning);
+}
+
+.alert-card-danger {
+  border-left: 3px solid var(--danger);
+}
+
+.alert-card-warning {
+  border-left: 3px solid var(--warning);
+}
+
+.form-card.spaced-top {
+  margin-top: 1rem;
+}
+
+.diff-positive {
+  color: var(--success);
+}
+
+.diff-negative {
+  color: var(--danger);
+}
+
+/* Avisos page -- extracted from inline styles for the same reason. */
+.public-section.tight-top {
+  padding-top: 2rem;
+}
+
+.cards-grid.wide {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.aviso-card-horario {
+  border-top: 3px solid var(--orange);
+}
+
+.aviso-card-coaches {
+  border-top: 3px solid #22c55e;
+}
+
+.aviso-card-baile {
+  border-top: 3px solid #a855f7;
+}
+
+.aviso-card-comunicado {
+  border-top: 3px solid var(--orange-text);
+}
+
+.aviso-items {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aviso-items p {
+  margin: 0;
+}
+
+.aviso-event-date {
+  font-weight: 600;
+}
+
+/* RevisionIA page -- extracted from inline styles for the same reason. */
+.input-narrow-60 {
+  width: 60px;
+}
+
+.input-narrow-70 {
+  width: 70px;
+}
+
+.form-grid.spaced-top {
+  margin-top: 1rem;
+}
+
+/* Shared "detalle de productos" block -- Compras.jsx and Ventas.jsx both
+   build a purchase/sale out of the same kind of editable line-item table. */
+.detail-heading {
+  margin-top: 1rem;
+}
+
+.form-grid.detail-row {
+  align-items: end;
+  margin-bottom: 0.5rem;
+}
+
+.spaced-top-sm {
+  margin-top: 0.5rem;
+}
+
+.totals-box {
+  text-align: right;
+  margin-top: 1rem;
+  font-size: 1.1rem;
+}
+
+.sale-details {
+  margin: 0.5rem 0;
+}
+
+/* MiMembresia page -- extracted from inline styles for the same reason. */
+.promo-card.stacked,
+.item-card.stacked {
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-full-top {
+  margin-top: 16px;
+  width: 100%;
+}

@@ -122,26 +122,25 @@ function Tienda() {
     <div className="public-page">
       <Navbar cartCount={totalCarrito} onCartClick={() => setTab("carrito")} />
 
-      <section className="public-section" id="tienda" style={{ minHeight: "calc(100vh - 76px)" }}>
-        <div className="section-title" style={{ textAlign: "center" }}>
+      <section className="public-section" id="tienda">
+        <div className="section-title centered">
           <span className="badge">Tienda</span>
           <h2>Productos y suplementos</h2>
         </div>
 
-        <div style={{ maxWidth: "480px", margin: "0 auto 2rem" }}>
+        <div className="tienda-search-wrap">
           <input
-            className="search-input"
+            className="search-input full"
             placeholder="Buscar producto..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            style={{ width: "100%", padding: "12px 16px", fontSize: "15px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }}
           />
         </div>
 
-        {error && <p className="error-message" style={{ textAlign: "center" }}>{error}</p>}
+        {error && <p className="error-message centered">{error}</p>}
 
         {isLoggedIn && (
-          <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", marginBottom: "2rem" }}>
+          <div className="tienda-tabs">
             <button className={tab === "tienda" ? "btn-primary" : "btn-secondary"} onClick={() => setTab("tienda")}>Tienda</button>
             <button className={tab === "carrito" ? "btn-primary" : "btn-secondary"} onClick={() => setTab("carrito")}>Carrito ({totalCarrito})</button>
             <button className={tab === "pedidos" ? "btn-primary" : "btn-secondary"} onClick={() => setTab("pedidos")}>Mis pedidos ({pedidos.length})</button>
@@ -149,7 +148,7 @@ function Tienda() {
         )}
 
         {!isLoggedIn && (
-          <p style={{ textAlign: "center", color: "var(--muted)", marginBottom: "2rem", fontSize: "15px" }}>
+          <p className="tienda-guest-notice">
             <button type="button" className="link-button" onClick={() => navigate("/login")}>Inicia sesión</button>
             {" "}o{" "}
             <button type="button" className="link-button" onClick={() => navigate("/registro")}>crea una cuenta</button>
@@ -161,7 +160,7 @@ function Tienda() {
         {tab === "tienda" && (
           <div className="cards-grid">
             {filtrados.length === 0 ? (
-              <p className="empty-message" style={{ gridColumn: "1 / -1", textAlign: "center" }}>No hay productos disponibles.</p>
+              <p className="empty-message">No hay productos disponibles.</p>
             ) : (
               filtrados.map((p) => (
                 <div key={p.id_producto} className="card item-card product-card">
@@ -197,50 +196,50 @@ function Tienda() {
 
         {/* TAB: CARRITO */}
         {isLoggedIn && tab === "carrito" && (
-          <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+          <div className="tienda-narrow">
             {carrito.length === 0 ? (
-              <p className="empty-message" style={{ textAlign: "center" }}>Tu carrito está vacío.</p>
+              <p className="empty-message">Tu carrito está vacío.</p>
             ) : (
               <>
                 {carrito.map((c) => (
-                  <div key={c.id_producto} className="card item-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", padding: "16px 20px" }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: 0, fontSize: "16px" }}>{c.nombre}</h3>
-                      <p className="item-description" style={{ margin: 0 }}>S/ {c.precio_venta.toFixed(2)} c/u</p>
+                  <div key={c.id_producto} className="card item-card cart-item">
+                    <div className="cart-item-info">
+                      <h3>{c.nombre}</h3>
+                      <p className="item-description">S/ {c.precio_venta.toFixed(2)} c/u</p>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div className="cart-item-controls">
                       <input
                         type="number" min="1" max={c.stock_actual} value={c.cantidad}
                         onChange={(e) => actualizarCantidad(c.id_producto, e.target.value)}
-                        style={{ width: "50px", padding: "6px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", textAlign: "center" }}
+                        className="cart-qty-input"
                       />
-                      <strong style={{ minWidth: "70px", textAlign: "right" }}>S/ {(c.cantidad * c.precio_venta).toFixed(2)}</strong>
-                      <button className="btn-danger" onClick={() => eliminarDelCarrito(c.id_producto)} style={{ padding: "6px 12px", fontSize: "13px" }}>X</button>
+                      <strong className="cart-item-subtotal">S/ {(c.cantidad * c.precio_venta).toFixed(2)}</strong>
+                      <button className="btn-danger cart-item-remove" onClick={() => eliminarDelCarrito(c.id_producto)}>X</button>
                     </div>
                   </div>
                 ))}
 
-                <div className="card" style={{ padding: "24px", marginTop: "1rem" }}>
-                  <div className="form-grid" style={{ marginBottom: "1rem" }}>
+                <div className="card cart-summary">
+                  <div className="form-grid">
                     <div className="form-field">
                       <label>Método de pago</label>
                       {/* Único método: Yape por QR, pagado y confirmado en el
                           gimnasio -- no se usa ninguna pasarela de pago. */}
-                      <p style={{ margin: 0, fontWeight: 600 }}>Yape (QR)</p>
+                      <p className="payment-method-value">Yape (QR)</p>
                     </div>
                     <div className="form-field field-large">
                       <label>Observaciones</label>
                       <input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Nota opcional" />
                     </div>
                   </div>
-                  <div style={{ textAlign: "right", marginBottom: "1rem", fontSize: "1.1rem" }}>
+                  <div className="cart-totals">
                     <p>Subtotal: <strong>S/ {subtotal.toFixed(2)}</strong></p>
                     <p><strong>Total: S/ {total.toFixed(2)}</strong></p>
                   </div>
-                  <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "14px", marginBottom: "1rem" }}>
+                  <p className="pickup-notice">
                     📍 Todas las compras se recogen en el gimnasio — no hacemos delivery.
                   </p>
-                  <div className="form-actions" style={{ justifyContent: "flex-end" }}>
+                  <div className="form-actions">
                     <button className="btn-secondary" onClick={() => setCarrito([])}>Vaciar</button>
                     <button className="btn-primary" disabled={procesando} onClick={checkout}>
                       {procesando ? "Procesando..." : "Confirmar pedido"}
@@ -254,25 +253,25 @@ function Tienda() {
 
         {/* TAB: PEDIDOS */}
         {isLoggedIn && tab === "pedidos" && (
-          <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+          <div className="tienda-narrow">
             {pedidos.length === 0 ? (
-              <p className="empty-message" style={{ textAlign: "center" }}>No tienes pedidos registrados.</p>
+              <p className="empty-message">No tienes pedidos registrados.</p>
             ) : (
-              <div className="cards-grid" style={{ gridTemplateColumns: "1fr" }}>
+              <div className="cards-grid orders-list">
                 {pedidos.map((v) => (
-                  <div key={v.id_venta} className="card item-card" style={{ padding: "20px" }}>
+                  <div key={v.id_venta} className="card item-card order-card">
                     <div className="item-card-top">
                       <span className={badgeColor(v.estado)}>{v.estado}</span>
                       <span className="badge">#{v.id_venta}</span>
                     </div>
-                    <div className="mini-stats-grid" style={{ marginTop: "0.5rem" }}>
+                    <div className="mini-stats-grid order-stats">
                       <div><strong>S/ {v.total?.toFixed(2)}</strong><span>Total</span></div>
                       <div><strong>{v.metodo_pago}</strong><span>Método</span></div>
                       <div><strong>{v.detalles?.length || 0}</strong><span>Productos</span></div>
                     </div>
                     <p className="item-description">{new Date(v.fecha_venta).toLocaleString()}</p>
                     {v.detalles && v.detalles.length > 0 && (
-                      <div style={{ marginTop: "0.5rem" }}>
+                      <div className="order-details">
                         {v.detalles.map((d) => (
                           <p key={d.id_detalle_venta} className="item-description">
                             {d.nombre_producto} x{d.cantidad} — S/ {d.subtotal?.toFixed(2)}
@@ -283,8 +282,7 @@ function Tienda() {
                     {v.estado === "PENDIENTE" && (
                       <>
                         <button
-                          className="btn-primary"
-                          style={{ marginTop: "0.75rem", width: "100%" }}
+                          className="btn-primary order-pay-btn"
                           onClick={() =>
                             setMostrandoQrPara(mostrandoQrPara === v.id_venta ? null : v.id_venta)
                           }
@@ -292,13 +290,12 @@ function Tienda() {
                           {mostrandoQrPara === v.id_venta ? "Ocultar QR" : "Pagar con Yape"}
                         </button>
                         {mostrandoQrPara === v.id_venta && (
-                          <div style={{ textAlign: "center", marginTop: "0.75rem" }}>
+                          <div className="order-qr">
                             <img
                               src="/yape-qr.png"
                               alt="Código QR para pagar con Yape"
-                              style={{ maxWidth: "220px", width: "100%", borderRadius: "12px" }}
                             />
-                            <p className="item-description" style={{ marginTop: "0.5rem" }}>
+                            <p className="item-description">
                               Escanea con Yape y paga <strong>S/ {v.total?.toFixed(2)}</strong>. Pasa a
                               recogerlo al gimnasio -- ahí se confirma tu pago.
                             </p>
@@ -307,12 +304,12 @@ function Tienda() {
                       </>
                     )}
                     {v.estado === "CONFIRMADA" && (
-                      <p className="success-message" style={{ marginTop: "0.75rem", textAlign: "center" }}>
+                      <p className="success-message order-status-message">
                         ✔ Pago confirmado. Recógelo en el gimnasio — no hacemos delivery.
                       </p>
                     )}
                     {v.estado === "ENTREGADA" && (
-                      <p className="success-message" style={{ marginTop: "0.75rem", textAlign: "center" }}>
+                      <p className="success-message order-status-message">
                         ✔ Entregado. ¡Gracias por tu compra!
                       </p>
                     )}

@@ -5,11 +5,11 @@ import { FaClock, FaUserTie, FaMusic, FaBullhorn } from "react-icons/fa";
 import { formatearFecha } from "../utils/formatearFecha";
 
 const CONFIG_TIPO = {
-  HORARIO: { titulo: "Horario de atención", icono: FaClock, color: "var(--orange)", badge: "Horario" },
-  COACHES: { titulo: "Nuestros coaches", icono: FaUserTie, color: "#22c55e", badge: "Coaches" },
-  BAILE: { titulo: "Clases de baile", icono: FaMusic, color: "#a855f7", badge: "Baile" },
-  COMUNICADO: { titulo: "Comunicados", icono: FaBullhorn, color: "var(--orange-text)", badge: "Comunicado" },
-  EVENTO: { titulo: "Próximos eventos", icono: FaBullhorn, color: "var(--orange-text)", badge: "Evento" },
+  HORARIO: { titulo: "Horario de atención", icono: FaClock, color: "var(--orange)", clase: "aviso-card-horario", badge: "Horario" },
+  COACHES: { titulo: "Nuestros coaches", icono: FaUserTie, color: "#22c55e", clase: "aviso-card-coaches", badge: "Coaches" },
+  BAILE: { titulo: "Clases de baile", icono: FaMusic, color: "#a855f7", clase: "aviso-card-baile", badge: "Baile" },
+  COMUNICADO: { titulo: "Comunicados", icono: FaBullhorn, color: "var(--orange-text)", clase: "aviso-card-comunicado", badge: "Comunicado" },
+  EVENTO: { titulo: "Próximos eventos", icono: FaBullhorn, color: "var(--orange-text)", clase: "aviso-card-comunicado", badge: "Evento" },
 };
 
 function Avisos() {
@@ -60,7 +60,7 @@ function Avisos() {
     <div className="public-page">
       <Navbar />
 
-      <section className="public-section" style={{ paddingTop: "2rem" }}>
+      <section className="public-section tight-top">
         <div className="section-title">
           <span className="badge">Avisos</span>
           <h2>Horarios y novedades de GleyforGym</h2>
@@ -71,25 +71,25 @@ function Avisos() {
         {avisos.length === 0 && !error ? (
           <p className="empty-message">No hay avisos publicados por el momento.</p>
         ) : (
-          <div className="cards-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+          <div className="cards-grid wide">
             {Object.entries(grupos).map(([tipo, items]) => {
               const config = CONFIG_TIPO[tipo] || CONFIG_TIPO.COMUNICADO;
               const Icono = config.icono;
 
               return (
-                <div className="card item-card" style={{ borderTop: `3px solid ${config.color}` }} key={tipo}>
+                <div className={`card item-card ${config.clase}`} key={tipo}>
                   <div className="item-card-top">
                     <Icono size={20} color={config.color} />
                     <span className="badge">{config.badge}</span>
                   </div>
                   <h3>{config.titulo}</h3>
-                  <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div className="aviso-items">
                     {items.map((aviso) => (
                       <div key={aviso.id_aviso}>
-                        <strong style={{ color: "var(--text)" }}>{aviso.titulo}</strong>
-                        <p className="item-description" style={{ margin: 0 }}>{aviso.contenido}</p>
+                        <strong>{aviso.titulo}</strong>
+                        <p className="item-description">{aviso.contenido}</p>
                         {aviso.tipo === "EVENTO" && aviso.fecha_evento && (
-                          <p className="item-description" style={{ margin: 0, fontWeight: 600 }}>
+                          <p className="item-description aviso-event-date">
                             {formatearFecha(aviso.fecha_evento)}
                           </p>
                         )}

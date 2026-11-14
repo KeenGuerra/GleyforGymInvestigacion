@@ -374,13 +374,13 @@ function RevisionIA() {
                       <input value={e.dia_semana || ""} onChange={(ev) => cambiarCampoItem(i, "dia_semana", ev.target.value)} />
                     </td>
                     <td>
-                      <input type="number" value={e.series || ""} onChange={(ev) => cambiarCampoItem(i, "series", Number(ev.target.value))} style={{ width: "60px" }} />
+                      <input type="number" value={e.series || ""} onChange={(ev) => cambiarCampoItem(i, "series", Number(ev.target.value))} className="input-narrow-60" />
                     </td>
                     <td>
-                      <input value={e.repeticiones || ""} onChange={(ev) => cambiarCampoItem(i, "repeticiones", ev.target.value)} style={{ width: "70px" }} />
+                      <input value={e.repeticiones || ""} onChange={(ev) => cambiarCampoItem(i, "repeticiones", ev.target.value)} className="input-narrow-70" />
                     </td>
                     <td>
-                      <input type="number" value={e.descanso_segundos || ""} onChange={(ev) => cambiarCampoItem(i, "descanso_segundos", Number(ev.target.value))} style={{ width: "70px" }} />
+                      <input type="number" value={e.descanso_segundos || ""} onChange={(ev) => cambiarCampoItem(i, "descanso_segundos", Number(ev.target.value))} className="input-narrow-70" />
                     </td>
                     <td>
                       <button className="btn-danger" onClick={() => quitarItem(i)}>Quitar</button>
@@ -408,10 +408,10 @@ function RevisionIA() {
                       <input value={c.descripcion || ""} onChange={(ev) => cambiarCampoItem(i, "descripcion", ev.target.value)} />
                     </td>
                     <td>
-                      <input type="number" value={c.calorias_aprox || ""} onChange={(ev) => cambiarCampoItem(i, "calorias_aprox", Number(ev.target.value))} style={{ width: "70px" }} />
+                      <input type="number" value={c.calorias_aprox || ""} onChange={(ev) => cambiarCampoItem(i, "calorias_aprox", Number(ev.target.value))} className="input-narrow-70" />
                     </td>
                     <td>
-                      <input value={c.hora_recomendada || ""} onChange={(ev) => cambiarCampoItem(i, "hora_recomendada", ev.target.value)} style={{ width: "70px" }} />
+                      <input value={c.hora_recomendada || ""} onChange={(ev) => cambiarCampoItem(i, "hora_recomendada", ev.target.value)} className="input-narrow-70" />
                     </td>
                     <td>
                       <button className="btn-danger" onClick={() => quitarItem(i)}>Quitar</button>
@@ -422,7 +422,7 @@ function RevisionIA() {
             </table>
           )}
 
-          <div className="form-grid" style={{ marginTop: "1rem" }}>
+          <div className="form-grid spaced-top">
             {editando.tipo === "rutina" ? (
               <div className="form-field">
                 <label>Agregar ejercicio del catálogo</label>

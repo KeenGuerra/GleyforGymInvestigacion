@@ -142,7 +142,7 @@ function MiMembresia() {
       {(errorCliente || error) && <p className="error-message">{errorCliente || error}</p>}
 
       {membresiaPendiente && pagoPendiente && (
-        <section className="card promo-card" style={{ display: "flex", flexDirection: "column" }}>
+        <section className="card promo-card stacked">
           <span className="badge">PAGO PENDIENTE</span>
           <h2>{membresiaPendiente.plan?.nombre || `Plan #${membresiaPendiente.id_membresia}`}</h2>
           <p>Completa el pago para activar tu membresía.</p>
@@ -150,8 +150,7 @@ function MiMembresia() {
             <strong>S/ {obtenerPrecio(membresiaPendiente)}</strong>
           </div>
           <button
-            className="btn-primary"
-            style={{ marginTop: "16px", width: "100%" }}
+            className="btn-primary btn-full-top"
             disabled={pagandoId === pagoPendiente.id_pago}
             onClick={() => pagarPendiente(pagoPendiente.id_pago)}
           >
@@ -169,9 +168,8 @@ function MiMembresia() {
             <section className="cards-grid">
               {planesDisponibles.map((p) => (
                 <article
-                  className="card item-card"
+                  className="card item-card stacked"
                   key={p.id_membresia}
-                  style={{ display: "flex", flexDirection: "column" }}
                 >
                   <div className="item-card-top">
                     <span className="badge">{p.duracion_dias} días</span>
@@ -188,8 +186,7 @@ function MiMembresia() {
                   </div>
 
                   <button
-                    className="btn-primary"
-                    style={{ marginTop: "16px", width: "100%" }}
+                    className="btn-primary btn-full-top"
                     disabled={comprandoId === p.id_membresia}
                     onClick={() => comprarPlan(p.id_membresia)}
                   >
