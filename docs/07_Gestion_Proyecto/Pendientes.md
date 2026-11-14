@@ -105,6 +105,8 @@ Ahora el interceptor solo cierra sesión si **ya había** un token guardado ante
 
 ~~Resuelto (2026-11)~~: se agregó Bootstrap (`bootstrap` + `sass` como dependencias) a pedido, pero **solo** los componentes de alerta/toast, importados vía Sass en `web-admin/src/styles/bootstrap-custom.scss` — deliberadamente sin `reboot` (resetea tipografía/body global) ni `grid`/`buttons`/`card`/`badge`. La app ya tiene su propio tema (`index.css`, ~2185 líneas) con clases como `.btn-primary`/`.card`/`.badge`, los mismos nombres que usa Bootstrap por defecto; importarlo completo habría roto esa UI existente. Nuevo hook `useToast.js` + componente `ToastFeedback.jsx` (auto-cierre manejado por `setTimeout` en React, sin depender del runtime JS de Bootstrap), usados en los tres dashboards para avisar cuando falla la carga inicial (ver P-20).
 
+**Avance (2026-11, continuación)**: quedaba un cuadro de confirmación nativo (`window.confirm`) en los 19 puntos de "¿Seguro que deseas...?" de todo el admin — aparecía como una barra simple arriba del navegador, sin ningún estilo. Se agregó la partial `bootstrap/scss/modal` al mismo archivo, un hook nuevo `useConfirmacion.js` (basado en promesas, para no cambiar la forma de cada sitio de llamada) y un componente `ConfirmModal.jsx` (overlay/estructura de Bootstrap, botones `.btn-primary`/`.btn-secondary` propios de la app) que reemplaza `window.confirm` en las 19 páginas. De paso se revisó qué tan unificado se veía el resto del diseño: `Tienda.jsx` tenía 36 estilos inline sueltos (el peor caso con diferencia), y había focos más chicos en `Inventario.jsx`, `Avisos.jsx`, `RevisionIA.jsx` y `MiMembresia.jsx`. Se movieron todos a clases nuevas en `index.css` que reutilizan las variables de diseño ya existentes (`--danger`, `--warning`, `--surface`, etc.) en vez de repetir valores sueltos — mismo resultado visual, código consistente con el resto del admin. Se dejaron inline, a propósito, los dos casos genuinamente calculados por instancia (el ancho en % de la barra de progreso de membresía, el color de ícono según tipo de aviso): convertirlos no unifica nada, solo esconde el mismo valor dinámico detrás de una variable CSS.
+
 ---
 
 ## P-22 Checklist para pasar a la cuenta real de Culqi (producción)
@@ -180,6 +182,12 @@ Se eligió este canal (y no una API de envío 100% automático como WhatsApp Bus
 3. **Boletas de venta** (antes no existía ningún comprobante para una `Venta`, solo para `Pago`): `generar_boleta_venta()` en `recibos.py` (mismo estilo que `generar_recibo_pago()`) + `GET /ventas/{id}/boleta`, con botón "Descargar boleta" en `Ventas.jsx`. De paso, `generar_recibo_pago()` ahora muestra también la membresía y el periodo cubierto cuando el pago está asociado a una.
 4. **Conteo físico de inventario** (nuevo, soporta F-16/I16): tablas `ConteoInventario`/`DetalleConteoInventario`, `POST /inventario/conteos` (toma el stock del sistema como snapshot y lo compara contra lo que el staff cuenta físicamente) y `GET /inventario/conteos/{id}`, con una pestaña "Conteo físico" nueva en `Inventario.jsx` que calcula la diferencia y el % de exactitud automáticamente.
 
+**Avance (2026-11, continuación 2)**: revisando qué reporte de negocio podía faltar, se encontró un hueco real: había reporte de ventas (ingresos, productos más vendidos, método de pago) pero ninguno de compras/gastos a proveedores — por lo tanto no existía ninguna vista con la utilidad neta del negocio (ingresos menos egresos). Se agregaron:
+- `GET /reportes/compras`: egresos por día y por proveedor (compras `CONFIRMADA`), el complemento que le faltaba a `/reportes/ingresos`.
+- `GET /reportes/resumen-general`: consolida en una sola vista ingresos (pagos de membresía + ventas de productos), egresos (compras), utilidad neta, asistencias del periodo, clientes nuevos, membresías vencidas y stock bajo (este último es una foto del momento, no depende del rango de fechas).
+
+Ambos con su tabla/tarjetas y exportación a CSV en `Reportes.jsx`, como el resto de reportes del módulo. No se encontró ningún hueco en los reportes formales de la tesis (F-04/05/07/08/09/12/15/16): todos los indicadores que correspondía automatizar ya estaban cubiertos (ver el punto 2 de arriba); los que faltaban eran de negocio, no de tesis.
+
 ---
 
 ## P-08 Tests de `Navbar.jsx` y `NotFound.jsx`
@@ -249,6 +257,19 @@ El despliegue actual usa el plan **free** de Render (`render.yaml`): esto implic
 ## P-17 Documentar formalmente el módulo de Comercio y Avisos
 
 ~~Resuelto (2026-09)~~: `Requerimientos_Funcionales.md` ya incluye RF-176 a RF-226 cubriendo Entrenadores, Avisos, Auditoría y los seis submódulos de Comercio (categorías, productos, proveedores, compras, inventario, ventas).
+
+---
+
+## P-26 Lector de código de barras en Productos/Ventas/Compras
+
+~~Resuelto (2026-11)~~: a pedido, se agregó soporte de código de barras al módulo de Comercio. Un lector USB/Bluetooth de los que se venden para mostrador funciona en modo "emulación de teclado" (HID): no necesita driver ni integración especial, solo escribe el código escaneado como si fuera un teclado y termina con Enter — por eso la implementación es un input normal con un `onKeyDown`, nada de hardware.
+
+- `Producto.codigo_barras` (único, opcional) + migración (`create_db.py`) con columna e índice único para la base de datos ya desplegada.
+- `GET /productos/por-codigo/{codigo}`: búsqueda exacta, con validación de duplicado al crear/editar un producto (400 si otro producto ya usa ese código).
+- Campo "Código de barras" en el formulario de `Productos.jsx` (se puede escanear ahí mismo o escribirlo a mano).
+- Input de escaneo dedicado en `Ventas.jsx` y `Compras.jsx`: agrega el producto al detalle apenas se escanea (o le suma 1 a la cantidad si ya estaba en la lista), sin tener que buscarlo manualmente en el selector — en compras, además precarga el precio unitario con el último precio de compra del producto.
+
+**Alternativa sin lector físico, no implementada**: escanear con la cámara del celular/tablet desde el navegador (librería `html5-qrcode`/`zxing-js`), para probar el flujo sin comprar hardware. Queda como mejora futura si el gimnasio decide no comprar un lector USB/Bluetooth.
 
 ---
 
