@@ -4,7 +4,6 @@ import { exportarCsv } from "../utils/exportarCsv";
 import { descargarBlob } from "../utils/descargarArchivo";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
-import CheckoutModal from "../components/CheckoutModal";
 import { useConfirmacion } from "../hooks/useConfirmacion";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -20,8 +19,7 @@ function Pagos() {
   const [error, setError] = useState("");
   const [pagina, setPagina] = useState(0);
   const [haySiguiente, setHaySiguiente] = useState(false);
-  const [cobrandoId, setCobrandoId] = useState(null);
-  const [checkoutInfo, setCheckoutInfo] = useState(null);
+  const [confirmandoId, setConfirmandoId] = useState(null);
 
   const hoy = new Date().toISOString().split("T")[0];
 
@@ -167,17 +165,17 @@ function Pagos() {
     }
   };
 
-  const cobrarPago = async (id_pago) => {
+  const confirmarPago = async (id_pago) => {
     try {
-      setCobrandoId(id_pago);
+      setConfirmandoId(id_pago);
       setError("");
-      const res = await api.post(`/pagos/${id_pago}/checkout`);
-      setCheckoutInfo(res.data);
+      await api.post(`/pagos/${id_pago}/confirmar`);
+      await cargarDatos();
     } catch (error) {
       console.error(error);
-      setError(error.response?.data?.detail || "No se pudo iniciar el cobro");
+      setError(error.response?.data?.detail || "No se pudo confirmar el pago");
     } finally {
-      setCobrandoId(null);
+      setConfirmandoId(null);
     }
   };
 
@@ -392,7 +390,7 @@ function Pagos() {
                 <td>
                   <span className="badge">{p.estado}</span>
                   {p.origen === "AUTOSERVICIO" && p.estado === "PENDIENTE" && (
-                    <span className="badge" title="El cliente va a pagarlo él mismo en línea (Culqi) — no hace falta que lo cobres.">
+                    <span className="badge" title="El cliente paga por su cuenta escaneando el QR de Yape — confirma aquí cuando veas que la transferencia llegó.">
                       En línea
                     </span>
                   )}
@@ -401,19 +399,11 @@ function Pagos() {
                   <button onClick={() => editarPago(p)}>Editar</button>
                   {p.estado === "PENDIENTE" && (
                     <button
-                      disabled={cobrandoId === p.id_pago}
-                      onClick={() => cobrarPago(p.id_pago)}
-                      title={
-                        p.origen === "AUTOSERVICIO"
-                          ? "El cliente ya tiene este pago para completar él mismo — este botón solo te muestra el mismo enlace/QR, no es necesario que lo uses."
-                          : undefined
-                      }
+                      disabled={confirmandoId === p.id_pago}
+                      onClick={() => confirmarPago(p.id_pago)}
+                      title="Confirma este pago después de verificar en tu Yape que la transferencia llegó."
                     >
-                      {cobrandoId === p.id_pago
-                        ? "Generando..."
-                        : p.origen === "AUTOSERVICIO"
-                        ? "Ver estado"
-                        : "Cobrar"}
+                      {confirmandoId === p.id_pago ? "Confirmando..." : "Confirmar pago"}
                     </button>
                   )}
                   <button onClick={() => descargarRecibo(p.id_pago)}>Recibo</button>
@@ -448,7 +438,6 @@ function Pagos() {
         </div>
       </section>
 
-      <CheckoutModal info={checkoutInfo} onClose={() => setCheckoutInfo(null)} />
       <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
   );

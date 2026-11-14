@@ -8,14 +8,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Annotated, Optional
 from datetime import datetime, date
-import logging
-import uuid
 
 from app.database import get_db
 from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
-from app.pagos_gateway import gateway
 from app.recibos import generar_boleta_venta
 from app.constants import (
     MSG_VENTA_NO_ENCONTRADA, MSG_VENTA_YA_CONFIRMADA,
@@ -23,8 +20,6 @@ from app.constants import (
     MSG_STOCK_INSUFICIENTE, MSG_DETALLE_VACIO, MSG_CANTIDAD_INVALIDA,
     MSG_PRODUCTO_INACTIVO
 )
-
-logger = logging.getLogger("gleyforgym")
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 
@@ -283,101 +278,6 @@ def mis_pedidos(
 
     return [_venta_con_detalles(db, v) for v in ventas]
 
-
-@router.post(
-    "/{id_venta}/checkout",
-    responses={
-        400: {"description": "La venta no está en estado PENDIENTE"},
-        401: {"description": "Token inválido o expirado"},
-        403: {"description": "No puedes pagar el pedido de otro cliente"},
-        404: {"description": "Venta no encontrada"}
-    }
-)
-def iniciar_checkout_venta(
-    id_venta: int,
-    db: Annotated[Session, Depends(get_db)],
-    usuario: dict = Depends(obtener_usuario_actual),
-):
-    """Arquitectura lista para conectar una pasarela real (ver app/pagos_gateway);
-    hoy usa MockGateway. El resultado llega vía POST /webhooks/pagos."""
-    venta = db.query(models.Venta).filter(models.Venta.id_venta == id_venta).first()
-
-    if not venta:
-        raise HTTPException(status_code=404, detail=MSG_VENTA_NO_ENCONTRADA)
-
-    if usuario.get("rol") not in ("ADMIN", "ENTRENADOR"):
-        cliente = db.query(models.Cliente).filter(
-            models.Cliente.id_usuario == usuario.get("id_usuario")
-        ).first()
-        # Mismo fallback que mis_pedidos(): sin Cliente asociado (comprador
-        # sin membresía), la propiedad se valida contra id_usuario en vez
-        # de id_cliente — si no, nunca podría pagar su propio pedido.
-        if cliente:
-            es_propio = venta.id_cliente == cliente.id_cliente
-        else:
-            es_propio = venta.id_usuario == usuario.get("id_usuario")
-        if not es_propio:
-            raise HTTPException(status_code=403, detail="No puedes pagar el pedido de otro cliente")
-
-    if venta.estado != "PENDIENTE":
-        raise HTTPException(status_code=400, detail="La venta no está en estado PENDIENTE")
-
-    if venta.cliente:
-        datos_cliente = {
-            "nombres": venta.cliente.nombres,
-            "apellidos": venta.cliente.apellidos,
-            "correo": venta.cliente.usuario.correo,
-            "telefono": venta.cliente.telefono,
-        }
-    else:
-        datos_cliente = {
-            "nombres": "Cliente",
-            "apellidos": "GleyforGym",
-            "correo": venta.usuario.correo,
-            "telefono": None,
-        }
-
-    # Idempotente: si ya se inició un checkout antes para esta venta, no se
-    # vuelve a crear la orden (ver mismo comentario en pagos.py).
-    if venta.id_transaccion_externa:
-        try:
-            sesion = gateway.obtener_checkout(venta.id_transaccion_externa)
-        except Exception:
-            # La orden pudo vencer o ya no existir en el proveedor -- se
-            # trata como si nunca se hubiera creado (ver mismo comentario en
-            # pagos.py), para no dejar esta venta inutilizable para siempre.
-            logger.warning(
-                "No se pudo recuperar el checkout %s de la venta %s, se crea uno nuevo",
-                venta.id_transaccion_externa, venta.id_venta,
-            )
-            venta.id_transaccion_externa = None
-
-    if not venta.id_transaccion_externa:
-        # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
-        # (lo rechaza con 400 si llega vacío) — con MockGateway no importa.
-        # Perú: celulares son siempre 9 dígitos. Solo aplica al crear una
-        # orden nueva, no al recuperar una ya creada arriba.
-        if venta.cliente and not hasattr(gateway, "resolver_transaccion") and not (
-            venta.cliente.telefono and venta.cliente.telefono.isdigit() and len(venta.cliente.telefono) == 9
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
-            )
-
-        # Sufijo aleatorio: ver mismo comentario en pagos.py (evita chocar
-        # con una orden de otro entorno/prueba contra la misma cuenta Culqi).
-        referencia = f"venta-{venta.id_venta}-{uuid.uuid4().hex[:8]}"
-        sesion = gateway.crear_checkout(venta.total, referencia=referencia, cliente=datos_cliente)
-        venta.id_transaccion_externa = sesion["id_transaccion_externa"]
-        db.commit()
-
-    return {
-        "id_venta": venta.id_venta,
-        "url_checkout": sesion["url_checkout"],
-        "qr_yape": sesion.get("qr_yape"),
-        "id_transaccion_externa": sesion["id_transaccion_externa"],
-    }
 
 
 @router.get(

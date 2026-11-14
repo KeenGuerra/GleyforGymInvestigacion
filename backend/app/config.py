@@ -20,26 +20,9 @@ if not SECRET_KEY:
         "en producción) antes de iniciar la aplicación."
     )
 
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
-
-if not WEBHOOK_SECRET:
-    raise RuntimeError(
-        "WEBHOOK_SECRET no está configurado. Define esta variable de entorno "
-        "(en backend/.env para desarrollo local, o en la configuración del servicio "
-        "en producción) antes de iniciar la aplicación — protege POST /webhooks/pagos "
-        "contra llamadas falsificadas por cualquiera que conozca un id_transaccion_externa."
-    )
-
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
-
-# Culqi (pasarela de pago, ver docs/07_Gestion_Proyecto/Pendientes.md P-02).
-# No son obligatorias: mientras no se active CulqiGateway en
-# pagos_gateway/__init__.py, el sistema sigue operando con MockGateway sin
-# necesitar estas llaves.
-CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY")
-CULQI_PUBLIC_KEY = os.getenv("CULQI_PUBLIC_KEY")
 
 # Envío real de correo vía la API de Brevo (ver docs/07_Gestion_Proyecto/
 # Pendientes.md P-01/P-03). Se usa una API HTTPS en vez de SMTP directo

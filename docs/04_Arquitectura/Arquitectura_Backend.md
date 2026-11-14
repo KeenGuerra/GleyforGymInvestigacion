@@ -645,7 +645,7 @@ el precio histórico
 - Módulo Comercio completo (categorías, productos, proveedores, compras, inventario con lotes/movimientos, ventas)
 - Avisos editables
 - Rate limiting de login (`rate_limit.py`, 5 intentos / 15 min, en memoria)
-- Pasarela de pagos con patrón strategy (`pagos_gateway/`), hoy con `MockGateway`
+- Pagos 100% manuales por Yape/Plin/Efectivo: el staff confirma a mano (`POST /pagos/{id}/confirmar`), sin pasarela de pago de por medio
 - Generación de PDF de comprobantes (`recibos.py`, reportlab)
 - 48 tests en `test_backend.py` + 7 en `test_crud.py` (pytest + pytest-cov)
 
@@ -655,7 +655,5 @@ el precio histórico
 - Logs avanzados / APM (Sentry u otro)
 - SaaS Multi Gimnasio
 - Microservicios
-- Pasarela de pago real (Culqi) en vez de `MockGateway` (ver `Pendientes.md` P-02)
-- Página propia en `web-admin` para Entrenadores y Auditoría
 
 ---

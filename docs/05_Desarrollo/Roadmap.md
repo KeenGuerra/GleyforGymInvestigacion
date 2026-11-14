@@ -46,7 +46,7 @@ Automatizar los procesos administrativos y deportivos del gimnasio GLEYFORGYM me
 | Reportes PDF | ✅ Completo (recibos de pago) — reportes operativos consolidados y PDF de rutinas/nutrición siguen pendientes |
 | Paginación en listados | ✅ Completo (clientes, pagos, ventas, productos) |
 | Flutter Base | 🟡 Parcial |
-| Pasarela de pago real (Culqi) | ❌ Pendiente (arquitectura lista, falta activar) |
+| Pasarela de pago | ✅ Descartada a propósito — todo pago es por Yape/Plin/Efectivo, confirmado a mano por el staff |
 | Envío real de correo (SMTP) | ❌ Pendiente (arquitectura lista, falta proveedor) |
 | Verificación de correo al registrarse | ❌ Pendiente |
 | Docker | ❌ Pendiente |
@@ -362,9 +362,8 @@ Ver el detalle completo, con archivos y líneas citadas, en [`docs/07_Gestion_Pr
 ## Alta
 
 1. Verificación de correo al registrarse.
-2. Conectar una pasarela de pago real (Culqi recomendado).
-3. Envío real de correo (SMTP/SendGrid/Mailgun).
-4. Cobertura de tests del módulo de Comercio.
+2. Envío real de correo (SMTP/SendGrid/Mailgun).
+3. Cobertura de tests del módulo de Comercio.
 
 ---
 
@@ -399,7 +398,6 @@ Cerrar las integraciones externas que ya tienen la arquitectura lista.
 
 ### Tareas
 
-- Conectar Culqi como pasarela de pago real.
 - Configurar un proveedor SMTP y activar el envío real de correo (recuperación de contraseña + verificación de cuenta).
 
 ---

@@ -140,7 +140,7 @@ describe("MiMembresia Page Component", () => {
     });
   });
 
-  it("shows a 'completar pago' button that opens the checkout modal when a payment is pending", async () => {
+  it("shows a 'pagar con yape' button that toggles the static QR when a payment is pending", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/usuario/")) {
         return Promise.resolve({ data: { id_cliente: 1 } });
@@ -171,27 +171,27 @@ describe("MiMembresia Page Component", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    api.post.mockResolvedValue({
-      data: { id_pago: 9, url_checkout: "https://pago.simulado/9", qr_yape: null },
-    });
 
     render(<MiMembresia />);
     await waitFor(() => {
-      expect(screen.getByText("Completar pago")).toBeDefined();
+      expect(screen.getByText("Pagar con Yape")).toBeDefined();
     });
 
     // El historial de abajo también lista la membresía PENDIENTE (misma
     // compra, por si el Pago asociado llegara a faltar) pero no debe mostrar
     // fechas/días restantes falsos -- fecha_inicio/fecha_fin son solo un
-    // placeholder ("hoy") hasta que el webhook confirme el pago.
+    // placeholder ("hoy") hasta que el staff confirme el pago.
     expect(screen.getAllByText("Por confirmar").length).toBe(2);
     expect(screen.queryByText("Días restantes")).toBeNull();
 
-    fireEvent.click(screen.getByText("Completar pago"));
+    fireEvent.click(screen.getByText("Pagar con Yape"));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith("/pagos/9/checkout");
-      expect(screen.getByText("Pagar con PagoEfectivo")).toBeDefined();
+      expect(screen.getByAltText("Código QR para pagar con Yape")).toBeDefined();
     });
+    expect(api.post).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Ocultar QR"));
+    expect(screen.queryByAltText("Código QR para pagar con Yape")).toBeNull();
   });
 });

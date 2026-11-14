@@ -922,20 +922,22 @@ Venta en estado ANULADA. Stock del producto restaurado.
 
 ---
 
-# MÓDULO: WEBHOOKS Y PASARELA DE PAGOS
+# MÓDULO: CONFIRMACIÓN MANUAL DE PAGOS POR YAPE
 
-## CP-073 Webhook Actualiza Estado de Venta/Pago
+## CP-073 Staff Confirma un Pago de Autoservicio Pendiente
 
 ### Objetivo
-Validar que `POST /webhooks/pagos` con un payload simulado (MockGateway) actualice el estado de la venta/pago asociado.
+Validar que `POST /pagos/{id}/confirmar` active la membresía asociada cuando el staff confirma, después de verificar a mano que la transferencia de Yape llegó (compra de membresía por autoservicio, ver `POST /cliente-membresias/comprar`).
 
 ### Resultado Esperado
 ```text
-Venta/pago pasa de PENDIENTE a CONFIRMADA (o FALLIDA según el payload).
+Pago pasa de PENDIENTE a PAGADO. La ClienteMembresia ligada (también PENDIENTE)
+se activa con fecha_inicio/fecha_fin calculadas desde hoy. Un socio (no staff)
+que intenta confirmar su propio pago recibe 403.
 ```
 
 ### Nota
-No existe aún validación de firma/origen del webhook contra un proveedor real (Culqi u otro) — ver `Pendientes.md` P-02. Este caso valida el flujo con `MockGateway`, no la seguridad del webhook en producción.
+No hay pasarela de pago ni webhook: todo pago se cobra directamente por Yape, Plin o efectivo. El único caso que queda PENDIENTE es la compra de membresía por autoservicio, donde el socio paga por su cuenta escaneando un QR de Yape estático y el staff confirma a mano.
 
 ---
 

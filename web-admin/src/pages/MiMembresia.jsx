@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { useClienteActual } from "../hooks/useClienteActual";
-import CheckoutModal from "../components/CheckoutModal";
 import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
 
 function MiMembresia() {
@@ -11,8 +10,7 @@ function MiMembresia() {
   const [planes, setPlanes] = useState([]);
   const [error, setError] = useState("");
   const [comprandoId, setComprandoId] = useState(null);
-  const [pagandoId, setPagandoId] = useState(null);
-  const [checkoutInfo, setCheckoutInfo] = useState(null);
+  const [mostrarQr, setMostrarQr] = useState(false);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -114,19 +112,6 @@ function MiMembresia() {
     }
   };
 
-  const pagarPendiente = async (id_pago) => {
-    try {
-      setPagandoId(id_pago);
-      setError("");
-      const res = await api.post(`/pagos/${id_pago}/checkout`);
-      setCheckoutInfo(res.data);
-    } catch (err) {
-      setError(err.response?.data?.detail || "No se pudo iniciar el pago.");
-    } finally {
-      setPagandoId(null);
-    }
-  };
-
   return (
     <div className="page-container">
       <section className="page-header-pro">
@@ -145,17 +130,25 @@ function MiMembresia() {
         <section className="card promo-card stacked">
           <span className="badge">PAGO PENDIENTE</span>
           <h2>{membresiaPendiente.plan?.nombre || `Plan #${membresiaPendiente.id_membresia}`}</h2>
-          <p>Completa el pago para activar tu membresía.</p>
+          <p>Paga con Yape para activar tu membresía. El staff confirma tu pago apenas vea que llegó.</p>
           <div className="price-box">
             <strong>S/ {obtenerPrecio(membresiaPendiente)}</strong>
           </div>
           <button
             className="btn-primary btn-full-top"
-            disabled={pagandoId === pagoPendiente.id_pago}
-            onClick={() => pagarPendiente(pagoPendiente.id_pago)}
+            onClick={() => setMostrarQr((actual) => !actual)}
           >
-            {pagandoId === pagoPendiente.id_pago ? "Generando pago..." : "Completar pago"}
+            {mostrarQr ? "Ocultar QR" : "Pagar con Yape"}
           </button>
+          {mostrarQr && (
+            <div className="order-qr">
+              <img src="/yape-qr.png" alt="Código QR para pagar con Yape" />
+              <p className="item-description">
+                Escanea con Yape y paga <strong>S/ {obtenerPrecio(membresiaPendiente)}</strong>. El staff
+                activará tu membresía apenas confirme que la transferencia llegó.
+              </p>
+            </div>
+          )}
         </section>
       )}
 
@@ -302,8 +295,6 @@ function MiMembresia() {
           </section>
         </>
       )}
-
-      <CheckoutModal info={checkoutInfo} onClose={() => setCheckoutInfo(null)} />
     </div>
   );
 }

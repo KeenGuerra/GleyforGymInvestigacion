@@ -1,9 +1,11 @@
 """
 Pruebas de la compra de membresía por autoservicio (POST /cliente-membresias/comprar
-+ POST /pagos/{id_pago}/checkout + webhook), que sigue el mismo patrón ya
-probado para ventas de productos (ver test_comercio.py,
++ POST /pagos/{id_pago}/confirmar), que sigue el mismo patrón ya probado para
+ventas de productos (ver test_comercio.py,
 test_solicitar_venta_queda_pendiente_sin_tocar_stock_y_confirmar_si_lo_hace)
-pero para ClienteMembresia/Pago.
+pero para ClienteMembresia/Pago: el socio paga por su cuenta escaneando el QR
+de Yape (ver MiMembresia.jsx), y el staff confirma a mano después de verificar
+que la transferencia llegó.
 
 Aísla su propio motor SQLite para no interferir con los otros archivos de
 test que también usan membresías/pagos (test_crud.py, test_backend.py).
@@ -11,7 +13,6 @@ test que también usan membresías/pagos (test_crud.py, test_backend.py).
 import sys
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -29,7 +30,6 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
 from app.security import crear_token, encriptar_password
-from app import config
 import app.models as models
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_compra_membresia.db"
@@ -39,8 +39,6 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
-
-HEADERS_WEBHOOK = {"X-Webhook-Secret": config.WEBHOOK_SECRET}
 
 
 def override_get_db():
@@ -110,24 +108,6 @@ def crear_cliente(id_usuario, id_cliente, headers_admin, telefono=None):
     return get_auth_headers(rol="CLIENTE", id_usuario=id_usuario)
 
 
-class _GatewayRealStub:
-    """Simula un gateway real (sin resolver_transaccion, a diferencia de
-    MockGateway) para probar el chequeo de teléfono en iniciar_checkout_pago
-    y la idempotencia de crear_checkout()/obtener_checkout()."""
-
-    def __init__(self):
-        self.llamadas_crear = 0
-        self.llamadas_obtener = 0
-
-    def crear_checkout(self, monto, referencia, cliente):
-        self.llamadas_crear += 1
-        return {"id_transaccion_externa": "ext_stub_1", "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
-
-    def obtener_checkout(self, id_transaccion_externa):
-        self.llamadas_obtener += 1
-        return {"id_transaccion_externa": id_transaccion_externa, "url_checkout": "https://pago.simulado/1", "estado": "PENDIENTE"}
-
-
 def test_comprar_membresia_crea_pago_y_cliente_membresia_pendientes():
     populate()
     headers_admin = get_auth_headers()
@@ -139,6 +119,7 @@ def test_comprar_membresia_crea_pago_y_cliente_membresia_pendientes():
     pago = res.json()
     assert pago["estado"] == "PENDIENTE"
     assert pago["monto"] == 100.0
+    assert pago["metodo_pago"] == "YAPE"
 
     db = TestingSessionLocal()
     cm = db.query(models.ClienteMembresia).filter(
@@ -201,7 +182,10 @@ def test_comprar_membresia_bloquea_si_ya_tiene_activa_o_pendiente():
     assert segunda.status_code == 409
 
 
-def test_webhook_pago_membresia_pagado_activa_cliente_membresia():
+def test_confirmar_pago_membresia_activa_cliente_membresia():
+    """El staff confirma a mano (POST /pagos/{id}/confirmar) después de ver
+    que la transferencia de Yape llegó -- reemplaza al antiguo webhook de
+    Culqi, que hacía lo mismo automáticamente."""
     populate()
     headers_admin = get_auth_headers()
     id_membresia = crear_plan(headers_admin, precio=150.0, duracion_dias=30)
@@ -213,16 +197,12 @@ def test_webhook_pago_membresia_pagado_activa_cliente_membresia():
     id_pago = pago["id_pago"]
     id_cliente_membresia = pago["id_cliente_membresia"]
 
-    checkout = client.post(f"/pagos/{id_pago}/checkout", headers=headers_cliente)
-    assert checkout.status_code == 200
-    id_transaccion = checkout.json()["id_transaccion_externa"]
+    # El socio no puede confirmar su propio pago -- solo el staff.
+    assert client.post(f"/pagos/{id_pago}/confirmar", headers=headers_cliente).status_code == 403
 
-    res_webhook = client.post(
-        "/webhooks/pagos",
-        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
-        headers=HEADERS_WEBHOOK,
-    )
-    assert res_webhook.status_code == 200
+    res_confirmar = client.post(f"/pagos/{id_pago}/confirmar", headers=headers_admin)
+    assert res_confirmar.status_code == 200
+    assert res_confirmar.json()["estado"] == "PAGADO"
 
     db = TestingSessionLocal()
     cm = db.query(models.ClienteMembresia).filter(
@@ -234,8 +214,15 @@ def test_webhook_pago_membresia_pagado_activa_cliente_membresia():
     assert pago_db.estado == "PAGADO"
     db.close()
 
+    # Un pago ya PAGADO no se puede volver a confirmar.
+    assert client.post(f"/pagos/{id_pago}/confirmar", headers=headers_admin).status_code == 409
 
-def test_webhook_pago_membresia_fallido_cancela_cliente_membresia_pendiente():
+
+def test_anular_pago_membresia_pendiente_cancela_cliente_membresia():
+    """Si el socio nunca llega a pagar (o paga mal), el staff anula el pago
+    pendiente en vez de confirmarlo -- la ClienteMembresia asociada se
+    cancela con él, para que el socio pueda volver a intentar comprar en vez
+    de quedar bloqueado para siempre."""
     populate()
     headers_admin = get_auth_headers()
     id_membresia = crear_plan(headers_admin)
@@ -247,15 +234,8 @@ def test_webhook_pago_membresia_fallido_cancela_cliente_membresia_pendiente():
     id_pago = pago["id_pago"]
     id_cliente_membresia = pago["id_cliente_membresia"]
 
-    checkout = client.post(f"/pagos/{id_pago}/checkout", headers=headers_cliente)
-    id_transaccion = checkout.json()["id_transaccion_externa"]
-
-    res_webhook = client.post(
-        "/webhooks/pagos",
-        json={"id_transaccion_externa": id_transaccion, "resultado": "FALLIDO"},
-        headers=HEADERS_WEBHOOK,
-    )
-    assert res_webhook.status_code == 200
+    res_anular = client.delete(f"/pagos/{id_pago}", headers=headers_admin)
+    assert res_anular.status_code == 200
 
     db = TestingSessionLocal()
     cm = db.query(models.ClienteMembresia).filter(
@@ -269,69 +249,6 @@ def test_webhook_pago_membresia_fallido_cancela_cliente_membresia_pendiente():
         "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
     )
     assert reintento.status_code == 200
-
-
-def test_checkout_con_gateway_real_exige_telefono_valido():
-    """Reproduce el bug real: Culqi rechaza la orden con 400 si el teléfono
-    llega vacío — antes de esta corrección, ese 400 de Culqi reventaba como
-    un 500 genérico en vez de avisarle al cliente que falta su teléfono."""
-    populate()
-    headers_admin = get_auth_headers()
-    id_membresia = crear_plan(headers_admin)
-    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono=None)
-
-    pago = client.post(
-        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
-    ).json()
-
-    with patch("app.routes.pagos.gateway", _GatewayRealStub()):
-        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
-
-    assert res.status_code == 400
-
-
-def test_checkout_con_gateway_real_y_telefono_valido_funciona():
-    populate()
-    headers_admin = get_auth_headers()
-    id_membresia = crear_plan(headers_admin)
-    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono="987654321")
-
-    pago = client.post(
-        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
-    ).json()
-
-    with patch("app.routes.pagos.gateway", _GatewayRealStub()):
-        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
-
-    assert res.status_code == 200
-    assert res.json()["id_transaccion_externa"] == "ext_stub_1"
-
-
-def test_checkout_repetido_no_vuelve_a_crear_la_orden():
-    """Antes de esta correccion, pedir 'Completar pago' una segunda vez para
-    el mismo Pago (ej. el cliente cierra el modal y lo vuelve a abrir) volvia
-    a llamar a crear_checkout() con la misma referencia -- Culqi real la
-    rechaza (order_number debe ser unico para siempre). Ahora reusa el
-    checkout ya creado via obtener_checkout()."""
-    populate()
-    headers_admin = get_auth_headers()
-    id_membresia = crear_plan(headers_admin)
-    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono="987654321")
-
-    pago = client.post(
-        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
-    ).json()
-
-    stub = _GatewayRealStub()
-    with patch("app.routes.pagos.gateway", stub):
-        primero = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
-        segundo = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
-
-    assert primero.status_code == 200
-    assert segundo.status_code == 200
-    assert primero.json()["id_transaccion_externa"] == segundo.json()["id_transaccion_externa"]
-    assert stub.llamadas_crear == 1
-    assert stub.llamadas_obtener == 1
 
 
 def test_indice_unico_impide_dos_membresias_activas_o_pendientes_para_el_mismo_cliente():
@@ -383,109 +300,3 @@ def test_comprar_membresia_condicion_de_carrera_devuelve_409_no_500():
 
     res = client.post("/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente)
     assert res.status_code == 409
-
-
-def test_checkout_con_orden_vencida_crea_una_nueva_en_vez_de_quedar_inutilizable():
-    """Antes de esta correccion, si obtener_checkout() fallaba (orden vencida
-    o eliminada en el proveedor), la excepcion llegaba sin control al 500
-    generico, y como id_transaccion_externa seguia seteado, CADA reintento
-    futuro volveria a fallar igual -- el pago quedaba inutilizable para
-    siempre. Ahora se limpia la referencia vieja y se crea una nueva."""
-    populate()
-    headers_admin = get_auth_headers()
-    id_membresia = crear_plan(headers_admin)
-    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono="987654321")
-
-    pago = client.post(
-        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
-    ).json()
-
-    db = TestingSessionLocal()
-    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == pago["id_pago"]).first()
-    pago_db.id_transaccion_externa = "ord_vencida_de_antes"
-    db.commit()
-    db.close()
-
-    class _GatewayOrdenVencidaStub:
-        def obtener_checkout(self, id_transaccion_externa):
-            raise RuntimeError("orden vencida o no encontrada")
-
-        def crear_checkout(self, monto, referencia, cliente):
-            return {"id_transaccion_externa": "ord_nueva", "url_checkout": "https://pago.simulado/2", "estado": "PENDIENTE"}
-
-    with patch("app.routes.pagos.gateway", _GatewayOrdenVencidaStub()):
-        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
-
-    assert res.status_code == 200
-    assert res.json()["id_transaccion_externa"] == "ord_nueva"
-
-
-def test_checkout_de_orden_vencida_no_exige_telefono_para_recuperarla():
-    """El chequeo de telefono solo debe aplicar al CREAR una orden nueva, no
-    al intentar recuperar una ya existente."""
-    populate()
-    headers_admin = get_auth_headers()
-    id_membresia = crear_plan(headers_admin)
-    # Sin telefono -- antes esto bloqueaba incluso el intento de recuperar
-    # una orden ya creada.
-    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin, telefono=None)
-
-    pago = client.post(
-        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
-    ).json()
-
-    db = TestingSessionLocal()
-    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == pago["id_pago"]).first()
-    pago_db.id_transaccion_externa = "ord_ya_creada"
-    db.commit()
-    db.close()
-
-    with patch("app.routes.pagos.gateway", _GatewayRealStub()):
-        res = client.post(f"/pagos/{pago['id_pago']}/checkout", headers=headers_cliente)
-
-    assert res.status_code == 200
-
-
-def test_webhook_fallido_despues_de_pagado_no_revierte_la_membresia():
-    """Antes de esta correccion, un webhook FALLIDO que llegara DESPUES de
-    uno PAGADO ya procesado (reintento del proveedor, o fuera de orden)
-    revertia pago.estado a FALLIDO sin deshacer la activacion de la
-    membresia -- quedaba una membresia ACTIVA con un pago marcado FALLIDO."""
-    populate()
-    headers_admin = get_auth_headers()
-    id_membresia = crear_plan(headers_admin)
-    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin)
-
-    pago = client.post(
-        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
-    ).json()
-    id_pago = pago["id_pago"]
-    id_cliente_membresia = pago["id_cliente_membresia"]
-
-    checkout = client.post(f"/pagos/{id_pago}/checkout", headers=headers_cliente)
-    id_transaccion = checkout.json()["id_transaccion_externa"]
-
-    res_pagado = client.post(
-        "/webhooks/pagos",
-        json={"id_transaccion_externa": id_transaccion, "resultado": "EXITOSO"},
-        headers=HEADERS_WEBHOOK,
-    )
-    assert res_pagado.status_code == 200
-
-    # Webhook FALLIDO repetido/fuera de orden para la MISMA transaccion ya
-    # confirmada -- no debe hacer nada.
-    res_fallido = client.post(
-        "/webhooks/pagos",
-        json={"id_transaccion_externa": id_transaccion, "resultado": "FALLIDO"},
-        headers=HEADERS_WEBHOOK,
-    )
-    assert res_fallido.status_code == 200
-
-    db = TestingSessionLocal()
-    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
-    cm = db.query(models.ClienteMembresia).filter(
-        models.ClienteMembresia.id_cliente_membresia == id_cliente_membresia
-    ).first()
-    assert pago_db.estado == "PAGADO"
-    assert cm.estado == "ACTIVA"
-    db.close()

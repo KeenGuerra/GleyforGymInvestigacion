@@ -5,14 +5,12 @@ from fastapi.responses import Response
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
-import logging
-import uuid
+from datetime import date, timedelta
 
 from app.database import get_db
 from app import models, schemas
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
-from app.pagos_gateway import gateway
 from app.recibos import generar_recibo_pago
 from app.constants import (
     MSG_PAGO_NO_ENCONTRADO,
@@ -22,8 +20,6 @@ from app.constants import (
     ESTADO_ACTIVO,
     MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA
 )
-
-logger = logging.getLogger("gleyforgym")
 
 router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 
@@ -85,90 +81,55 @@ def crear_pago(
     return nuevo_pago
 
 
+def aplicar_confirmacion_pago(db: Session, pago: models.Pago) -> None:
+    """Activa la ClienteMembresia PENDIENTE ligada a este pago (compra de
+    membresía por autoservicio, ver POST /cliente-membresias/comprar). Si el
+    pago no venía de ese flujo (ej. fue creado ya resuelto por el staff) no
+    hay nada que activar."""
+    cliente_membresia = pago.cliente_membresia
+    if cliente_membresia and cliente_membresia.estado == "PENDIENTE":
+        hoy = date.today()
+        cliente_membresia.fecha_inicio = hoy
+        cliente_membresia.fecha_fin = hoy + timedelta(days=cliente_membresia.membresia.duracion_dias)
+        cliente_membresia.estado = "ACTIVA"
+    db.commit()
+
+
 @router.post(
-    "/{id_pago}/checkout",
+    "/{id_pago}/confirmar",
+    response_model=schemas.PagoResponse,
     responses={
-        400: {"description": "El pago no está en estado PENDIENTE"},
         401: {"description": "Token inválido o expirado"},
-        404: {"description": "Pago no encontrado"}
+        404: {"description": "Pago no encontrado"},
+        409: {"description": "El pago no está en estado PENDIENTE"},
     }
 )
-def iniciar_checkout_pago(
+def confirmar_pago(
     id_pago: int,
     db: Annotated[Session, Depends(get_db)],
-    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+    usuario_actual: Annotated[dict, Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
 ):
-    """
-    Arquitectura lista para conectar una pasarela real (ver app/pagos_gateway):
-    hoy usa MockGateway, que no mueve dinero. El resultado llega después vía
-    POST /webhooks/pagos, igual que llegaría de un proveedor real.
-    """
+    """Todo pago se cobra por Yape, Plin o efectivo directamente en el
+    mostrador (ya nace PAGADO, ver crear_pago) -- el único caso que llega
+    aquí en PENDIENTE es la compra de membresía por autoservicio (ver POST
+    /cliente-membresias/comprar), donde el socio paga por su cuenta
+    escaneando el QR de Yape y el staff confirma a mano después de verificar
+    que la transferencia llegó a la cuenta del gimnasio."""
     pago_db = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
 
     if not pago_db:
         raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
 
-    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db, roles_adicionales=("RECEPCIONISTA",))
-
     if pago_db.estado != "PENDIENTE":
-        raise HTTPException(status_code=400, detail="El pago no está en estado PENDIENTE")
+        raise HTTPException(status_code=409, detail="El pago no está en estado PENDIENTE")
 
-    cliente_db = pago_db.cliente
+    pago_db.estado = "PAGADO"
+    aplicar_confirmacion_pago(db, pago_db)
+    db.refresh(pago_db)
 
-    # Si ya se inició un checkout antes para este pago (ej. el cliente cerró
-    # el modal y volvió a pedir "Completar pago"), no se vuelve a crear la
-    # orden: algunos proveedores reales (Culqi incluido) exigen que la
-    # referencia de la orden sea única para siempre, así que una segunda
-    # llamada a crear_checkout() con la misma referencia es rechazada.
-    if pago_db.id_transaccion_externa:
-        try:
-            sesion = gateway.obtener_checkout(pago_db.id_transaccion_externa)
-        except Exception:
-            # La orden pudo vencer (Culqi expira a las 24h) o ya no existir en
-            # el proveedor -- se trata como si nunca se hubiera creado, para
-            # no dejar este pago inutilizable para siempre en cada reintento.
-            logger.warning(
-                "No se pudo recuperar el checkout %s del pago %s, se crea uno nuevo",
-                pago_db.id_transaccion_externa, pago_db.id_pago,
-            )
-            pago_db.id_transaccion_externa = None
+    registrar_auditoria(db, usuario_actual, "CONFIRMAR", "Pago", pago_db.id_pago, f"monto={pago_db.monto}")
 
-    if not pago_db.id_transaccion_externa:
-        # Con un gateway real (ej. Culqi), la orden exige un teléfono válido
-        # (lo rechaza con 400 si llega vacío) — con MockGateway no importa.
-        # Perú: celulares son siempre 9 dígitos. Solo aplica al crear una
-        # orden nueva, no al recuperar una ya creada arriba.
-        if not hasattr(gateway, "resolver_transaccion") and not (
-            cliente_db.telefono and cliente_db.telefono.isdigit() and len(cliente_db.telefono) == 9
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="Registra un teléfono válido de 9 dígitos en tu perfil antes de pagar.",
-            )
-
-        # El sufijo aleatorio evita que la referencia choque con una orden de
-        # OTRO entorno/prueba contra la misma cuenta de Culqi: el id_pago por
-        # sí solo no es único para siempre (se reinicia en cada BD nueva),
-        # pero Culqi exige que order_number sí lo sea en toda la cuenta.
-        sesion = gateway.crear_checkout(
-            pago_db.monto,
-            referencia=f"pago-{pago_db.id_pago}-{uuid.uuid4().hex[:8]}",
-            cliente={
-                "nombres": cliente_db.nombres,
-                "apellidos": cliente_db.apellidos,
-                "correo": cliente_db.usuario.correo,
-                "telefono": cliente_db.telefono,
-            },
-        )
-        pago_db.id_transaccion_externa = sesion["id_transaccion_externa"]
-        db.commit()
-
-    return {
-        "id_pago": pago_db.id_pago,
-        "url_checkout": sesion["url_checkout"],
-        "qr_yape": sesion.get("qr_yape"),
-        "id_transaccion_externa": sesion["id_transaccion_externa"],
-    }
+    return pago_db
 
 
 @router.get(
@@ -283,6 +244,14 @@ def eliminar_pago(
         raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
 
     pago_db.estado = ESTADO_ANULADO
+
+    # Si era un pago de autoservicio todavía PENDIENTE (el socio nunca llegó
+    # a pagar, o pagó mal y el staff anula para que pueda reintentar), la
+    # ClienteMembresia que quedó PENDIENTE junto con él se cancela también
+    # -- si no, se queda huérfana bloqueando al socio de iniciar una compra
+    # nueva (ver índice único en ClienteMembresia).
+    if pago_db.cliente_membresia and pago_db.cliente_membresia.estado == "PENDIENTE":
+        pago_db.cliente_membresia.estado = "CANCELADA"
 
     db.commit()
 

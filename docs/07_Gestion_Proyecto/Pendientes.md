@@ -69,6 +69,17 @@ Falta:
 
 Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yape, sandbox gratuito para tarjetas, onboarding simple) frente a Niubiz/Izipay (más burocrático), MercadoPago (menos adopción de Yape) o Stripe (no opera en Perú/soles).
 
+~~Resuelto (2026-11, decisión final) — Culqi eliminado por completo, a pedido~~: después de confirmar (ver arriba) que el pago real de punta a punta solo se podía probar con la cuenta de producción, nunca en sandbox, y mientras esa cuenta seguía bloqueada por KYC (ver P-22), se decidió no esperar más a Culqi: **todo pago es ahora por Yape, Plin o efectivo, confirmado a mano por el staff** — sin pasarela de pago de ningún tipo. Se eliminó:
+
+- `backend/app/pagos_gateway/` completo (`base.py`, `mock.py`, `culqi.py`, `__init__.py`), `backend/app/routes/webhooks.py`, y las variables `CULQI_SECRET_KEY`/`CULQI_PUBLIC_KEY`/`WEBHOOK_SECRET` (`config.py`, `render.yaml`, `.env.example`).
+- `POST /ventas/{id}/checkout` (ya estaba muerto: `Tienda.jsx` usa un QR de Yape estático desde antes) y `POST /pagos/{id}/checkout`.
+- `web-admin/src/components/CheckoutModal.jsx`.
+- Los estados que solo existían para el camino de webhook (`FALLIDO`/`REEMBOLSADO` en `Pago`, `FALLIDA` en `Venta`) y los métodos de pago `TARJETA`/`PAGOEFECTIVO`, que ya no tienen ningún camino que los produzca.
+
+En su lugar, **el mismo patrón que ya tenía la Tienda online** (QR de Yape estático + confirmación manual del staff) se extendió a la compra de membresía por autoservicio (ver P-19): nuevo `POST /pagos/{id}/confirmar` (solo staff — ADMIN/ENTRENADOR/RECEPCIONISTA, nunca el propio socio) que marca el pago `PAGADO` y activa la `ClienteMembresia` ligada, reemplazando lo que antes hacía el webhook. Anular (`DELETE /pagos/{id}`) un pago de autoservicio aún `PENDIENTE` ahora también cancela la `ClienteMembresia` asociada (antes solo lo hacía el camino `FALLIDO` del webhook), para que el socio no quede bloqueado de volver a intentar comprar.
+
+Los métodos de pago para el staff en mostrador siguen siendo exactamente los mismos de siempre: **YAPE, PLIN y EFECTIVO** (`Pagos.jsx`/`Ventas.jsx`) — esta decisión no les cambió nada.
+
 ---
 
 ## P-03 Envío real de correo
@@ -85,11 +96,11 @@ Decisión ya tomada: **Culqi** es la opción recomendada para Perú (soporte Yap
 
 ## P-19 Compra de membresía por autoservicio
 
-~~Resuelto (2026-11)~~: antes solo ADMIN/ENTRENADOR podían asignar una membresía (`POST /cliente-membresias/`). Se agregó `POST /cliente-membresias/comprar` para que el propio socio compre un plan, siguiendo el mismo patrón solicitar → pagar → confirmar por webhook que ya usan las ventas de la tienda (ver P-02). Al comprar se crean una `ClienteMembresia` y un `Pago` en estado `PENDIENTE`; el webhook activa la membresía (con fechas reales, `fecha_inicio`/`fecha_fin` recalculadas al confirmarse) cuando el pago queda `PAGADO`, o la deja `CANCELADA` si queda `FALLIDO` (para poder reintentar). Se bloquea con 409 comprar un nuevo plan mientras ya hay uno `ACTIVA`/`PAUSADA`/`PENDIENTE`.
+~~Resuelto (2026-11)~~: antes solo ADMIN/ENTRENADOR podían asignar una membresía (`POST /cliente-membresias/`). Se agregó `POST /cliente-membresias/comprar` para que el propio socio compre un plan, siguiendo el mismo patrón solicitar → pagar → confirmar que ya usan las ventas de la tienda (ver P-02). Al comprar se crean una `ClienteMembresia` y un `Pago` en estado `PENDIENTE`.
 
-En el frontend, `MiMembresia.jsx` ahora muestra los planes disponibles con botón "Comprar" cuando el socio no tiene membresía, y "Completar pago" (reutilizando `CheckoutModal.jsx` ya existente) cuando hay un pago pendiente. Backend: 142→149 pruebas (7 nuevas en `test_compra_membresia.py`). Frontend: 48→50 archivos / 277→288 pruebas.
+**Avance (2026-11, con la eliminación de Culqi en P-02)**: el socio paga escaneando un QR de Yape estático en `MiMembresia.jsx` (botón "Pagar con Yape", mismo patrón que `Tienda.jsx`) y el staff confirma a mano con `POST /pagos/{id}/confirmar` cuando ve que la transferencia llegó — esto activa la `ClienteMembresia` (fechas reales, `fecha_inicio`/`fecha_fin` recalculadas al confirmarse). Si el socio nunca paga, el staff anula el pago (`DELETE /pagos/{id}`) y la `ClienteMembresia` pendiente se cancela con él, para que pueda reintentar. Se sigue bloqueando con 409 comprar un nuevo plan mientras ya hay uno `ACTIVA`/`PAUSADA`/`PENDIENTE`.
 
-Sigue pendiente de la misma confirmación que P-02: un pago real de punta a punta todavía no se ha completado para este flujo. **Actualización (2026-11)**: se confirmó que esto no se puede probar en sandbox (ver detalle en P-02) — queda bloqueado junto con P-22, a la espera de la cuenta real de Culqi.
+Ya no depende de ninguna pasarela ni de confirmación en producción: el flujo completo (comprar → pagar → confirmar → anular) se prueba de punta a punta en `test_compra_membresia.py`, sin bloqueo externo alguno.
 
 ---
 
@@ -109,20 +120,11 @@ Ahora el interceptor solo cierra sesión si **ya había** un token guardado ante
 
 ---
 
-## P-22 Checklist para pasar a la cuenta real de Culqi (producción)
+## P-22 Checklist para pasar a la cuenta real de Culqi (producción) — descartado junto con Culqi
 
-El gimnasio pagará en persona con un POS físico aparte (no integrado a este sistema — hoy esas ventas se anotan a mano), pero quiere usar su **cuenta real de Culqi** para las compras desde la web (Tienda + Mi Membresía) en vez de la cuenta de pruebas (sandbox) usada hasta ahora. El código no distingue entre sandbox/real (usa la misma URL de Culqi, solo cambia según el prefijo de la llave), pero faltan pasos operativos antes de activarlo:
+~~Resuelto (2026-11) — ya no aplica~~: este checklist completo (reemplazar llaves, registrar webhook en Producción, limpiar pagos de prueba, probar con monto real) dejó de tener sentido al eliminarse Culqi por completo (ver P-02) — no hay cuenta real que activar, ni webhook que registrar, porque no hay pasarela de pago de ningún tipo. Todo pago es ahora por Yape/Plin/efectivo, confirmado a mano por el staff.
 
-1. **Reemplazar las llaves en Render**: `CULQI_SECRET_KEY`/`CULQI_PUBLIC_KEY` en el dashboard del backend tienen hoy las llaves de sandbox (`sk_test_.../pk_test_...`) — cambiarlas por las llaves reales (`sk_live_.../pk_live_...`) de la cuenta del gimnasio.
-2. **Volver a registrar el webhook en el ambiente de Producción de Culqi**: el webhook (Crear Webhook → Órdenes → status/changed → `.../webhooks/pagos?secret=...`) se configuró en la pestaña de Desarrollo — Culqi separa Desarrollo/Producción y no traslada la configuración sola. Si se olvida este paso, los pagos reales no activarían la membresía/venta automáticamente (quedarían como PENDIENTE para siempre).
-3. **Cancelar los `Pago`/`Venta`/`ClienteMembresia` que quedaron PENDIENTE de las pruebas con sandbox** antes de lanzar — sus `id_transaccion_externa` son de órdenes `ord_test_...` que no existen para la cuenta real, así que mejor no dejarlos sueltos confundiendo al staff.
-4. **Probar con un monto real pequeño** (mínimo S/ 6.00 — confirmado contra la API real de Culqi, que rechaza montos menores) antes de anunciarlo a los socios, para confirmar que el webhook llega y activa correctamente con dinero de verdad — mismo patrón que se usó en sandbox (ver P-02), pero esta vez si se cobra.
-
-No se resuelve nada de esto todavía — queda anotado para cuando el gimnasio tenga lista su cuenta real de Culqi (KYC/verificación de negocio aprobada por Culqi, que es un trámite del lado del gimnasio, no de este código).
-
-**Avance (2026-11)**: se verificó directamente en el panel de Culqi (pestaña Producción) que la cuenta real (RUC `10763338041`) sigue en proceso de verificación — mensaje "Tu comercio está en proceso de creación", sin llaves `sk_live_`/`pk_live_` disponibles todavía. Se confirmó además (ver P-02) que **el paso 4 de esta lista es ahora la única forma de confirmar el flujo de Yape/PagoEfectivo de punta a punta** — ya no es posible hacerlo gratis en sandbox, así que esta prueba resuelve a la vez P-02 y P-19.
-
-Se preparó el terreno para cuando aprueben la cuenta: se creó una membresía temporal **"Plan de Prueba Culqi S/6"** (`id_membresia=2`, estado ACTIVO) en producción, pensada exactamente para el paso 4 — comprarla desde "Mi Membresía" cuesta el mínimo que acepta Culqi. También se limpió, cumpliendo el paso 3, una `ClienteMembresia`/`Pago` que había quedado activa de pruebas anteriores de sandbox (orden `ord_test_2wZ4teloKHHAFsDS`, pago ya `ANULADO`) para que no bloqueara la compra de prueba.
+**Pendiente manual en producción (no es código)**: la membresía temporal **"Plan de Prueba Culqi S/6"** (`id_membresia=2`) que se había creado en producción específicamente para probar el paso 4 de este checklist ya no tiene ningún propósito — conviene desactivarla o renombrarla desde el panel admin (`Membresias.jsx`) para no confundir al staff, aunque no afecta el funcionamiento del sistema si se deja como está.
 
 **Bloqueado** a la espera de que Culqi apruebe el KYC del comercio — sin fecha estimada, depende de Culqi, no de este proyecto.
 

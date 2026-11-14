@@ -377,7 +377,7 @@ describe("Pagos Page Component", () => {
     });
   });
 
-  it("starts a checkout for a pending payment and shows the result in the modal", async () => {
+  it("confirms a pending payment after the staff verifies the Yape transfer arrived", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
       if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
@@ -385,34 +385,22 @@ describe("Pagos Page Component", () => {
         data: [{ ...mockPagos[0], estado: "PENDIENTE" }],
       });
     });
-    api.post.mockResolvedValue({
-      data: {
-        id_pago: 1,
-        url_checkout: "https://api.culqi.com/v2/orders/ord_test_123",
-        qr_yape: "https://niubizqr.pagoefectivo.pe/abc.png",
-        id_transaccion_externa: "ord_test_123",
-      },
-    });
+    api.post.mockResolvedValue({ data: { ...mockPagos[0], estado: "PAGADO" } });
 
     render(<Pagos />);
 
     await waitFor(() => {
-      expect(screen.getByText("Cobrar")).toBeDefined();
+      expect(screen.getByText("Confirmar pago")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText("Cobrar"));
+    fireEvent.click(screen.getByText("Confirmar pago"));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith("/pagos/1/checkout");
-      expect(screen.getByText("Completar pago")).toBeDefined();
-      expect(screen.getByAltText("Código QR para pagar con Yape")).toBeDefined();
+      expect(api.post).toHaveBeenCalledWith("/pagos/1/confirmar");
     });
-
-    fireEvent.click(screen.getByText("Cerrar"));
-    expect(screen.queryByText("Completar pago")).toBeNull();
   });
 
-  it("shows a distinct badge and label for a self-service (AUTOSERVICIO) pending payment", async () => {
+  it("shows a distinct badge for a self-service (AUTOSERVICIO) pending payment", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
       if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
@@ -425,12 +413,11 @@ describe("Pagos Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("En línea")).toBeDefined();
-      expect(screen.getByText("Ver estado")).toBeDefined();
-      expect(screen.queryByText("Cobrar")).toBeNull();
+      expect(screen.getByText("Confirmar pago")).toBeDefined();
     });
   });
 
-  it("shows an error when starting a checkout fails", async () => {
+  it("shows an error when confirming a payment fails", async () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
       if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
@@ -438,18 +425,18 @@ describe("Pagos Page Component", () => {
         data: [{ ...mockPagos[0], estado: "PENDIENTE" }],
       });
     });
-    api.post.mockRejectedValue({ response: { data: { detail: "CULQI_SECRET_KEY no configurada" } } });
+    api.post.mockRejectedValue({ response: { data: { detail: "El pago no está en estado PENDIENTE" } } });
 
     render(<Pagos />);
 
     await waitFor(() => {
-      expect(screen.getByText("Cobrar")).toBeDefined();
+      expect(screen.getByText("Confirmar pago")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText("Cobrar"));
+    fireEvent.click(screen.getByText("Confirmar pago"));
 
     await waitFor(() => {
-      expect(screen.getByText("CULQI_SECRET_KEY no configurada")).toBeDefined();
+      expect(screen.getByText("El pago no está en estado PENDIENTE")).toBeDefined();
     });
   });
 });

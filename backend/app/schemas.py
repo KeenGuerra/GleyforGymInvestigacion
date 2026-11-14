@@ -16,8 +16,8 @@ EstadoRutina = Literal["ACTIVA", "INACTIVA"]
 EstadoClienteMembresia = Literal["ACTIVA", "PAUSADA", "TERMINADA", "CANCELADA", "PENDIENTE"]
 EstadoRevision = Literal["pendiente", "aprobada", "aprobada_con_cambios", "rechazada"]
 
-MetodoPago = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA"]
-EstadoPago = Literal["PAGADO", "PENDIENTE", "ANULADO", "FALLIDO", "REEMBOLSADO"]
+MetodoPago = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA"]
+EstadoPago = Literal["PAGADO", "PENDIENTE", "ANULADO"]
 
 
 # =========================
@@ -621,10 +621,10 @@ class ComidaOut(ComidaCreate):
 
 EstadoProducto = Literal["ACTIVO", "INACTIVO"]
 EstadoCompra = Literal["PENDIENTE", "CONFIRMADA", "ANULADA"]
-EstadoVenta = Literal["PENDIENTE", "CONFIRMADA", "ENTREGADA", "ANULADA", "FALLIDA"]
+EstadoVenta = Literal["PENDIENTE", "CONFIRMADA", "ENTREGADA", "ANULADA"]
 EstadoLote = Literal["ACTIVO", "VENCIDO", "AGOTADO"]
 TipoMovimiento = Literal["ENTRADA_COMPRA", "SALIDA_VENTA", "ENTRADA_ANULACION_VENTA", "SALIDA_ANULACION_COMPRA", "AJUSTE"]
-MetodoPagoVenta = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "TARJETA", "PAGOEFECTIVO"]
+MetodoPagoVenta = Literal["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA"]
 
 
 # =========================

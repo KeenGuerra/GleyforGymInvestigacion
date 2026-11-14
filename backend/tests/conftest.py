@@ -4,7 +4,6 @@ import os
 # backend/.env en la máquina que la ejecuta (ej. CI). Se usa setdefault para no
 # pisar variables que la máquina ya tenga configuradas.
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
-os.environ.setdefault("WEBHOOK_SECRET", "test-webhook-secret-not-for-production")
 os.environ.setdefault("ALGORITHM", "HS256")
 os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:5173")
@@ -20,8 +19,3 @@ os.environ["BREVO_API_KEY"] = ""
 # Mismo motivo: los tests nunca deben llamar a la API real de Anthropic (ni
 # gastar cuota paga) sin importar lo que tenga backend/.env en esta máquina.
 os.environ["ANTHROPIC_API_KEY"] = ""
-
-# Mismo motivo: los tests deben usar siempre MockGateway (pagos_gateway),
-# nunca llamar a la API real de Culqi, sin importar lo que tenga
-# backend/.env en esta máquina (ej. CULQI_SECRET_KEY de sandbox para P-02).
-os.environ["CULQI_SECRET_KEY"] = ""

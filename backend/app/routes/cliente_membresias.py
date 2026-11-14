@@ -117,8 +117,10 @@ def comprar_membresia(
     usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
 ):
     """Compra de membresía por autoservicio: crea una ClienteMembresia y un
-    Pago en PENDIENTE; el webhook de pagos los activa cuando el gateway
-    confirma el pago (ver aplicar_confirmacion_pago en webhooks.py)."""
+    Pago en PENDIENTE. El socio paga por su cuenta escaneando el QR de Yape
+    (ver MiMembresia.jsx); el staff confirma a mano después de verificar que
+    la transferencia llegó, vía POST /pagos/{id}/confirmar (ver
+    aplicar_confirmacion_pago en pagos.py), que activa esta ClienteMembresia."""
     cliente = db.query(models.Cliente).filter(
         models.Cliente.id_usuario == usuario_actual.get("id_usuario")
     ).first()
@@ -173,7 +175,7 @@ def comprar_membresia(
         id_cliente=cliente.id_cliente,
         id_cliente_membresia=nueva_cm.id_cliente_membresia,
         monto=membresia.precio,
-        metodo_pago="TARJETA",
+        metodo_pago="YAPE",
         fecha_pago=hoy,
         estado=ESTADO_PENDIENTE,
         origen="AUTOSERVICIO",
