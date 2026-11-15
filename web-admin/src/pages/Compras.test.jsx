@@ -84,6 +84,14 @@ describe("Compras Page Component", () => {
     fireEvent.click(screen.getByText("+ Nueva compra"));
     await waitFor(() => expect(screen.getByText("Registrar compra")).toBeDefined());
 
+    // Espera a que el <option> de verdad exista antes de seleccionarlo: las
+    // opciones llegan async (GET /proveedores/), y "Registrar compra" se
+    // muestra en cuanto se abre el formulario, sin esperar esa respuesta --
+    // sin este wait, fireEvent.change puede no encontrar ningún <option
+    // value="1"> todavía y el cambio se pierde en silencio (el <select> no
+    // tiene ese value, así que se queda en "").
+    await waitFor(() => expect(screen.getByRole("option", { name: "Nutrición SAC" })).toBeDefined());
+
     const proveedorSelect = container.querySelector('select[name="id_proveedor"]');
     fireEvent.change(proveedorSelect, { target: { value: "1" } });
     // Evita una condición de carrera: sin esto, los siguientes clics pueden
@@ -93,8 +101,13 @@ describe("Compras Page Component", () => {
 
     fireEvent.click(screen.getByText("+ Agregar producto"));
 
+    // Mismo motivo que arriba: espera el <option> del producto antes de
+    // seleccionarlo (GET /productos/ también es async).
+    await waitFor(() => expect(screen.getByRole("option", { name: "Proteína Whey" })).toBeDefined());
+
     const productoSelect = container.querySelectorAll(".form-grid select")[1];
     fireEvent.change(productoSelect, { target: { value: "1" } });
+    await waitFor(() => expect(productoSelect.value).toBe("1"));
 
     const inputs = container.querySelectorAll('input[type="number"]');
     fireEvent.change(inputs[0], { target: { value: "10" } });

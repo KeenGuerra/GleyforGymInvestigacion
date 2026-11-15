@@ -48,7 +48,7 @@ describe("DetalleRutina Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     api.get.mockImplementation((url) => {
-      if (url.includes("/clientes/")) return Promise.resolve({ data: mockCliente });
+      if (url.includes("/clientes/")) return Promise.resolve({ data: { cliente: mockCliente } });
       return Promise.resolve({ data: mockRutina });
     });
   });
@@ -120,7 +120,7 @@ describe("DetalleRutina Page Component", () => {
 
   it("blocks the WhatsApp message when the client has no valid 9-digit phone", async () => {
     api.get.mockImplementation((url) => {
-      if (url.includes("/clientes/")) return Promise.resolve({ data: { ...mockCliente, telefono: null } });
+      if (url.includes("/clientes/")) return Promise.resolve({ data: { cliente: { ...mockCliente, telefono: null } } });
       return Promise.resolve({ data: mockRutina });
     });
     const openSpy = vi.fn();

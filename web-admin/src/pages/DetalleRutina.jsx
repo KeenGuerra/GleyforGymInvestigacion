@@ -59,7 +59,7 @@ function DetalleRutina() {
         if (res.data?.id_cliente) {
           try {
             const resCliente = await api.get(`/clientes/${res.data.id_cliente}/detalle`);
-            setCliente(resCliente.data);
+            setCliente(resCliente.data.cliente);
           } catch (errorCliente) {
             console.error("Error al cargar el cliente de la rutina:", errorCliente);
           }
