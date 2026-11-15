@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
+import { descargarBlob } from "../utils/descargarArchivo";
 import { formatearFecha } from "../utils/formatearFecha";
 import { useConfirmacion } from "../hooks/useConfirmacion";
 import ConfirmModal from "../components/ConfirmModal";
@@ -23,6 +24,7 @@ function Reportes() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [exportandoTesis, setExportandoTesis] = useState("");
+  const [descargandoExcel, setDescargandoExcel] = useState(false);
 
   const [diasVencimiento, setDiasVencimiento] = useState(7);
   const [membresiasPorVencer, setMembresiasPorVencer] = useState(null);
@@ -172,6 +174,27 @@ function Reportes() {
         { concepto: "Productos con stock bajo (hoy)", valor: resumenGeneral.productos_stock_bajo },
       ]
     );
+  };
+
+  const descargarReporteCompletoExcel = async () => {
+    if (!desde || !hasta) {
+      setError("Selecciona una fecha de inicio y de fin");
+      return;
+    }
+    try {
+      setDescargandoExcel(true);
+      setError("");
+      const res = await api.get("/reportes/general-completo/excel", {
+        params: { desde, hasta },
+        responseType: "blob",
+      });
+      descargarBlob(res.data, `reporte-general-${desde}-a-${hasta}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo descargar el reporte general completo");
+    } finally {
+      setDescargandoExcel(false);
+    }
   };
 
   const exportarAsistencias = () => {
@@ -711,9 +734,14 @@ function Reportes() {
         <section className="table-card">
           <div className="table-header">
             <h2>Resumen general del período</h2>
-            <button className="btn-secondary" onClick={exportarResumenGeneral}>
-              Exportar CSV
-            </button>
+            <div className="header-actions">
+              <button className="btn-secondary" onClick={exportarResumenGeneral}>
+                Exportar CSV
+              </button>
+              <button className="btn-primary" disabled={descargandoExcel} onClick={descargarReporteCompletoExcel}>
+                {descargandoExcel ? "Generando..." : "Descargar reporte completo (Excel)"}
+              </button>
+            </div>
           </div>
 
           <div className="stats-grid">

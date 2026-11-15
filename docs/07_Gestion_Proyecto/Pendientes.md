@@ -190,6 +190,8 @@ Se eligió este canal (y no una API de envío 100% automático como WhatsApp Bus
 
 Ambos con su tabla/tarjetas y exportación a CSV en `Reportes.jsx`, como el resto de reportes del módulo. No se encontró ningún hueco en los reportes formales de la tesis (F-04/05/07/08/09/12/15/16): todos los indicadores que correspondía automatizar ya estaban cubiertos (ver el punto 2 de arriba); los que faltaban eran de negocio, no de tesis.
 
+**Avance (2026-11, continuación 3) — reporte general completo en un solo Excel**: a pedido, se agregó `GET /reportes/general-completo/excel` (`app/reporte_excel.py`, con `openpyxl`) que junta en un solo archivo .xlsx **casi todos los datos del negocio**, una hoja por tema, en vez de exportar CSV por CSV y pegarlos a mano: Resumen (los mismos KPIs de `/resumen-general`), Ingresos, Egresos (por día y por proveedor), Ventas, Compras, Pagos, Membresías, Clientes, Asistencias (por día + top 10 clientes del periodo), Inventario (con alerta de stock bajo por producto) y Rutinas/Nutrición IA (totales y por estado de revisión). Botón "Descargar reporte completo (Excel)" en la sección "Resumen general del período" de `Reportes.jsx`.
+
 ---
 
 ## P-08 Tests de `Navbar.jsx` y `NotFound.jsx`

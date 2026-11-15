@@ -12,6 +12,10 @@ vi.mock("../api/api", () => ({
   },
 }));
 
+vi.mock("../utils/descargarArchivo", () => ({
+  descargarBlob: vi.fn(),
+}));
+
 const mockIngresos = {
   desde: "2026-06-01",
   hasta: "2026-06-30",
@@ -105,6 +109,66 @@ describe("Reportes Page Component", () => {
       expect(screen.getByText("Resumen general del período")).toBeDefined();
       expect(screen.getByText("S/ 600.50")).toBeDefined();
       expect(screen.getByText("S/ 500.50")).toBeDefined();
+    });
+  });
+
+  it("downloads the complete general report as an Excel file with all the data", async () => {
+    const { descargarBlob } = await import("../utils/descargarArchivo");
+    const blobFalso = new Blob(["xlsx"]);
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/resumen-general") return Promise.resolve({ data: mockResumenGeneral });
+      if (url === "/reportes/ingresos") return Promise.resolve({ data: mockIngresos });
+      if (url === "/reportes/compras") return Promise.resolve({ data: mockCompras });
+      if (url === "/reportes/asistencias") return Promise.resolve({ data: mockAsistencias });
+      if (url === "/reportes/productos-mas-vendidos") return Promise.resolve({ data: mockProductosMasVendidos });
+      if (url === "/reportes/ventas-por-metodo-pago") return Promise.resolve({ data: mockVentasPorMetodo });
+      if (url === "/reportes/general-completo/excel") return Promise.resolve({ data: blobFalso });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "2026-06-30" } });
+    fireEvent.click(screen.getByText("Generar reporte"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Descargar reporte completo (Excel)")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Descargar reporte completo (Excel)"));
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/reportes/general-completo/excel", {
+        params: { desde: "2026-06-01", hasta: "2026-06-30" },
+        responseType: "blob",
+      });
+      expect(descargarBlob).toHaveBeenCalledWith(blobFalso, "reporte-general-2026-06-01-a-2026-06-30.xlsx");
+    });
+  });
+
+  it("shows an error when downloading the complete general report fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/general-completo/excel") return Promise.reject(new Error("fail"));
+      if (url === "/reportes/resumen-general") return Promise.resolve({ data: mockResumenGeneral });
+      if (url === "/reportes/ingresos") return Promise.resolve({ data: mockIngresos });
+      if (url === "/reportes/compras") return Promise.resolve({ data: mockCompras });
+      if (url === "/reportes/asistencias") return Promise.resolve({ data: mockAsistencias });
+      if (url === "/reportes/productos-mas-vendidos") return Promise.resolve({ data: mockProductosMasVendidos });
+      if (url === "/reportes/ventas-por-metodo-pago") return Promise.resolve({ data: mockVentasPorMetodo });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Generar reporte"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Descargar reporte completo (Excel)")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Descargar reporte completo (Excel)"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo descargar el reporte general completo")).toBeDefined();
     });
   });
 

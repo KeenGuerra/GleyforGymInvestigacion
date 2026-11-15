@@ -1,6 +1,8 @@
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends
 # pyrefly: ignore [missing-import]
+from fastapi.responses import Response
+# pyrefly: ignore [missing-import]
 from sqlalchemy import func
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
@@ -13,6 +15,7 @@ from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
 from app.constants import ESTADO_REVISION_PENDIENTE
 from app.ia.anonimizacion import codigo_cliente as _codigo_cliente
+from app.reporte_excel import generar_reporte_general_excel
 
 router = APIRouter(
     dependencies=[Depends(obtener_usuario_actual), Depends(requerir_roles("ADMIN", "ENTRENADOR"))]
@@ -759,6 +762,31 @@ def reporte_resumen_general(
         "membresias_vencidas_periodo": membresias_vencidas_periodo,
         "productos_stock_bajo": productos_stock_bajo,
     }
+
+
+@router.get(
+    "/general-completo/excel",
+    responses={401: {"description": "Token inválido o expirado"}},
+)
+def descargar_reporte_general_completo(
+    db: Annotated[Session, Depends(get_db)],
+    desde: date,
+    hasta: date,
+):
+    """Un solo archivo Excel con una hoja por tema (resumen, ingresos,
+    egresos, ventas, compras, pagos, membresías, clientes, asistencias,
+    inventario, rutinas/nutrición IA, entrenadores) -- a diferencia del resto
+    de este router, que exporta un tema a la vez, este junta casi todos los
+    datos del negocio en un solo archivo (ver app/reporte_excel.py)."""
+    contenido = generar_reporte_general_excel(db, desde, hasta)
+
+    return Response(
+        content=contenido,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=reporte-general-{desde.isoformat()}-a-{hasta.isoformat()}.xlsx"
+        },
+    )
 
 
 # =========================

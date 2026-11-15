@@ -961,6 +961,65 @@ def test_reporte_resumen_general():
     assert res_cliente.status_code == 403
 
 
+def test_reporte_general_completo_excel_tiene_todas_las_hojas():
+    """GET /reportes/general-completo/excel junta (casi) todos los datos del
+    negocio en un solo archivo, una hoja por tema -- a diferencia del resto
+    del router, que exporta un tema a la vez."""
+    import io
+    from openpyxl import load_workbook
+
+    populate_comercio()
+    headers = get_auth_headers()
+    id_producto = crear_producto_con_categoria(headers)
+    id_proveedor = crear_proveedor(headers)
+
+    id_compra = client.post(
+        "/compras/",
+        json={"id_proveedor": id_proveedor, "detalles": [{"id_producto": id_producto, "cantidad": 10, "precio_unitario": 30.0}]},
+        headers=headers,
+    ).json()["id_compra"]
+    client.post(f"/compras/{id_compra}/confirmar", headers=headers)
+
+    client.post(
+        "/ventas/",
+        json={"metodo_pago": "EFECTIVO", "detalles": [{"id_producto": id_producto, "cantidad": 2}]},
+        headers=headers,
+    )
+
+    hoy = date.today().isoformat()
+    res = client.get(f"/reportes/general-completo/excel?desde={hoy}&hasta={hoy}", headers=headers)
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert "attachment" in res.headers["content-disposition"]
+
+    wb = load_workbook(io.BytesIO(res.content))
+    assert wb.sheetnames == [
+        "Resumen", "Ingresos", "Egresos", "Ventas", "Compras", "Pagos",
+        "Membresias", "Clientes", "Asistencias", "Inventario",
+        "Rutinas y Nutricion IA", "Entrenadores",
+    ]
+
+    # La hoja de Ventas debe tener el encabezado + la venta de mostrador que
+    # se registró arriba (no vacía -- confirma que la consulta real trae
+    # datos, no solo que el archivo abre).
+    hoja_ventas = wb["Ventas"]
+    assert hoja_ventas["A1"].value == "ID"
+    assert hoja_ventas["A2"].value == 1
+
+    hoja_compras = wb["Compras"]
+    assert hoja_compras["A2"].value == 1
+    assert hoja_compras["B2"].value == "Distribuidora Fit SAC"
+
+    headers_cliente_nuevo = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=2, correo="cliente2@gleyforgym.com",
+                           password_hash=encriptar_password("cliente123"), rol="CLIENTE", estado="ACTIVO"))
+    db.commit()
+    db.close()
+    res_cliente = client.get(f"/reportes/general-completo/excel?desde={hoy}&hasta={hoy}", headers=headers_cliente_nuevo)
+    assert res_cliente.status_code == 403
+
+
 def test_resumen_ventas_cuenta_confirmada_y_entregada_juntas():
     """GET /ventas/resumen debe contar tanto las ventas CONFIRMADA (de la
     Tienda online, pendientes de recojo) como las ENTREGADA (de mostrador, o
