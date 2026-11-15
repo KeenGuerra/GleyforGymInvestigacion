@@ -1020,6 +1020,49 @@ def test_reporte_general_completo_excel_tiene_todas_las_hojas():
     assert res_cliente.status_code == 403
 
 
+def test_reporte_postest_excel_tiene_una_hoja_por_ficha():
+    """GET /reportes/postest/excel -- Excel de apoyo a las fichas de campo
+    del postest (F-04 a F-18), una hoja por ficha con los encabezados
+    exactos del PDF oficial de la tesis."""
+    import io
+    from openpyxl import load_workbook
+
+    populate_comercio()
+    headers = get_auth_headers()
+
+    hoy = date.today().isoformat()
+    res = client.get(f"/reportes/postest/excel?desde={hoy}&hasta={hoy}", headers=headers)
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert "attachment" in res.headers["content-disposition"]
+
+    wb = load_workbook(io.BytesIO(res.content))
+    assert wb.sheetnames == [
+        "F-04 Tiempo de respuesta", "F-05 Precision de registros", "F-07 Desviacion calorica",
+        "F-08 Decisiones de revision", "F-09 Coherencia restricciones", "F-10 Clientes y membresias",
+        "F-11 Registro de pagos", "F-12 Registros sin error", "F-13 Elaboracion de rutinas",
+        "F-14 Planes nutricionales", "F-15 Seguimiento de progreso", "F-16 Exactitud de inventario",
+        "F-17 Registro de una venta", "F-18 Consulta de stock",
+    ]
+
+    # Las hojas de tiempos de proceso humano son plantillas en blanco --
+    # deben traer igual los encabezados exactos de la ficha y 30 filas.
+    hoja_f10 = wb["F-10 Clientes y membresias"]
+    assert hoja_f10["A1"].value == "N°"
+    assert hoja_f10["E1"].value == "Operación (Alta/Renovación)"
+    assert hoja_f10["A2"].value == 1
+    assert hoja_f10["A31"].value == 30
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    db = TestingSessionLocal()
+    db.add(models.Usuario(id_usuario=2, correo="cliente3@gleyforgym.com",
+                           password_hash=encriptar_password("cliente123"), rol="CLIENTE", estado="ACTIVO"))
+    db.commit()
+    db.close()
+    res_cliente = client.get(f"/reportes/postest/excel?desde={hoy}&hasta={hoy}", headers=headers_cliente)
+    assert res_cliente.status_code == 403
+
+
 def test_resumen_ventas_cuenta_confirmada_y_entregada_juntas():
     """GET /ventas/resumen debe contar tanto las ventas CONFIRMADA (de la
     Tienda online, pendientes de recojo) como las ENTREGADA (de mostrador, o
@@ -1154,6 +1197,35 @@ def test_reporte_tiempos_respuesta_registra_llamadas_reales():
     assert res.status_code == 200
     filas = res.json()
     assert any(f["modulo"] == "productos" and f["n_operaciones"] >= 1 for f in filas)
+
+
+def test_reporte_tiempos_respuesta_detalle_clasifica_la_operacion():
+    """F-04: a diferencia de /sistema/tiempos-respuesta (solo el promedio por
+    módulo), este endpoint da las filas individuales que pide la ficha --
+    Operación, Módulo, Hora inicio/fin y Tiempo total por observación."""
+    populate_comercio()
+    headers = get_auth_headers()
+
+    # Limpia lo que hayan dejado otras pruebas del mismo día -- si no, la
+    # muestra (LIMIT 30 ascendente) puede llenarse con filas de otras
+    # pruebas antes de llegar a esta request.
+    db = TestingSessionLocal()
+    db.query(models.RegistroTiempoSistema).delete()
+    db.commit()
+    db.close()
+
+    client.get("/productos/disponibles", headers=headers)
+
+    hoy = date.today().isoformat()
+    res = client.get(
+        f"/reportes/sistema/tiempos-respuesta/detalle?desde={hoy}&hasta={hoy}", headers=headers
+    )
+    assert res.status_code == 200
+    filas = res.json()
+    fila_productos = next(f for f in filas if f["modulo"] == "productos")
+    assert fila_productos["operacion"] == "Consulta"
+    assert fila_productos["hora_inicio"] <= fila_productos["hora_fin"]
+    assert fila_productos["tiempo_total_s"] >= 0
 
 
 def test_limpiar_tiempos_respuesta_elimina_solo_lo_anterior_al_corte():

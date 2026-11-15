@@ -25,6 +25,7 @@ function Reportes() {
   const [error, setError] = useState("");
   const [exportandoTesis, setExportandoTesis] = useState("");
   const [descargandoExcel, setDescargandoExcel] = useState(false);
+  const [descargandoPostest, setDescargandoPostest] = useState(false);
 
   const [diasVencimiento, setDiasVencimiento] = useState(7);
   const [membresiasPorVencer, setMembresiasPorVencer] = useState(null);
@@ -194,6 +195,27 @@ function Reportes() {
       setError("No se pudo descargar el reporte general completo");
     } finally {
       setDescargandoExcel(false);
+    }
+  };
+
+  const descargarFichasPostestExcel = async () => {
+    if (!desde || !hasta) {
+      setError("Selecciona una fecha de inicio y de fin");
+      return;
+    }
+    try {
+      setDescargandoPostest(true);
+      setError("");
+      const res = await api.get("/reportes/postest/excel", {
+        params: { desde, hasta },
+        responseType: "blob",
+      });
+      descargarBlob(res.data, `fichas-postest-${desde}-a-${hasta}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo descargar las fichas del postest");
+    } finally {
+      setDescargandoPostest(false);
     }
   };
 
@@ -740,6 +762,9 @@ function Reportes() {
               </button>
               <button className="btn-primary" disabled={descargandoExcel} onClick={descargarReporteCompletoExcel}>
                 {descargandoExcel ? "Generando..." : "Descargar reporte completo (Excel)"}
+              </button>
+              <button className="btn-primary" disabled={descargandoPostest} onClick={descargarFichasPostestExcel}>
+                {descargandoPostest ? "Generando..." : "Descargar fichas del postest (Excel)"}
               </button>
             </div>
           </div>

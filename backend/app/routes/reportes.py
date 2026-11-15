@@ -16,6 +16,7 @@ from app.auditoria import registrar as registrar_auditoria
 from app.constants import ESTADO_REVISION_PENDIENTE
 from app.ia.anonimizacion import codigo_cliente as _codigo_cliente
 from app.reporte_excel import generar_reporte_general_excel
+from app.reporte_postest_excel import generar_reporte_postest_excel, _clasificar_operacion
 
 router = APIRouter(
     dependencies=[Depends(obtener_usuario_actual), Depends(requerir_roles("ADMIN", "ENTRENADOR"))]
@@ -218,6 +219,7 @@ def reporte_ia_restricciones(db: Annotated[Session, Depends(get_db)]):
             "objetivo": rutina.objetivo,
             "restricciones_registradas": ",".join(sorted(codigos_cliente)) or None,
             "viola_restriccion": viola,
+            "motivo": "No respeta restricción" if viola else None,
         })
 
     planes = db.query(models.PlanNutricional).filter(models.PlanNutricional.generada_por_ia.is_(True)).all()
@@ -239,6 +241,7 @@ def reporte_ia_restricciones(db: Annotated[Session, Depends(get_db)]):
             "objetivo": plan.objetivo,
             "restricciones_registradas": ",".join(sorted(codigos_cliente)) or None,
             "viola_restriccion": viola,
+            "motivo": "No respeta restricción" if viola else None,
         })
 
     return filas
@@ -280,6 +283,44 @@ def reporte_tiempos_respuesta(db: Annotated[Session, Depends(get_db)], desde: da
         }
         for modulo, promedio, n in filas
     ]
+
+
+@router.get("/sistema/tiempos-respuesta/detalle")
+def reporte_tiempos_respuesta_detalle(
+    db: Annotated[Session, Depends(get_db)], desde: date, hasta: date, limite: int = 30
+):
+    """F-04: muestra de observaciones individuales (no el promedio de
+    /sistema/tiempos-respuesta) para llenar la ficha tal cual -- N°,
+    Operación, Módulo, Hora inicio/fin y Tiempo total por fila. Hora inicio
+    se reconstruye restando la duración a la marca de tiempo guardada (que
+    corresponde al fin de la request)."""
+    inicio_dia = datetime.combine(desde, datetime.min.time())
+    fin_dia = datetime.combine(hasta, datetime.max.time())
+
+    registros = (
+        db.query(models.RegistroTiempoSistema)
+        .filter(
+            models.RegistroTiempoSistema.fecha >= inicio_dia,
+            models.RegistroTiempoSistema.fecha <= fin_dia,
+        )
+        .order_by(models.RegistroTiempoSistema.fecha)
+        .limit(limite)
+        .all()
+    )
+
+    filas = []
+    for r in registros:
+        hora_fin = r.fecha
+        hora_inicio = hora_fin - timedelta(milliseconds=r.duracion_ms)
+        filas.append({
+            "operacion": _clasificar_operacion(r.metodo, r.ruta),
+            "modulo": r.modulo,
+            "fecha": hora_fin.date().isoformat(),
+            "hora_inicio": hora_inicio.isoformat(timespec="seconds"),
+            "hora_fin": hora_fin.isoformat(timespec="seconds"),
+            "tiempo_total_s": round(r.duracion_ms / 1000, 1),
+        })
+    return filas
 
 
 @router.delete(
@@ -351,6 +392,65 @@ def reporte_registros_recientes(
         }
         for r in registros
     ]
+
+
+@router.get("/sistema/muestra-registros")
+def reporte_muestra_registros(db: Annotated[Session, Depends(get_db)], desde: date, hasta: date, n: int = 10):
+    """F-12: muestra de hasta `n` cliente-membresía + `n` pagos + `n`
+    asistencias del periodo, para que el evaluador los revise uno por uno
+    contra su documento de origen -- distinto de /sistema/duplicidad, que
+    es un hallazgo automático que complementa, no reemplaza, esta
+    revisión manual."""
+    inicio_dia = datetime.combine(desde, datetime.min.time())
+    fin_dia = datetime.combine(hasta, datetime.max.time())
+    filas = []
+
+    membresias = (
+        db.query(models.ClienteMembresia)
+        .filter(
+            models.ClienteMembresia.fecha_inicio >= desde,
+            models.ClienteMembresia.fecha_inicio <= hasta,
+        )
+        .order_by(models.ClienteMembresia.fecha_inicio.desc())
+        .limit(n)
+        .all()
+    )
+    for cm in membresias:
+        filas.append({
+            "tipo": "Cliente-membresía",
+            "codigo_registro": f"CM-{cm.id_cliente_membresia:03d}",
+            "fecha": cm.fecha_inicio.isoformat() if cm.fecha_inicio else None,
+        })
+
+    pagos = (
+        db.query(models.Pago)
+        .filter(models.Pago.fecha_pago >= desde, models.Pago.fecha_pago <= hasta)
+        .order_by(models.Pago.fecha_pago.desc())
+        .limit(n)
+        .all()
+    )
+    for p in pagos:
+        filas.append({
+            "tipo": "Pago",
+            "codigo_registro": f"P-{p.id_pago:03d}",
+            "fecha": p.fecha_pago.isoformat() if p.fecha_pago else None,
+        })
+
+    asistencias = (
+        db.query(models.Asistencia)
+        .filter(models.Asistencia.fecha >= desde, models.Asistencia.fecha <= hasta)
+        .order_by(models.Asistencia.fecha.desc())
+        .limit(n)
+        .all()
+    )
+    for a in asistencias:
+        filas.append({
+            "tipo": "Asistencia",
+            "codigo_registro": f"A-{a.id_asistencia:03d}",
+            "fecha": a.fecha.isoformat() if a.fecha else None,
+        })
+
+    return filas
 
 
 @router.get("/sistema/duplicidad")
@@ -444,25 +544,30 @@ def reporte_progreso_fisico(db: Annotated[Session, Depends(get_db)], desde: date
     periodo (I15), con el detalle por cliente anonimizado."""
     clientes_activos = db.query(models.Cliente).filter(models.Cliente.estado == "ACTIVO").all()
 
-    # Un solo query con los clientes que SÍ tienen progreso en el rango, en
-    # vez de un query por cliente activo (N+1) -- importante porque este
-    # reporte crece con la cantidad de socios, no es un dato de una sola vez.
-    ids_con_progreso = {
-        fila[0] for fila in db.query(models.Progreso.id_cliente).filter(
+    # Un solo query con la última fecha de progreso de cada cliente en el
+    # rango, en vez de un query por cliente activo (N+1) -- importante
+    # porque este reporte crece con la cantidad de socios, no es un dato de
+    # una sola vez.
+    ultima_fecha_por_cliente = dict(
+        db.query(models.Progreso.id_cliente, func.max(models.Progreso.fecha_registro))
+        .filter(
             models.Progreso.fecha_registro >= desde,
             models.Progreso.fecha_registro <= hasta,
-        ).distinct().all()
-    }
+        )
+        .group_by(models.Progreso.id_cliente)
+        .all()
+    )
 
     detalle = []
     con_seguimiento = 0
     for cliente in clientes_activos:
-        tiene = cliente.id_cliente in ids_con_progreso
-        if tiene:
+        ultima_fecha = ultima_fecha_por_cliente.get(cliente.id_cliente)
+        if ultima_fecha is not None:
             con_seguimiento += 1
         detalle.append({
             "codigo_cliente": _codigo_cliente(cliente.id_cliente),
-            "tiene_seguimiento": tiene,
+            "tiene_seguimiento": ultima_fecha is not None,
+            "fecha_ultima_evaluacion": ultima_fecha.isoformat() if ultima_fecha else None,
         })
 
     total = len(clientes_activos)
@@ -785,6 +890,31 @@ def descargar_reporte_general_completo(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition": f"attachment; filename=reporte-general-{desde.isoformat()}-a-{hasta.isoformat()}.xlsx"
+        },
+    )
+
+
+@router.get(
+    "/postest/excel",
+    responses={401: {"description": "Token inválido o expirado"}},
+)
+def descargar_reporte_postest(
+    db: Annotated[Session, Depends(get_db)],
+    desde: date,
+    hasta: date,
+):
+    """Excel de apoyo para las fichas de campo del postest de la tesis
+    (F-04 a F-18), una hoja por ficha con exactamente sus encabezados --
+    pre-llenadas con datos reales donde es posible, en blanco donde la
+    ficha exige cronometrar a mano o comparar contra un documento de origen
+    (ver app/reporte_postest_excel.py)."""
+    contenido = generar_reporte_postest_excel(db, desde, hasta)
+
+    return Response(
+        content=contenido,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=fichas-postest-{desde.isoformat()}-a-{hasta.isoformat()}.xlsx"
         },
     )
 

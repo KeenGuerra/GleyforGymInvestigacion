@@ -172,6 +172,66 @@ describe("Reportes Page Component", () => {
     });
   });
 
+  it("downloads the postest fichas as an Excel file with the real sample data", async () => {
+    const { descargarBlob } = await import("../utils/descargarArchivo");
+    const blobFalso = new Blob(["xlsx"]);
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/resumen-general") return Promise.resolve({ data: mockResumenGeneral });
+      if (url === "/reportes/ingresos") return Promise.resolve({ data: mockIngresos });
+      if (url === "/reportes/compras") return Promise.resolve({ data: mockCompras });
+      if (url === "/reportes/asistencias") return Promise.resolve({ data: mockAsistencias });
+      if (url === "/reportes/productos-mas-vendidos") return Promise.resolve({ data: mockProductosMasVendidos });
+      if (url === "/reportes/ventas-por-metodo-pago") return Promise.resolve({ data: mockVentasPorMetodo });
+      if (url === "/reportes/postest/excel") return Promise.resolve({ data: blobFalso });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "2026-06-30" } });
+    fireEvent.click(screen.getByText("Generar reporte"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Descargar fichas del postest (Excel)")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Descargar fichas del postest (Excel)"));
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith("/reportes/postest/excel", {
+        params: { desde: "2026-06-01", hasta: "2026-06-30" },
+        responseType: "blob",
+      });
+      expect(descargarBlob).toHaveBeenCalledWith(blobFalso, "fichas-postest-2026-06-01-a-2026-06-30.xlsx");
+    });
+  });
+
+  it("shows an error when downloading the postest fichas fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/reportes/postest/excel") return Promise.reject(new Error("fail"));
+      if (url === "/reportes/resumen-general") return Promise.resolve({ data: mockResumenGeneral });
+      if (url === "/reportes/ingresos") return Promise.resolve({ data: mockIngresos });
+      if (url === "/reportes/compras") return Promise.resolve({ data: mockCompras });
+      if (url === "/reportes/asistencias") return Promise.resolve({ data: mockAsistencias });
+      if (url === "/reportes/productos-mas-vendidos") return Promise.resolve({ data: mockProductosMasVendidos });
+      if (url === "/reportes/ventas-por-metodo-pago") return Promise.resolve({ data: mockVentasPorMetodo });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Generar reporte"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Descargar fichas del postest (Excel)")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Descargar fichas del postest (Excel)"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo descargar las fichas del postest")).toBeDefined();
+    });
+  });
+
   it("fills the date range with today's date and generates the report when clicking 'Hoy'", async () => {
     render(<Reportes />);
     fireEvent.click(screen.getByText("Hoy"));

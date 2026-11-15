@@ -1517,6 +1517,7 @@ def test_reporte_ia_restricciones():
     assert filas_rutina[0]["codigo_cliente"] == "C-001"
     assert filas_rutina[0]["restricciones_registradas"] == "RODILLA"
     assert filas_rutina[0]["viola_restriccion"] is False
+    assert filas_rutina[0]["motivo"] is None
 
     # Si alguien agrega manualmente el ejercicio restringido, sí debe detectarlo.
     client.put(
@@ -1531,6 +1532,7 @@ def test_reporte_ia_restricciones():
     res2 = client.get("/reportes/ia/restricciones", headers=headers)
     filas_rutina2 = [f for f in res2.json() if f["tipo"] == "rutina"]
     assert filas_rutina2[0]["viola_restriccion"] is True
+    assert filas_rutina2[0]["motivo"] == "No respeta restricción"
 
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     assert client.get("/reportes/ia/restricciones", headers=headers_cliente).status_code == 403
@@ -1552,7 +1554,9 @@ def test_reporte_progreso_fisico():
     data_vacio = res_vacio.json()
     assert data_vacio["total_clientes_activos"] == 1
     assert data_vacio["con_seguimiento"] == 0
-    assert data_vacio["detalle"] == [{"codigo_cliente": "C-001", "tiene_seguimiento": False}]
+    assert data_vacio["detalle"] == [
+        {"codigo_cliente": "C-001", "tiene_seguimiento": False, "fecha_ultima_evaluacion": None}
+    ]
 
     client.post(
         "/progreso/",
@@ -1568,7 +1572,9 @@ def test_reporte_progreso_fisico():
     assert data["total_clientes_activos"] == 1
     assert data["con_seguimiento"] == 1
     assert data["porcentaje"] == 100.0
-    assert data["detalle"] == [{"codigo_cliente": "C-001", "tiene_seguimiento": True}]
+    assert data["detalle"] == [
+        {"codigo_cliente": "C-001", "tiene_seguimiento": True, "fecha_ultima_evaluacion": "2026-06-10"}
+    ]
 
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     assert client.get(
@@ -1673,6 +1679,47 @@ def test_reporte_duplicidad():
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     assert client.get(
         "/reportes/sistema/duplicidad?desde=2020-01-01&hasta=2027-01-01", headers=headers_cliente
+    ).status_code == 403
+
+
+def test_reporte_muestra_registros():
+    """F-12: a diferencia de /sistema/duplicidad (hallazgo automático), este
+    endpoint arma la muestra real de cliente-membresía/pago/asistencia que
+    el evaluador debe revisar a mano contra su documento de origen."""
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    hoy = date.today().isoformat()
+    res_membresia = client.post(
+        "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
+    )
+    id_cm = res_membresia.json()["id_cliente_membresia"]
+    client.post(
+        "/pagos/",
+        json={
+            "id_cliente": 1, "id_cliente_membresia": id_cm, "monto": 100.0,
+            "metodo_pago": "EFECTIVO", "fecha_pago": hoy, "estado": "PAGADO",
+        },
+        headers=headers_admin,
+    )
+    client.post(
+        "/asistencias/",
+        json={"id_cliente": 1, "fecha": hoy, "hora_entrada": "08:00:00"},
+        headers=headers_admin,
+    )
+
+    res = client.get(
+        f"/reportes/sistema/muestra-registros?desde={hoy}&hasta={hoy}", headers=headers_admin
+    )
+    assert res.status_code == 200
+    filas = res.json()
+    tipos = {f["tipo"] for f in filas}
+    assert tipos == {"Cliente-membresía", "Pago", "Asistencia"}
+    assert any(f["codigo_registro"] == f"CM-{id_cm:03d}" for f in filas)
+
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+    assert client.get(
+        f"/reportes/sistema/muestra-registros?desde={hoy}&hasta={hoy}", headers=headers_cliente
     ).status_code == 403
 
 
