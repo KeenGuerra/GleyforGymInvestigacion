@@ -29,9 +29,9 @@ El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por 
 | ID | Proceso | Actor principal | Estado |
 |---|---|---|---|
 | P01 | Autenticación y control de roles (JWT, RBAC) | Todos los usuarios | Implementado |
-| P02 | Gestión de fichas de clientes | Administrador / Entrenador | Implementado |
-| P03 | Ventas, pagos y membresías | Administrador | Implementado |
-| P04 | Registro de asistencia diaria | Cliente / Administrador / Entrenador | Implementado |
+| P02 | Gestión de fichas de clientes | Administrador / Entrenador / Recepcionista | Implementado |
+| P03 | Ventas, pagos y membresías | Administrador / Recepcionista | Implementado |
+| P04 | Registro de asistencia diaria | Cliente / Administrador / Entrenador / Recepcionista | Implementado |
 | P05 | Prescripción y gestión de ejercicios | Entrenador / Administrador | Implementado |
 | P06 | Generación de rutinas (motor de recomendación) | Motor de reglas / Entrenador | Implementado |
 | P07 | Generación de nutrición (motor de recomendación) | Motor de reglas / Entrenador | Implementado |
@@ -277,6 +277,8 @@ Las fases de enero a mayo (análisis, base del backend, autenticación, motor de
 | Render (plan gratuito) | Hosting del backend, frontend y base de datos PostgreSQL | Desde el despliegue inicial |
 | Cloudinary (plan gratuito) | CDN de videos e imágenes | Desde la integración del módulo de ejercicios |
 | SonarQube (instancia local) | Análisis estático de calidad de código | Continuo durante el desarrollo |
+| GitHub Actions (gratuito en repositorio público) | Integración continua: pytest (backend) y lint + Vitest (frontend) en cada *push*/PR a `main` | Desde la resolución de P-09 (ver `Pendientes.md`) |
+| Brevo (plan gratuito) | Envío real de correo transaccional (verificación de cuenta, recuperación de contraseña) vía su API HTTPS | Desde la resolución de P-03 (ver `Pendientes.md`) |
 
 *Nota.* Elaboración propia.
 
@@ -372,9 +374,11 @@ Los requerimientos funcionales y no funcionales completos se documentan en `docs
 | Seguridad y control de acceso | RF-156 a RF-165 | Alta |
 | Dashboard y reportes | RF-166 a RF-175 | Media |
 | Entrenadores, Avisos, Auditoría | RF-176 a RF-190 | Media-Alta |
-| Comercio (categorías, productos, proveedores, compras, inventario, ventas) | RF-191 a RF-226 | Media-Alta |
+| Comercio (categorías, productos, proveedores, compras, inventario, ventas) | RF-191 a RF-224 | Media-Alta |
+| Confirmación manual de pagos de autoservicio | RF-225 | Alta |
+| Reportes consolidados | RF-226 | Media |
 
-*Nota.* Elaboración propia, a partir de `docs/03_Analisis/Requerimientos_Funcionales.md`.
+*Nota.* Elaboración propia, a partir de `docs/03_Analisis/Requerimientos_Funcionales.md`. Los dos últimos módulos se separaron del de Comercio en la actualización de la Cuarta y Quinta ronda (sección 3.1): RF-225 reemplazó al webhook de la pasarela de pagos eliminada, y RF-226 (KPIs consolidados) había quedado anidado por error bajo ese mismo módulo.
 
 Los requerimientos no funcionales (`RNF-001` a `RNF-030`) se organizan según el modelo de calidad ISO/IEC 25010, en ocho categorías: seguridad, rendimiento, disponibilidad, usabilidad, compatibilidad, mantenibilidad, escalabilidad e integración multimedia.
 
@@ -418,9 +422,9 @@ La priorización se realizó mediante la técnica **MoSCoW**, aplicada sobre los
 | Categoría | Módulos / funcionalidades |
 |---|---|
 | **Must have** (imprescindible) | Autenticación y roles (RF-001 a RF-015, Alta), gestión de clientes (RF-016 a RF-035, Alta), membresías y asignación (RF-036 a RF-065, Alta), pagos (RF-066 a RF-080, Alta), asistencias (RF-081 a RF-090, Alta), motor de recomendación de rutinas y nutrición (RF-136 a RF-155, Alta — es el componente que distingue al sistema del resto de software administrativo de gimnasios) |
-| **Should have** (debería tener) | Seguimiento de progreso físico (RF-091 a RF-110, Media-Alta), catálogos de ejercicios y comidas (RF-111 a RF-135, Alta), dashboard de KPIs (RF-166 a RF-175, Media), módulo de Comercio (RF-191 a RF-226, Media-Alta — ya implementado y desplegado, pero no forma parte del núcleo original de gestión deportiva) |
+| **Should have** (debería tener) | Seguimiento de progreso físico (RF-091 a RF-110, Media-Alta), catálogos de ejercicios y comidas (RF-111 a RF-135, Alta), dashboard de KPIs (RF-166 a RF-175, Media), módulo de Comercio (RF-191 a RF-224, Media-Alta — ya implementado y desplegado, pero no forma parte del núcleo original de gestión deportiva), confirmación manual de pagos de autoservicio y reportes consolidados (RF-225 y RF-226) |
 | **Could have** (podría tener) | Avisos editables desde el panel (RF-176 a RF-190, Media-Alta), exportación CSV/PDF, paginación de listados |
-| **Won't have** (esta versión) | Pasarela de pago real, envío de correo real, verificación de correo al registro, contenerización Docker, integración continua, modelo predictivo de no renovación de membresías |
+| **Won't have** (esta versión) | Pasarela de pago real (evaluada contra el sandbox real de Culqi y descartada por decisión del equipo, ver sección 9.3), modelo predictivo de no renovación de membresías |
 
 *Nota.* Elaboración propia.
 
@@ -476,7 +480,7 @@ erDiagram
     VENTA ||--o{ DETALLE_VENTA : "detalla"
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py` y `docs/04_Arquitectura/Arquitectura_BaseDatos.md`.
+*Nota.* Elaboración propia, a partir de `backend/app/models.py` y `docs/04_Arquitectura/Arquitectura_BaseDatos.md`. El diagrama muestra un subconjunto representativo de las entidades y relaciones del sistema (las dos ramas de negocio, deportiva y comercial), no las 30 tablas completas del esquema físico (ver más abajo) — las tablas de soporte transversal (auditoría, instrumentación del postest, avisos por WhatsApp, conteo físico de inventario) se documentan campo por campo en `Arquitectura_BaseDatos.md`, no en este diagrama conceptual.
 
 **Primera forma normal (1FN).** Se eliminaron los grupos repetitivos: las medidas corporales del progreso físico se almacenan en columnas atómicas independientes (brazo izquierdo, brazo derecho, pierna izquierda, pierna derecha, pecho, cintura) en lugar de una lista o campo compuesto, decisión documentada como DA-013.
 
@@ -545,6 +549,7 @@ erDiagram
 graph LR
     Publico((Visitante público))
     Cliente((CLIENTE))
+    Recepcion((RECEPCIONISTA))
     Entrenador((ENTRENADOR))
     Admin((ADMIN))
 
@@ -557,6 +562,10 @@ graph LR
     Cliente --> UC6[Registrar asistencia]
     Cliente --> UC7[Solicitar compra en tienda]
 
+    Recepcion --> UC14[Gestionar clientes/asistencias]
+    Recepcion --> UC15[Asignar membresia y confirmar pago]
+    Recepcion --> UC16[Registrar venta de mostrador]
+
     Entrenador --> UC8[Gestionar clientes/ejercicios/comidas]
     Entrenador --> UC9[Generar rutina/nutricion]
 
@@ -566,9 +575,12 @@ graph LR
     Admin --> UC13[Consultar auditoria]
     Admin --> UC8
     Admin --> UC9
+    Admin --> UC14
+    Admin --> UC15
+    Admin --> UC16
 ```
 
-*Nota.* Elaboración propia, a partir de las rutas y permisos por rol verificados en `backend/app/routes/`.
+*Nota.* Elaboración propia, a partir de las rutas y permisos por rol verificados en `backend/app/routes/`. RECEPCIONISTA no tiene acceso a UC9, UC11 (fuera de la venta de mostrador, ya cubierta en UC16), UC12 ni UC13.
 
 #### 4.3.2. Diagrama de clases (modelo de datos)
 
@@ -602,7 +614,7 @@ classDiagram
     Usuario "1" --> "many" RegistroAuditoria
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py`.
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Igual que las Figuras 5 y 6, muestra las clases con relaciones de negocio relevantes para el modelado, no las 30 tablas completas: quedan fuera las de soporte transversal sin relación de negocio directa (`RegistroTiempoSistema`, `EnvioWhatsApp`, `ConteoInventario`, `DetalleConteoInventario`), documentadas en `Arquitectura_BaseDatos.md`.
 
 #### 4.3.3. Diagrama de secuencia — inicio de sesión
 
@@ -737,7 +749,7 @@ El backend cuenta hoy con 183 funciones de prueba distribuidas en 10 archivos de
 
 #### 6.1.1. Casos de prueba de verificación (análisis estático)
 
-La verificación del software, previa a su ejecución, se realizó mediante **SonarQube** (instancia local, `sonar-project.properties`), analizando duplicación de código, code smells, bugs potenciales y vulnerabilidades según el conjunto de reglas estándar de la herramienta. Una primera ejecución detectó 6 bugs, 1 vulnerabilidad y calificaciones de confiabilidad y seguridad en C; los hallazgos se corrigieron en el propio código (no se ocultaron ni se suprimieron) y se volvió a ejecutar el análisis. Resultado de la segunda ejecución, sobre el estado actual del repositorio:
+La verificación del software, previa a su ejecución, se realizó mediante **SonarQube** (instancia local, `sonar-project.properties`), analizando duplicación de código, code smells, bugs potenciales y vulnerabilidades según el conjunto de reglas estándar de la herramienta. Una primera ejecución detectó 6 bugs, 1 vulnerabilidad y calificaciones de confiabilidad y seguridad en C; los hallazgos se corrigieron en el propio código (no se ocultaron ni se suprimieron) y se volvió a ejecutar el análisis. Resultado de la segunda ejecución, correspondiente al estado del repositorio en la Tercera ronda de consolidación (septiembre de 2026), no recalculado desde entonces:
 
 **Tabla 11**
 
@@ -756,7 +768,7 @@ La verificación del software, previa a su ejecución, se realizó mediante **So
 
 *Nota.* Elaboración propia, a partir del análisis de SonarQube (instancia local).
 
-Las tres calificaciones (mantenibilidad, confiabilidad, seguridad) son A tras la corrección. El aumento de cobertura en `backend/` (80.2% → 89.5%) corresponde a las nuevas pruebas del módulo de Comercio (sección 6.2); la cobertura de `web-admin/src/` no cambió porque las correcciones de esta sección fueron de accesibilidad y de atributos HTML, no de lógica nueva.
+Las tres calificaciones (mantenibilidad, confiabilidad, seguridad) son A tras la corrección. El aumento de cobertura en `backend/` (80.2% → 89.5%) corresponde a las nuevas pruebas del módulo de Comercio (sección 6.2); la cobertura de `web-admin/src/` no cambió porque las correcciones de esta sección fueron de accesibilidad y de atributos HTML, no de lógica nueva. La cifra de cobertura de `web-admin/src/` de la Tabla 11 (76.6%) quedó desactualizada por un motivo distinto, posterior a esta medición: la Tercera ronda agregó prueba dedicada a las siete páginas de Comercio del frontend (P-04), elevando la cobertura de Vitest a 94.33% (sección 6.2) — SonarQube no se volvió a ejecutar sobre ese estado para confirmar el mismo efecto en su propio cálculo de cobertura, que además no es directamente comparable con el de Vitest (difiere en qué archivos excluye y en si cuenta líneas o sentencias). Repetir el análisis de SonarQube con el código vigente excede el alcance de esta actualización puntual.
 
 **Hallazgos de la primera ejecución y su resolución:**
 
@@ -845,7 +857,7 @@ El despliegue en producción se automatiza mediante un plano `render.yaml`, que 
 - **Sitio estático** `gleyforgym-frontend` (React/Vite): se compila con `npm run build` y se sirve con reescritura de rutas para soportar el enrutado de una aplicación de página única.
 - **Base de datos administrada** `gleyforgym-db` (PostgreSQL, plan gratuito).
 
-El proyecto no incluye contenerización (no existen archivos `Dockerfile` ni `docker-compose.yml`); el despliegue depende de los sistemas de construcción nativos de la plataforma Render.
+El despliegue en producción no usa contenedores: depende de los sistemas de construcción nativos de la plataforma Render (`pip install` + `uvicorn` para el backend, `npm run build` para el frontend), no de una imagen Docker. El proyecto sí cuenta con contenerización para desarrollo local (P-13, resuelto, ver sección 9.3 y `Pendientes.md`): `backend/Dockerfile`, `web-admin/Dockerfile` (build multi-stage con nginx) y `docker-compose.yml` en la raíz, verificados de punta a punta con `docker compose up --build` — un camino alternativo y reproducible al entorno virtual de Python / `npm run dev`, que no reemplaza el despliegue de `render.yaml`.
 
 ### 7.2. Validación de funcionamiento en producción
 
