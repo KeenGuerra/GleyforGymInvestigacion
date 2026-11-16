@@ -1997,33 +1997,35 @@ Prioridad: Media.
 
 ---
 
-## RF-223 Iniciar checkout de pago de una venta
+## RF-223 Mostrar QR de Yape para pagar una venta pendiente
 
-El sistema deberá permitir iniciar el proceso de pago de una venta pendiente a través de la pasarela de pagos configurada (`app/pagos_gateway`).
-
-Prioridad: Alta.
-
----
-
-## RF-224 Confirmar venta tras pago
-
-El sistema deberá permitir confirmar una venta una vez verificado el pago, actualizando su estado y descontando stock.
+El sistema deberá mostrar al cliente un código QR de Yape para pagar una venta propia en estado PENDIENTE, sin pasarela de pago ni confirmación automática: el cliente transfiere fuera del sistema y el staff confirma manualmente (ver RF-224).
 
 Prioridad: Alta.
 
 ---
 
-# MÓDULO 23: PASARELA DE PAGOS Y WEBHOOKS
+## RF-224 Confirmar venta pendiente (staff)
 
-## RF-225 Recibir notificación de pago (webhook)
-
-El sistema deberá exponer un endpoint que reciba notificaciones asíncronas de la pasarela de pagos para actualizar el estado de pagos y ventas asociadas.
+El sistema deberá permitir al staff (ADMIN, ENTRENADOR o RECEPCIONISTA) confirmar manualmente una venta en estado PENDIENTE tras verificar a mano que el pago por Yape, Plin o efectivo llegó, actualizando su estado a CONFIRMADA y descontando el stock correspondiente (`POST /ventas/{id_venta}/confirmar`).
 
 Prioridad: Alta.
 
-Nota: la validación de firma/origen del webhook sigue pendiente para un proveedor real (ver `Pendientes.md` P-02); hoy solo la dispara el flujo de simulación (`MockGateway`).
+---
+
+# MÓDULO 23: CONFIRMACIÓN MANUAL DE PAGOS DE AUTOSERVICIO
+
+## RF-225 Confirmar pago de autoservicio (membresía)
+
+El sistema deberá permitir al staff (ADMIN, ENTRENADOR o RECEPCIONISTA) confirmar manualmente un pago de una membresía comprada por el propio cliente mediante autoservicio (`POST /cliente-membresias/comprar`, ver `docs/07_Gestion_Proyecto/Pendientes.md` P-19), tras verificar a mano que la transferencia por Yape, Plin o efectivo llegó. Al confirmar, el pago pasa de PENDIENTE a PAGADO y la membresía asociada (también PENDIENTE) se activa con sus fechas de inicio y fin calculadas desde ese momento (`POST /pagos/{id_pago}/confirmar`). El propio cliente no puede confirmar su pago.
+
+Prioridad: Alta.
+
+Nota: este requerimiento reemplaza al webhook de notificación asíncrona de una pasarela de pago externa, evaluado y descartado por decisión del equipo tras no poder confirmarse nunca de punta a punta fuera de un entorno de pruebas (ver `docs/07_Gestion_Proyecto/Pendientes.md`, P-02, y `docs/07_Gestion_Proyecto/Intervencion_Metodologica.md`, sección 4.1).
 
 ---
+
+# MÓDULO 24: REPORTES CONSOLIDADOS
 
 ## RF-226 Consultar KPIs consolidados
 

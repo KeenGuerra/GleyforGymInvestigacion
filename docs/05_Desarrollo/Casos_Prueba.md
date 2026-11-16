@@ -884,7 +884,7 @@ HTTP 422 si falta la descripción. HTTP 200/201 con movimiento tipo AJUSTE si se
 
 ---
 
-# MÓDULO: COMERCIO — VENTAS Y CHECKOUT
+# MÓDULO: COMERCIO — VENTAS
 
 ## CP-070 Venta Directa Descuenta Stock
 
@@ -970,7 +970,7 @@ Entrenadores
 Avisos
 Auditoría
 Comercio (Categorías, Productos, Proveedores, Compras, Inventario, Ventas)
-Webhooks y Pasarela de Pagos
+Confirmación Manual de Pagos por Yape
 ```
 
 ## Estado Actual

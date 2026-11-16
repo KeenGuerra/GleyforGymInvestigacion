@@ -38,8 +38,8 @@ El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por 
 | P08 | Control de progreso físico | Cliente / Entrenador | Implementado |
 | P09 | Gestión comercial: categorías, productos, proveedores, compras, inventario, ventas | Administrador | Implementado |
 | P10 | Avisos y comunicados públicos | Administrador | Implementado |
-| P11 | Auditoría y trazabilidad de operaciones críticas | Administrador (vía API) | Implementado |
-| P12 | Gestión de entrenadores como entidad de negocio | Administrador (vía API) | Implementado |
+| P11 | Auditoría y trazabilidad de operaciones críticas | Administrador (panel web) | Implementado |
+| P12 | Gestión de entrenadores como entidad de negocio | Administrador (panel web) | Implementado |
 
 *Nota.* Elaboración propia, a partir de la verificación directa de las rutas del backend (`backend/app/routes/`).
 
@@ -134,7 +134,7 @@ flowchart TB
     D3 -- No --> D5 --> A8
 ```
 
-*Nota.* Elaboración propia, equivalente funcional a un diagrama BPMN de Bizagi, expresado en notación Mermaid por no contar con licencia de esa herramienta.
+*Nota.* Elaboración propia, equivalente funcional a un diagrama BPMN de Bizagi, expresado en notación Mermaid dado que el equipo no dispone de licencia de esa herramienta.
 
 Este diagrama cubre el requisito de modelado con carriles por actor solicitado por la metodología.
 
@@ -143,6 +143,7 @@ Este diagrama cubre el requisito de modelado con carriles por actor solicitado p
 **Actores de negocio (roles definidos en el sistema):**
 - **ADMIN**: administrador del gimnasio, con acceso completo al sistema.
 - **ENTRENADOR**: staff deportivo, gestiona clientes, rutinas y nutrición.
+- **RECEPCIONISTA**: staff de mostrador, agregado en la Cuarta ronda de consolidación (sección 3.4); gestiona el registro de clientes, asistencias, asignación de membresías a un cliente ya registrado, pagos y ventas directas. Sin acceso a la definición de planes de membresía, al seguimiento deportivo (progreso, ejercicios, comidas, rutinas, nutrición), a los reportes, ni al resto del módulo de Comercio (categorías, productos, proveedores, compras, inventario) más allá de la búsqueda de un producto por código de barras al vender.
 - **CLIENTE**: socio del gimnasio, con acceso a su propia información.
 - **Visitante público** (sin autenticarse): consulta la página de inicio, avisos y el catálogo de la tienda.
 
@@ -152,22 +153,22 @@ Este diagrama cubre el requisito de modelado con carriles por actor solicitado p
 
 *Matriz RACI de procesos de negocio por rol del sistema*
 
-| Proceso | ADMIN | ENTRENADOR | CLIENTE |
-|---|---|---|---|
-| Autenticación y control de roles (P01) | A | I | I |
-| Gestión de fichas de clientes (P02) | A | R | C |
-| Ventas, pagos y membresías (P03) | R | C | I |
-| Registro de asistencia (P04) | A | R | R |
-| Gestión de ejercicios (P05) | A | R | I |
-| Generación de rutinas (P06) | A | R | C |
-| Generación de nutrición (P07) | A | R | C |
-| Control de progreso físico (P08) | I | C | R |
-| Gestión comercial (P09) | R | I | C |
-| Avisos y comunicados (P10) | R | I | I |
-| Auditoría y trazabilidad (P11) | R | I | I |
-| Gestión de entrenadores (P12) | R | I | I |
+| Proceso | ADMIN | ENTRENADOR | CLIENTE | RECEPCIONISTA |
+|---|---|---|---|---|
+| Autenticación y control de roles (P01) | A | I | I | I |
+| Gestión de fichas de clientes (P02) | A | R | C | R |
+| Ventas, pagos y membresías (P03) | R | C | I | R |
+| Registro de asistencia (P04) | A | R | R | R |
+| Gestión de ejercicios (P05) | A | R | I | — |
+| Generación de rutinas (P06) | A | R | C | — |
+| Generación de nutrición (P07) | A | R | C | — |
+| Control de progreso físico (P08) | I | C | R | — |
+| Gestión comercial (P09) | R | I | C | C |
+| Avisos y comunicados (P10) | R | I | I | — |
+| Auditoría y trazabilidad (P11) | R | I | I | — |
+| Gestión de entrenadores (P12) | R | I | I | — |
 
-*Nota.* Elaboración propia.
+*Nota.* Elaboración propia, verificada contra `backend/app/security.py` y las restricciones por rol de `backend/app/routes/`. La columna RECEPCIONISTA se agregó en esta actualización (rol incorporado en la Cuarta ronda de consolidación, sección 3.4); su "C" en Gestión comercial (P09) corresponde únicamente a la venta de mostrador (`routes/ventas.py`), no al resto del proceso (categorías, productos, proveedores, compras, inventario), al que no tiene acceso.
 
 **Equipo de desarrollo del proyecto:**
 - Keen Guerra Lozano
@@ -250,7 +251,7 @@ gantt
     section Cuarta ronda de consolidacion
     Pago unico por QR de Yape en la Tienda, sin pasarela :2026-11-09, 2026-11-10
     Saldo pendiente, permisos de recepcionista, correccion de carrera en test :2026-11-10, 1d
-    Motor de rutinas IA: mas ejercicios por dia, piernas en subgrupos :2026-11-10, 1d
+    Motor de rutinas IA - mas ejercicios por dia, piernas en subgrupos :2026-11-10, 1d
     Comprobantes con RUC/IGV, formato ticket 80mm, avisos por WhatsApp :2026-11-12, 1d
     Dashboard (membresias por estado, productos mas vendidos) y reportes :2026-11-12, 1d
     section Quinta ronda de consolidacion
@@ -334,8 +335,10 @@ El equipo, de tamaño reducido, no empleó herramientas formales de gestión de 
 | Testing frontend | Vitest, @testing-library/react, @vitest/coverage-v8 |
 | Calidad de código | SonarQube (instancia local) |
 | Control de versiones | Git + GitHub |
+| Integración continua | GitHub Actions (`.github/workflows/tests.yml`) |
+| Envío de correo transaccional | Brevo (API HTTPS) |
 
-*Nota.* Elaboración propia.
+*Nota.* Elaboración propia. WhatsApp (envío de avisos y recordatorios vía enlaces `wa.me`) y Yape/Plin (métodos de pago que el cliente usa y que el staff confirma a mano) no se incluyen en esta tabla: no son herramientas ni librerías integradas al stack de desarrollo, sino canales operativos del negocio sin SDK ni dependencia que instalar.
 
 ### 2.5. Planificación de pruebas
 
@@ -374,6 +377,10 @@ Los requerimientos funcionales y no funcionales completos se documentan en `docs
 *Nota.* Elaboración propia, a partir de `docs/03_Analisis/Requerimientos_Funcionales.md`.
 
 Los requerimientos no funcionales (`RNF-001` a `RNF-030`) se organizan según el modelo de calidad ISO/IEC 25010, en ocho categorías: seguridad, rendimiento, disponibilidad, usabilidad, compatibilidad, mantenibilidad, escalabilidad e integración multimedia.
+
+**Brecha de trazabilidad identificada (Cuarta y Quinta ronda)**: las funcionalidades incorporadas en esas dos rondas (sección 3.4) — saldo pendiente de una membresía, comprobante en formato ticket 80mm con RUC/IGV, avisos masivos por WhatsApp, lector de código de barras, y los reportes en Excel (general del negocio y de apoyo a las fichas del postest) — no cuentan con un requerimiento funcional ni un caso de prueba formal propio en `Requerimientos_Funcionales.md` ni en `Casos_Prueba.md`. Documentar estas funcionalidades con ese nivel de detalle excede el alcance de esta actualización puntual, centrada en la consistencia del presente capítulo frente al código. La confirmación manual de un pago sí tiene caso de prueba propio, reescrito para la arquitectura vigente: CP-073, "Staff Confirma un Pago de Autoservicio Pendiente".
+
+**Corrección aplicada a `Requerimientos_Funcionales.md`**: RF-223 a RF-225 ("Módulo 23: Pasarela de pagos y webhooks") describían la arquitectura de pasarela de pago (`app/pagos_gateway`, `MockGateway`) eliminada por completo en la Quinta ronda (sección 4.1). Se corrigieron para reflejar el flujo manual vigente: RF-223 (mostrar el QR de Yape al cliente), RF-224 (el staff confirma la venta pendiente) y RF-225, reescrito como "Módulo 23: Confirmación manual de pagos de autoservicio", para la confirmación manual de un pago de membresía (`POST /pagos/{id_pago}/confirmar`) — el mismo requerimiento que ya valida CP-073. RF-226 (KPIs consolidados), que había quedado anidado por error bajo el módulo de la pasarela eliminada, pasó a su propio "Módulo 24: Reportes consolidados".
 
 ### 3.2. Historias de usuario y criterios de aceptación
 
@@ -473,7 +480,7 @@ erDiagram
 
 **Primera forma normal (1FN).** Se eliminaron los grupos repetitivos: las medidas corporales del progreso físico se almacenan en columnas atómicas independientes (brazo izquierdo, brazo derecho, pierna izquierda, pierna derecha, pecho, cintura) en lugar de una lista o campo compuesto, decisión documentada como DA-013.
 
-**Modelo lógico.** El esquema físico implementado comprende 26 tablas en PostgreSQL, con sus tipos de datos y restricciones definidos mediante SQLAlchemy, documentadas campo por campo en `Arquitectura_BaseDatos.md`. El siguiente diagrama muestra las entidades centrales del bloque deportivo con su cardinalidad:
+**Modelo lógico.** El esquema físico implementado comprende 30 tablas en PostgreSQL (26 del diseño original más `registro_tiempos_sistema`, `envios_whatsapp`, `conteos_inventario` y `detalle_conteos_inventario`, agregadas en la Quinta ronda y en consolidaciones previas para instrumentar el postest de la tesis, los avisos masivos por WhatsApp y el conteo físico de inventario — ver sección 3.4), con sus tipos de datos y restricciones definidos mediante SQLAlchemy, documentadas campo por campo en `Arquitectura_BaseDatos.md`. El saldo pendiente de una membresía (`ClienteMembresia.monto_pagado`/`saldo_pendiente`) y el RUC/IGV del comprobante en ticket 80mm (`Compra.igv` y la configuración `RUC_EMPRESA`/`RAZON_SOCIAL`) se calculan sobre columnas y propiedades ya existentes, sin tabla nueva; el rol RECEPCIONISTA tampoco agrega una tabla, es un valor más del campo `Usuario.rol`. El siguiente diagrama muestra las entidades centrales del bloque deportivo con su cardinalidad:
 
 **Figura 6**
 
@@ -726,7 +733,7 @@ El proyecto sigue las convenciones documentadas en `docs/05_Desarrollo/Convencio
 
 ### 6.1. Diseño de casos de prueba
 
-El backend cuenta con 48 funciones de prueba en `backend/tests/test_backend.py` y 7 en `test_crud.py`, ejecutadas sobre un cliente de pruebas de FastAPI con base de datos SQLite aislada. El frontend cuenta con 33 archivos de prueba (`*.test.jsx`/`*.test.js`) basados en Vitest y Testing Library, que simulan las llamadas a la API y verifican el comportamiento de la interfaz. La trazabilidad entre requerimientos y casos de prueba se documenta en `docs/05_Desarrollo/Casos_Prueba.md` (CP-001 a CP-073).
+El backend cuenta hoy con 183 funciones de prueba distribuidas en 10 archivos de `backend/tests/` (`test_backend.py`: 81, `test_comercio.py`: 31, `test_recomendador_rutinas.py`: 13, `test_recibos.py`: 12, `test_calculos_nutricion.py`: 10, `test_claude_client.py`: 9, `test_compra_membresia.py`: 9, `test_crud.py`: 7, `test_hazte_socio.py`: 7, `test_correo.py`: 4), ejecutadas sobre un cliente de pruebas de FastAPI con base de datos SQLite aislada. El frontend cuenta con 55 archivos de prueba (`*.test.jsx`/`*.test.js`) basados en Vitest y Testing Library, uno por cada página, componente o utilidad con lógica propia, que simulan las llamadas a la API y verifican el comportamiento de la interfaz. La trazabilidad entre requerimientos y casos de prueba se documenta en `docs/05_Desarrollo/Casos_Prueba.md` (CP-001 a CP-073).
 
 #### 6.1.1. Casos de prueba de verificación (análisis estático)
 
@@ -757,7 +764,7 @@ Las tres calificaciones (mantenibilidad, confiabilidad, seguridad) son A tras la
 2. **3 bugs MINOR** — `web-admin/src/components/Layout.jsx:37,44,59`: elementos con manejador de clic sin manejador de teclado equivalente (accesibilidad). **Corregido**: se añadió `role="button"`, `tabIndex`, `aria-label` y `onKeyDown` al overlay del menú móvil, y `onKeyDown` (tecla Escape) a la navegación lateral; el logo móvil pasó de `<div onClick>` a `<button type="button">`.
 3. **3 bugs MAJOR** — `web-admin/src/pages/Clientes.jsx:493`, `Ejercicios.jsx:240`, `Pagos.jsx:322`: botones sin atributo `type` explícito, que por defecto toman `type="submit"` dentro de un formulario y podrían disparar un envío no intencionado. **Corregido**: se añadió `type="submit"` a los tres botones (confirmado por lectura de contexto que son, en efecto, los botones de envío de cada formulario, por lo que el atributo no cambia su comportamiento).
 
-Las correcciones se verificaron sin introducir regresiones: la suite completa de Vitest (143 pruebas) siguió pasando al 100% después de los cambios en `Layout.jsx` y en los tres formularios.
+Las correcciones se verificaron sin introducir regresiones: la suite completa de Vitest, de 143 pruebas en esa fecha (Tercera ronda, septiembre de 2026; la suite actual tiene 390 pruebas en 55 archivos, ver sección 6.2), siguió pasando al 100% después de los cambios en `Layout.jsx` y en los tres formularios.
 
 #### 6.1.2. Casos de prueba de validación (análisis dinámico)
 
@@ -818,13 +825,13 @@ El módulo de Comercio cuenta con 10 pruebas propias (`backend/tests/test_comerc
 
   *Nota.* Elaboración propia, a partir de `backend/medir_tiempo_respuesta.py`.
 
-  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye la latencia de red real y el *cold start* descrito en 7.2) ni la comparación con el proceso manual *antes* del sistema. La medición contra el despliegue de Render queda pendiente de repetirse una vez el gimnasio esté operando con el sistema y con su catálogo real cargado, momento en el que la medición será representativa del uso real y no solo de la disponibilidad técnica del servicio.
+  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye la latencia de red real y el *cold start* descrito en 7.2) ni la comparación con el proceso manual *antes* del sistema. La medición contra el despliegue de Render se repetirá una vez el gimnasio esté operando con el sistema y con su catálogo real cargado, momento en el que será representativa del uso real y no solo de la disponibilidad técnica del servicio.
 
-> **Pendiente de incorporar (trabajo de campo, no se puede obtener del código)**: el dato de **pretest** — cuánto demora hoy un entrenador en armar una rutina a mano, y los demás valores de O₁ para cada indicador de la matriz de operacionalización (precisión de registros, exactitud de inventario, percepción vía cuestionario Likert) — requiere observación directa del proceso manual actual del gimnasio y aplicación de las fichas e instrumentos del Plan de Tesis con la muestra real de 92 usuarios. Sin ese dato no es posible completar la comparación O₁ vs. O₂ ni correr las pruebas estadísticas (Shapiro-Wilk, t-Student/Wilcoxon) que exige el Capítulo III del Plan de Tesis.
+> **Dato fuera del alcance del código fuente (trabajo de campo)**: el dato de **pretest** — cuánto demora hoy un entrenador en armar una rutina a mano, y los demás valores de O₁ para cada indicador de la matriz de operacionalización (precisión de registros, exactitud de inventario, percepción vía cuestionario Likert) — requiere observación directa del proceso manual actual del gimnasio y aplicación de las fichas e instrumentos del Plan de Tesis con la muestra real de 92 usuarios. Sin ese dato no es posible completar la comparación O₁ vs. O₂ ni correr las pruebas estadísticas (Shapiro-Wilk, t-Student/Wilcoxon) que exige el Capítulo III del Plan de Tesis.
 
 ### 6.3. Automatización de pruebas
 
-Las pruebas se automatizaron con pytest-cov (backend) y Vitest con @vitest/coverage-v8 (frontend), ejecutadas manualmente por el equipo de desarrollo. El proyecto no cuenta con integración continua (no existe configuración de GitHub Actions), por lo que la ejecución de las suites no está automatizada ante cada cambio en el repositorio — una oportunidad de mejora documentada en `Pendientes.md` (P-09). No se emplearon herramientas de automatización end-to-end como Selenium o Cypress.
+Las pruebas se automatizaron con pytest-cov (backend) y Vitest con @vitest/coverage-v8 (frontend). Desde la Primera ronda de consolidación (sección 3.4, punto 6; P-09), la ejecución además está integrada en un pipeline de integración continua (`.github/workflows/tests.yml`, GitHub Actions), con dos jobs independientes que se disparan automáticamente en cada *push* o *pull request* contra la rama `main`: `backend` (instala las dependencias de `requirements.txt` y corre `pytest -q`, verificado para que pase sin necesidad de un archivo `backend/.env` presente, igual que en el runner) y `frontend` (instala con `npm ci`, corre `npm run lint` y luego `npm run test`). Un cambio solo se considera integrado cuando ambos jobs terminan en verde; varias condiciones de carrera reales en pruebas de frontend (incluida la mencionada en la Cuarta ronda, sección 3.4) se detectaron precisamente porque este pipeline falló tras un *push* a `main`, no por una ejecución manual previa. No se emplearon herramientas de automatización end-to-end como Selenium o Cypress.
 
 ---
 
@@ -1056,18 +1063,23 @@ El comportamiento del sistema por rol, verificado contra las páginas reales del
 - Gestión deportiva: clientes, asistencias, progreso, ejercicios, comidas, rutinas y nutrición.
 - Sin acceso a usuarios, membresías, pagos ni al módulo de Comercio.
 
+**RECEPCIONISTA** (atención de mostrador, rol agregado en la Cuarta ronda de consolidación)
+- Panel de recepción con un resumen de las asistencias marcadas en el día.
+- Clientes (alta, búsqueda y baja lógica), asistencias, asignación de membresía a un cliente ya registrado, registro y confirmación de pagos, y ventas de mostrador.
+- Sin acceso a usuarios, a la definición de planes de membresía, al progreso físico, a ejercicios/comidas/rutinas/nutrición, a reportes, ni al resto del módulo de Comercio (categorías, productos, proveedores, compras, inventario) más allá de la búsqueda de un producto por código de barras al vender.
+
 **CLIENTE** (acceso restringido a su propia información)
 - Mi perfil: datos personales y deportivos, cambio de contraseña propio.
 - Mi rutina, mi nutrición, mi progreso (con registro de nuevas mediciones), mi membresía y mis pagos, con descarga de recibo en PDF.
 
-Se identificó una limitación de usabilidad: los módulos de Entrenadores (como entidad de negocio) y Auditoría existen en el backend con permisos correctamente restringidos al rol ADMIN, pero no cuentan con una página propia en el panel administrativo — solo son accesibles directamente contra la API. Esta mejora queda documentada en `Pendientes.md` (P-18).
+Los módulos de Entrenadores (como entidad de negocio) y Auditoría cuentan con página propia en el panel administrativo, ambas restringidas al rol ADMIN (P-18, resuelto): `/entrenadores` (`Entrenadores.jsx`) expone el CRUD completo de la ficha de entrenador (DNI, nombres, apellidos, teléfono, especialidad, estado); `/auditoria` (`Auditoria.jsx`) es una vista de solo lectura del historial de `RegistroAuditoria`, con filtro por entidad, para dar trazabilidad a operaciones críticas del sistema (anulaciones, confirmaciones de pago, cambios de rol, etc.).
 
 ### 9.2. Manual de instalación y mantenimiento
 
 **Instalación local (resumen):**
 
 1. Crear la base de datos PostgreSQL (`CREATE DATABASE gleyforgym;`).
-2. Backend: crear entorno virtual (`python -m venv venv`), activarlo, instalar dependencias (`pip install -r requirements.txt`), configurar `backend/.env` con `DATABASE_URL`, `SECRET_KEY` y `CLOUDINARY_URL`, inicializar las tablas (`python create_db.py`) y levantar el servidor (`uvicorn app.main:app --reload`), disponible en `http://127.0.0.1:8000` con documentación interactiva en `/docs`.
+2. Backend: crear entorno virtual (`python -m venv venv`), activarlo, instalar dependencias (`pip install -r requirements.txt`), configurar `backend/.env` con, como mínimo, `DATABASE_URL` y `SECRET_KEY` (único par obligatorio para levantar el backend), más las variables opcionales que habilitan una función específica si se definen: `CLOUDINARY_URL` (imágenes de ejercicios), `BREVO_API_KEY`/`BREVO_SENDER_EMAIL`/`BREVO_SENDER_NAME` (envío real de correo), `ANTHROPIC_API_KEY`/`CLAUDE_MODEL_IA` (integración híbrida con Claude), `RUC_EMPRESA`/`RAZON_SOCIAL` (datos del gimnasio en el comprobante ticket 80mm, con valor por defecto si se omiten) y `ALGORITHM`/`ACCESS_TOKEN_EXPIRE_MINUTES`/`CORS_ORIGINS`/`FRONTEND_URL` (todas con un valor por defecto razonable); inicializar las tablas (`python create_db.py`) y levantar el servidor (`uvicorn app.main:app --reload`), disponible en `http://127.0.0.1:8000` con documentación interactiva en `/docs`.
 3. Frontend: instalar dependencias (`npm install`) y levantar el servidor de desarrollo (`npm run dev`), disponible en `http://localhost:5173`.
 4. Verificar: backend y frontend responden, y el usuario administrador sembrado por `create_db.py` permite iniciar sesión.
 
