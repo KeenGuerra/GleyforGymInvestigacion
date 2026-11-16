@@ -246,12 +246,23 @@ gantt
     Ronda 1 (RBAC, motor de reglas, entrenadores) :2026-09-13, 1d
     Ronda 2 (auditoria, pasarela de pagos, recibos PDF) :2026-09-14, 1d
     Ronda 3 (autogestion de clave, avisos editables, paginacion) :2026-09-14, 1d
-    Documentacion final :2026-09-14, 2026-09-15
+    Documentacion final (version Sep 2026) :2026-09-14, 2026-09-15
+    section Cuarta ronda de consolidacion
+    Pago unico por QR de Yape en la Tienda, sin pasarela :2026-11-09, 2026-11-10
+    Saldo pendiente, permisos de recepcionista, correccion de carrera en test :2026-11-10, 1d
+    Motor de rutinas IA: mas ejercicios por dia, piernas en subgrupos :2026-11-10, 1d
+    Comprobantes con RUC/IGV, formato ticket 80mm, avisos por WhatsApp :2026-11-12, 1d
+    Dashboard (membresias por estado, productos mas vendidos) y reportes :2026-11-12, 1d
+    section Quinta ronda de consolidacion
+    Diseno unificado, modal de confirmacion, codigo de barras :2026-11-14, 1d
+    Eliminacion completa de la pasarela de pagos (Culqi), pago 100% manual :2026-11-14, 1d
+    Reportes Excel (general completo y fichas del postest) :2026-11-15, 1d
+    Correccion de bugs reales (telefono WhatsApp, carrera en test) :2026-11-15, 1d
 ```
 
 *Nota.* Elaboración propia, reconstruido a partir del historial de control de versiones del repositorio Git y los hitos de versión documentados del proyecto.
 
-Las fases de enero a mayo (análisis, base del backend, autenticación, motor de recomendación, rediseño visual) representan el grueso del esfuerzo de desarrollo del proyecto; las rondas de consolidación de septiembre son una etapa posterior y más breve de revisión, corrección y documentación sobre un sistema ya desplegado.
+Las fases de enero a mayo (análisis, base del backend, autenticación, motor de recomendación, rediseño visual) representan el grueso del esfuerzo de desarrollo del proyecto; las rondas de consolidación de septiembre y noviembre son etapas posteriores y más breves de revisión, corrección y documentación sobre un sistema ya desplegado. La eliminación de la pasarela de pagos fue progresiva, no un solo cambio: la Cuarta ronda (9–12 de noviembre de 2026) ya había dejado de llamarla desde la Tienda online, reemplazándola por un QR de Yape estático confirmado a mano por el staff; la Quinta ronda (14–15 de noviembre de 2026) completó esa decisión eliminando por completo la arquitectura de pasarela construida en la Ronda 2 (ver más abajo), que nunca pudo confirmarse de punta a punta fuera del entorno de pruebas.
 
 **Recursos del proyecto:**
 
@@ -421,6 +432,8 @@ El backlog, reconstruido en orden real de implementación:
 7. Segunda ronda de consolidación: auditoría y trazabilidad, arquitectura de pasarela de pagos, recuperación de contraseña, recibos en PDF.
 8. Tercera ronda de consolidación: autogestión de contraseñas, avisos editables desde el panel, indicador de asistencias, paginación de listados.
 9. Actualización de la documentación de requisitos, casos de prueba y arquitectura para reflejar los módulos de Comercio, Avisos, Auditoría y Entrenadores.
+10. Cuarta ronda de consolidación (9–12 de noviembre de 2026): primer paso real hacia abandonar la pasarela de pagos — la Tienda online deja de llamar al checkout de Culqi y pasa a un QR de Yape estático confirmado a mano por el staff (ADMIN, ENTRENADOR o RECEPCIONISTA); saldo pendiente para membresías pagadas en partes y corrección de un permiso que bloqueaba a RECEPCIONISTA en comprobantes/detalle de cliente; motor de rutinas con más ejercicios por día y la división "Piernas" separada en subgrupos (Cuádriceps, Gemelos, Glúteos, Femorales); comprobantes de pago con RUC, razón social y desglose de IGV, en formato ticket 80mm para impresora térmica POS; avisos masivos por WhatsApp (cumpleaños, bienvenida, inactividad, feriados) sin repetir destinatarios el mismo día, y aviso automático al cliente cuando se confirma su pago; dashboard con gráficos de ingresos/asistencias y reemplazo de "clientes activos vs. rutinas IA" por "membresías por estado" y "productos más vendidos"; reporte de clientes con saldo pendiente; corrección de una condición de carrera real en `Pagos.test.jsx` que hacía fallar el CI.
+11. Quinta ronda de consolidación (14–15 de noviembre de 2026): unificación del diseño visual y reemplazo de los 19 cuadros de confirmación nativos del navegador por un modal propio (`useConfirmacion.js`/`ConfirmModal.jsx`); lector de código de barras en Productos, Ventas y Compras; eliminación completa de la pasarela de pagos (Culqi) — ya en desuso desde la Cuarta ronda — tras no poder confirmarse nunca de punta a punta fuera de un entorno de pruebas, reemplazada por confirmación manual del staff sobre pagos por Yape/Plin/efectivo; reporte general del negocio y reporte de apoyo a las fichas de campo del postest, ambos exportables a un único archivo Excel con una hoja por tema; corrección de dos defectos reales (teléfono del cliente vacío al enviar una rutina por WhatsApp, y una condición de carrera en una prueba de frontend).
 
 ---
 
@@ -428,7 +441,7 @@ El backlog, reconstruido en orden real de implementación:
 
 ### 4.1. Arquitectura del software
 
-La arquitectura general se organiza en capas (presentación → servicios FastAPI → lógica de negocio → datos PostgreSQL → servicios externos), documentada en `docs/04_Arquitectura/Arquitectura_General.md`. El backend expone 21 routers agrupados por módulo, más un submódulo de inteligencia artificial (`app/ia/`) y módulos de soporte transversales: `pagos_gateway/` (abstracción de pasarela de pago mediante el patrón *strategy*), `rate_limit.py` (limitador de intentos de inicio de sesión), `recibos.py` (generación de comprobantes en PDF) y `auditoria.py` (registro de trazabilidad).
+La arquitectura general se organiza en capas (presentación → servicios FastAPI → lógica de negocio → datos PostgreSQL → servicios externos), documentada en `docs/04_Arquitectura/Arquitectura_General.md`. El backend expone 23 routers agrupados por módulo (`backend/app/routes/`), más un submódulo de inteligencia artificial (`app/ia/`) y módulos de soporte transversales: `rate_limit.py` (limitador de intentos de inicio de sesión), `recibos.py` (generación de comprobantes en PDF), `auditoria.py` (registro de trazabilidad) y `reporte_excel.py`/`reporte_postest_excel.py` (exportación de reportes consolidados y de las fichas del postest a un único archivo Excel, agregados en la Quinta ronda, sección 2.1). El módulo `pagos_gateway/` (abstracción de pasarela de pago mediante el patrón *strategy*, construido en la Ronda 2) ya no existe: dejó de usarse desde la Tienda online en la Cuarta ronda y se eliminó por completo del código en la Quinta ronda, junto con `routes/webhooks.py` — ver la justificación en la sección 9.3 — y todo pago (mostrador o autoservicio) se confirma ahora manualmente por el staff vía `POST /pagos/{id_pago}/confirmar`, tras verificar la transferencia por Yape, Plin o efectivo.
 
 El framework backend enruta por módulo (`app/routes/*.py`) sin capas MVC explícitas: la validación de datos reside en `schemas.py` (Pydantic), la persistencia en `models.py` (SQLAlchemy), y la lógica de negocio dentro de cada router o en `app/ia/`.
 
@@ -692,7 +705,10 @@ La implementación siguió el backlog retrospectivo descrito en la sección 3.4,
 | 7 — Consolidación 1 | Sep 2026 | RBAC completo, motor de recomendación con restricciones médicas, entrenadores, limitador de intentos | Sistema con control de acceso reforzado |
 | 8 — Consolidación 2 | Sep 2026 | Auditoría, arquitectura de pasarela de pagos, recuperación de contraseña, recibos PDF | Trazabilidad y comprobantes desplegados |
 | 9 — Consolidación 3 | Sep 2026 | Autogestión de contraseñas, avisos editables, indicadores de asistencia, paginación | Panel administrativo completo |
-| 10 — Documentación | Sep 2026 | Actualización de RF/CP/arquitectura y redacción de este documento | Documentación de tesis consistente con el código |
+| 10 — Documentación (Sep 2026) | Sep 2026 | Actualización de RF/CP/arquitectura y redacción de la primera versión de este documento | Documentación de tesis consistente con el código de esa fecha |
+| 11 — Consolidación 4 | 9–12 Nov 2026 | Pago único por QR de Yape en la Tienda (primer paso fuera de Culqi), saldo pendiente y permisos de RECEPCIONISTA, motor de rutinas con más ejercicios por día y piernas en subgrupos, comprobantes con RUC/IGV en formato ticket 80mm, avisos masivos por WhatsApp, dashboard con nuevos gráficos y reportes | Tienda sin dependencia de la pasarela, dashboard y comprobantes más útiles |
+| 12 — Consolidación 5 | 14–15 Nov 2026 | Diseño unificado y modal de confirmación propio, lector de código de barras, eliminación completa de la pasarela de pagos (Culqi) y paso a confirmación 100% manual, reporte Excel general del negocio y Excel de apoyo a las fichas del postest (F-04 a F-18), corrección de dos defectos reales | Pago sin dependencia de terceros, reportes consolidados listos para el postest |
+| 13 — Documentación (Nov 2026) | Nov 2026 | Actualización de esta sección y de la sección 9.3 (escalabilidad y seguridad) para reflejar la Cuarta y Quinta ronda | Documentación de tesis consistente con el código vigente |
 
 *Nota.* Elaboración propia, a partir del historial de control de versiones del repositorio Git.
 
@@ -755,12 +771,12 @@ La validación del software en ejecución se realizó mediante las suites de pru
 
 | Suite | Resultado |
 |---|---|
-| Backend (`pytest --cov`) | 65 pruebas aprobadas, 0 fallidas, cobertura total de 89% |
-| Frontend (`vitest run --coverage`) | 143 pruebas aprobadas, 0 fallidas, en 33 archivos, cobertura total de 78.21% de sentencias |
+| Backend (`pytest`) | 183 pruebas aprobadas, 0 fallidas (verificado el 15/11/2026, tras la Quinta ronda) |
+| Frontend (`vitest run`) | 390 pruebas aprobadas, 0 fallidas, en 55 archivos (verificado el 15/11/2026, tras la Quinta ronda) |
 
-*Nota.* Elaboración propia.
+*Nota.* Elaboración propia. Los conteos de pruebas están verificados contra el estado actual del repositorio (post-Quinta ronda); las cifras de cobertura por línea (% Sonar, desglose por archivo de la Tabla 13) corresponden a la última medición completa disponible, documentada en la Tercera ronda (septiembre de 2026) salvo donde se indica lo contrario, y no se recalcularon en esta pasada — recalcularlas íntegramente excede el alcance de esta actualización puntual.
 
-**Desglose de las 65 pruebas de backend por módulo** (todas aprobadas; 0 fallidas en la última ejecución):
+**Desglose de pruebas de backend por módulo**, en el estado del repositorio al cierre de la Tercera ronda (septiembre de 2026; no recalculado tras la Cuarta ni la Quinta ronda — ver nota anterior):
 
 **Tabla 13**
 
@@ -772,7 +788,7 @@ La validación del software en ejecución se realizó mediante las suites de pru
 | Usuarios (CRUD, cambio y reseteo de contraseña) | 5 | `routes/usuarios.py` 97% |
 | Clientes (CRUD, búsqueda, paginación) | 5 | `routes/clientes.py` 93% |
 | Membresías y asignaciones | 5 | `routes/membresias.py` 100%, `routes/cliente_membresias.py` 98% |
-| Pagos (CRUD, recibo PDF, checkout/webhook) | 6 | `routes/pagos.py` 97%, `webhooks.py` 70%, `recibos.py` 97% |
+| Pagos (CRUD, recibo PDF, checkout/webhook — arquitectura vigente en esa fecha; eliminada en la Quinta ronda, ver sección 9.3) | 6 | `routes/pagos.py` 97%, `webhooks.py` 70% (archivo eliminado), `recibos.py` 97% |
 | Asistencias y progreso | 4 | `routes/asistencias.py` 93%, `routes/progreso.py` 97% |
 | Contenido deportivo (ejercicios, comidas, rutinas, nutrición) | 8 | `routes/ejercicios.py` 95%, `routes/comidas.py` 100%, `routes/rutinas.py` 98%, `routes/nutricion.py` 98% |
 | Motor de recomendación (generación IA, cálculo de macros) | 5 | `ia/rutina/recomendador_rutinas.py` 94%, `ia/nutricion/calculos_nutricion.py` 96% |
@@ -784,11 +800,11 @@ La validación del software en ejecución se realizó mediante las suites de pru
 
 *Nota.* Elaboración propia, a partir de `backend/tests/test_backend.py`, `test_crud.py` y `test_comercio.py`.
 
-El módulo de Comercio cuenta con 10 pruebas propias (`backend/tests/test_comercio.py`) que ejercitan su lógica de negocio real: alta/baja de categorías y proveedores con validación de nombre duplicado, confirmación y anulación de compras con su efecto correcto sobre el inventario y el registro de movimientos de stock (incluyendo el cálculo del IGV 18%), venta directa con descuento inmediato de stock, rechazo de ventas sin stock suficiente, anulación de ventas con reversión de stock, el flujo de "venta solicitada" por un cliente hasta su confirmación por el gimnasio, y ajustes manuales de inventario. Esto elevó la cobertura de línea de esos seis archivos de un rango de 17%–43% (solo por el registro de rutas al iniciar la aplicación, sin ejercitar lógica) a un rango de 48%–88%. En el frontend, las páginas de Comercio permanecen sin pruebas dedicadas (entre 1.3% y 2.8% de cobertura); esa brecha específica del frontend sigue documentada como prioridad de mejora continua en `docs/07_Gestion_Proyecto/Pendientes.md` (P-04).
+El módulo de Comercio cuenta con 10 pruebas propias (`backend/tests/test_comercio.py`) que ejercitan su lógica de negocio real: alta/baja de categorías y proveedores con validación de nombre duplicado, confirmación y anulación de compras con su efecto correcto sobre el inventario y el registro de movimientos de stock (incluyendo el cálculo del IGV 18%), venta directa con descuento inmediato de stock, rechazo de ventas sin stock suficiente, anulación de ventas con reversión de stock, el flujo de "venta solicitada" por un cliente hasta su confirmación por el gimnasio, y ajustes manuales de inventario. Esto elevó la cobertura de línea de esos seis archivos de un rango de 17%–43% (solo por el registro de rutas al iniciar la aplicación, sin ejercitar lógica) a un rango de 48%–88%. **Actualización (resuelto, ver `Pendientes.md` P-04)**: la brecha de pruebas dedicadas en las siete páginas de Comercio del frontend, mencionada aquí como pendiente en la Tercera ronda, ya se resolvió: cada página cuenta hoy con su propio archivo `*.test.jsx`, elevando esas siete páginas de un rango de 1.3%–2.8% a 87.9%–100% de cobertura, y la cobertura total del frontend de 78.21% a 94.33%.
 
 **Correspondencia con los indicadores del Plan de Tesis (Anexo 02, Matriz de Operacionalización de Variables):**
 
-- *Cumplimiento funcional de los módulos implementados* (`Cumplimiento = Funciones correctamente implementadas / Total de funciones evaluadas × 100`): sobre las 65 pruebas de backend y 143 de frontend ejecutadas, el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (208 de 208 pruebas aprobadas, 0 fallidas, 0 observadas). Este porcentaje describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema: las páginas de Comercio en el frontend y una parte de la lógica de `ventas.py`/`productos.py`/`inventario.py` en el backend (ver cobertura de línea arriba) aún no tienen una prueba automatizada que las evalúe, por lo que no están incluidas en este cálculo.
+- *Cumplimiento funcional de los módulos implementados* (`Cumplimiento = Funciones correctamente implementadas / Total de funciones evaluadas × 100`): sobre las 183 pruebas de backend y 390 de frontend ejecutadas al 15/11/2026 (post-Quinta ronda), el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (573 de 573 pruebas aprobadas, 0 fallidas, 0 observadas). Este porcentaje describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema: a diferencia de lo registrado en la Tercera ronda, las siete páginas de Comercio del frontend ya cuentan con prueba dedicada (ver actualización más arriba, P-04 resuelto); una parte de la lógica de `ventas.py`/`productos.py`/`inventario.py` en el backend (ver cobertura de línea de la Tercera ronda, arriba) no se verificó nuevamente en esta pasada, por lo que no se afirma aquí si mejoró.
 - *Tiempo de respuesta del sistema en la generación de rutinas y planes nutricionales*: medido con un script propio (`backend/medir_tiempo_respuesta.py`) que invoca los endpoints reales `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}` de extremo a extremo (20 repeticiones, catálogo representativo en SQLite local):
 
   **Tabla 14**
@@ -1059,11 +1075,13 @@ El detalle completo, con solución de problemas comunes, está en `docs/05_Desar
 
 ### 9.3. Escalabilidad y seguridad a largo plazo
 
-El detalle completo de mejoras pendientes, priorizadas y verificadas contra el código, se documenta en `docs/07_Gestion_Proyecto/Pendientes.md` (P-01 a P-18). Se resumen a continuación los puntos más relevantes para la escalabilidad y seguridad del sistema:
+**Actualización (Cuarta y Quinta ronda, noviembre de 2026)**: el detalle completo de mejoras pendientes, priorizadas y verificadas contra el código, se documenta en `docs/07_Gestion_Proyecto/Pendientes.md` (P-01 a P-26, numeración no correlativa porque conserva el orden en que se identificó cada punto). A esta fecha, prácticamente todo lo que esta sección listaba como pendiente en la Tercera ronda ya se resolvió — incluida la verificación de correo (P-01), el envío real de correo vía Brevo (P-03), la cobertura de pruebas de Comercio (P-04), las alertas de vencimiento con recordatorio por WhatsApp (P-05), la exportación en PDF de rutinas y planes (P-06), páginas de administración para Entrenadores y Auditoría (P-18), y CI/CD con GitHub Actions (P-09) — y, en particular, **P-02 (pasarela de pago) ya no es un pendiente de activación: se descartó por decisión del equipo** tras confirmar que el pago real de punta a punta solo podía probarse contra la cuenta de producción de Culqi, nunca en su sandbox, mientras esa cuenta seguía bloqueada por una verificación KYC sin fecha estimada (detalle completo en `Pendientes.md`, P-02 y P-22). Lo que de verdad sigue abierto, verificado contra `Pendientes.md` a esta fecha:
 
-- **Prioridad alta**: verificación de correo electrónico al registro (P-01); activación de una pasarela de pago real — la arquitectura ya está preparada mediante una interfaz intercambiable, y actualmente opera en modo de simulación (P-02); envío real de correo electrónico (P-03); ampliación de la cobertura de pruebas del módulo de Comercio (P-04).
-- **Prioridad media**: alertas de vencimiento de membresía (P-05); exportación en PDF de rutinas y planes nutricionales, hoy disponible solo para recibos de pago (P-06); integración continua (P-09); distribución del limitador de intentos de inicio de sesión en despliegues con múltiples procesos (P-10); incorporación de páginas de administración para Entrenadores y Auditoría (P-18).
-- **Prioridad baja**: migración de la configuración de esquemas Pydantic a su sintaxis más reciente (P-12); contenerización del proyecto (P-13); monitoreo y registro centralizado de errores (P-14); respaldo de base de datos independiente del proveedor de hosting (P-15); mitigación de los riesgos del plan gratuito de Render — tiempo de reactivación del servicio y expiración de la base de datos a los 90 días sin actualización de plan (P-16), confirmado empíricamente en la sección 7.2 de este documento.
+- **Pendiente de una decisión de infraestructura, no de código**: migrar todo el despliegue (backend + base de datos) a un VPS de Hostinger (P-16), a la espera de que se compre ese plan — el despliegue actual en el plan gratuito de Render ya mostró el riesgo documentado en la sección 7.2 (expiración de la base de datos a los 90 días sin actualizar el plan, ya ocurrido una vez). Dos mejoras quedan amarradas a esa migración, porque recién ahí se justifica correr varios workers: distribuir el limitador de intentos de inicio de sesión con Redis en vez de memoria del proceso (P-10), y backups de base de datos propios en vez de depender enteramente del plan gestionado de Render (P-15).
+- **Evaluado y descartado por ahora**: facturación electrónica ante SUNAT (P-24) — fuera del alcance original de la tesis y el costo/riesgo de integrarla no se justifica para el volumen actual del negocio; se revisaría solo si el gimnasio crece lo suficiente como para que SUNAT la exija específicamente por las ventas que procesa este sistema.
+- **Mantenimiento manual pendiente en producción, no es código**: desactivar o renombrar la membresía de prueba "Plan de Prueba Culqi S/6" que quedó creada en producción durante las pruebas de la pasarela ya eliminada, para no confundir al staff.
+
+El resto de puntos que esta sección citaba como pendientes en la Tercera ronda (migración de `class Config:` a `ConfigDict` de Pydantic v2 — P-12; contenerización con Docker — P-13) ya están resueltos; el detalle de cada resolución, verificado contra el código, está en `Pendientes.md`.
 
 ---
 
