@@ -39,9 +39,13 @@ describe("Avisos Page Component", () => {
   });
 
   it("shows the event date for an EVENTO aviso", async () => {
+    // Fecha calculada relativa a hoy, no fija -- ver nota en el test de
+    // abajo ("hides a past EVENTO...") sobre por qué una fecha futura fija
+    // deja de ser futura con el tiempo.
+    const fechaEvento = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     api.get.mockResolvedValue({
       data: [
-        { id_aviso: 3, titulo: "Noche de retos", contenido: "Trae a un amigo", tipo: "EVENTO", fecha_evento: "2026-12-15", estado: "ACTIVO" },
+        { id_aviso: 3, titulo: "Noche de retos", contenido: "Trae a un amigo", tipo: "EVENTO", fecha_evento: fechaEvento, estado: "ACTIVO" },
       ],
     });
 
@@ -53,16 +57,23 @@ describe("Avisos Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Noche de retos")).toBeDefined();
-      expect(screen.getByText(new Date("2026-12-15T00:00:00").toLocaleDateString("es-PE"))).toBeDefined();
+      expect(screen.getByText(new Date(`${fechaEvento}T00:00:00`).toLocaleDateString("es-PE"))).toBeDefined();
     });
   });
 
   it("hides a past EVENTO and keeps a future one, sorted by closest date first", async () => {
+    // Fechas calculadas relativas a hoy (no fijas) -- una fecha fija como
+    // "futura" deja de serlo apenas pasa esa fecha real, haciendo flakear
+    // el test sin ningún cambio real en el código (bug real encontrado en
+    // CI: esta fecha ya había quedado en el pasado).
+    const aFechaISO = (diasDesdeHoy) =>
+      new Date(Date.now() + diasDesdeHoy * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
     api.get.mockResolvedValue({
       data: [
-        { id_aviso: 1, titulo: "Evento pasado", contenido: "Ya ocurrió", tipo: "EVENTO", fecha_evento: "2026-01-01", estado: "ACTIVO" },
-        { id_aviso: 2, titulo: "Evento lejano", contenido: "En dos meses", tipo: "EVENTO", fecha_evento: "2027-01-15", estado: "ACTIVO" },
-        { id_aviso: 3, titulo: "Evento cercano", contenido: "La próxima semana", tipo: "EVENTO", fecha_evento: "2026-11-15", estado: "ACTIVO" },
+        { id_aviso: 1, titulo: "Evento pasado", contenido: "Ya ocurrió", tipo: "EVENTO", fecha_evento: aFechaISO(-30), estado: "ACTIVO" },
+        { id_aviso: 2, titulo: "Evento lejano", contenido: "En dos meses", tipo: "EVENTO", fecha_evento: aFechaISO(60), estado: "ACTIVO" },
+        { id_aviso: 3, titulo: "Evento cercano", contenido: "La próxima semana", tipo: "EVENTO", fecha_evento: aFechaISO(7), estado: "ACTIVO" },
       ],
     });
 
