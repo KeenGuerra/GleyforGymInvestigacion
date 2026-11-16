@@ -18,6 +18,10 @@ from app.constants import (
     MSG_CLIENTE_INACTIVO,
     ESTADO_ANULADO,
     ESTADO_ACTIVO,
+    ESTADO_ACTIVA,
+    ESTADO_CANCELADA,
+    ESTADO_PAGADO,
+    ESTADO_PENDIENTE,
     MSG_MEMBRESIA_CLIENTE_NO_ENCONTRADA
 )
 
@@ -87,11 +91,11 @@ def aplicar_confirmacion_pago(db: Session, pago: models.Pago) -> None:
     pago no venía de ese flujo (ej. fue creado ya resuelto por el staff) no
     hay nada que activar."""
     cliente_membresia = pago.cliente_membresia
-    if cliente_membresia and cliente_membresia.estado == "PENDIENTE":
+    if cliente_membresia and cliente_membresia.estado == ESTADO_PENDIENTE:
         hoy = date.today()
         cliente_membresia.fecha_inicio = hoy
         cliente_membresia.fecha_fin = hoy + timedelta(days=cliente_membresia.membresia.duracion_dias)
-        cliente_membresia.estado = "ACTIVA"
+        cliente_membresia.estado = ESTADO_ACTIVA
     db.commit()
 
 
@@ -120,10 +124,10 @@ def confirmar_pago(
     if not pago_db:
         raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
 
-    if pago_db.estado != "PENDIENTE":
+    if pago_db.estado != ESTADO_PENDIENTE:
         raise HTTPException(status_code=409, detail="El pago no está en estado PENDIENTE")
 
-    pago_db.estado = "PAGADO"
+    pago_db.estado = ESTADO_PAGADO
     aplicar_confirmacion_pago(db, pago_db)
     db.refresh(pago_db)
 
@@ -250,8 +254,8 @@ def eliminar_pago(
     # ClienteMembresia que quedó PENDIENTE junto con él se cancela también
     # -- si no, se queda huérfana bloqueando al socio de iniciar una compra
     # nueva (ver índice único en ClienteMembresia).
-    if pago_db.cliente_membresia and pago_db.cliente_membresia.estado == "PENDIENTE":
-        pago_db.cliente_membresia.estado = "CANCELADA"
+    if pago_db.cliente_membresia and pago_db.cliente_membresia.estado == ESTADO_PENDIENTE:
+        pago_db.cliente_membresia.estado = ESTADO_CANCELADA
 
     db.commit()
 

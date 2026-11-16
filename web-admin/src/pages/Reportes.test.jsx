@@ -831,6 +831,25 @@ describe("Reportes Page Component", () => {
     });
   });
 
+  it("groups the sections into tabs, hiding other tabs' panels until clicked", async () => {
+    render(<Reportes />);
+
+    const whatsappPanel = screen.getByText("Membresías por vencer").closest(".tab-panel");
+    const tesisPanel = screen.getByText("Exportaciones para tesis").closest(".tab-panel");
+
+    // Por defecto se ve "Resumen y finanzas"; los otros grupos siguen
+    // montados (no se pierde su estado) pero ocultos con CSS.
+    expect(whatsappPanel.className).toContain("tab-panel-oculto");
+    expect(tesisPanel.className).toContain("tab-panel-oculto");
+
+    fireEvent.click(screen.getByText("Mensajería WhatsApp"));
+
+    await waitFor(() => {
+      expect(whatsappPanel.className).not.toContain("tab-panel-oculto");
+      expect(tesisPanel.className).toContain("tab-panel-oculto");
+    });
+  });
+
   it("loads active clients for the holiday broadcast and sends the same custom message to each", async () => {
     const openSpy = vi.fn();
     vi.stubGlobal("open", openSpy);

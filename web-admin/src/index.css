@@ -82,9 +82,12 @@ button {
 
 .sidebar {
   width: 290px;
-  height: 100vh;
+  /* 76px = altura real de .public-navbar (sticky, arriba de este layout) --
+     restarla evita que el sidebar sobresalga por debajo de la pantalla y
+     tape .sidebar-footer (botón "Cerrar sesión"). */
+  height: calc(100vh - 76px);
   position: sticky;
-  top: 0;
+  top: 76px;
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -832,6 +835,99 @@ tr:hover td {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
+}
+
+/* Filtro por estado (ej. Ventas): chips encima de la grilla para agrupar
+   visualmente sin tener que pedirle de nuevo los datos al backend. */
+.estado-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 20px;
+}
+
+.estado-filtros button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.estado-filtros button:hover {
+  color: var(--text);
+  border-color: rgba(255, 85, 0, 0.3);
+}
+
+.estado-filtros button.active {
+  background: linear-gradient(135deg, rgba(255, 85, 0, 0.16), rgba(255, 85, 0, 0.05));
+  border-color: rgba(255, 85, 0, 0.4);
+  color: var(--orange-text);
+}
+
+.estado-filtros .count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(33, 27, 20, 0.08);
+  font-size: 11px;
+}
+
+.estado-filtros button.active .count {
+  background: rgba(255, 85, 0, 0.18);
+}
+
+/* Pestañas para agrupar secciones largas de una página (ej. Reportes).
+   Los paneles inactivos se ocultan con display:none -- siguen montados, no
+   se pierde lo ya consultado al volver a esa pestaña. */
+.tabs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+
+.tabs-nav button {
+  padding: 10px 18px;
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tabs-nav button:hover {
+  color: var(--text);
+}
+
+.tabs-nav button.active {
+  background: var(--surface-solid);
+  color: var(--orange-text);
+  box-shadow: 0 4px 12px rgba(33, 27, 20, 0.1);
+}
+
+.tab-panel-oculto {
+  display: none;
+}
+
+/* Tarjetas de mensaje de WhatsApp (Reportes): mas anchas que .cards-grid
+   normal para que el textarea del mensaje se lea comodo. */
+.whatsapp-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 24px;
+}
+
+.whatsapp-cards textarea {
+  min-height: 160px;
 }
 
 .user-info {
@@ -1931,27 +2027,29 @@ tr:hover td {
 ========================= */
 
 .public-brand-logo {
-  /* Mismo motivo que .auth-logo: chip oscuro fijo para que los trazos
-     blancos del logo se vean sin importar el fondo de la navbar. */
-  height: 52px;
+  /* A diferencia de .auth-logo (chip oscuro sobre página clara), este chip
+     vive sobre .public-navbar, que ya es casi negro -- un chip igual de
+     oscuro se perdía contra ese fondo. Se usa un marrón-naranja más claro
+     y un borde/resplandor más marcado para que se note como placa propia. */
+  height: 60px;
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 0 16px;
+  padding: 0 18px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #241a12, #17110c);
-  border: 1px solid rgba(255, 85, 0, 0.3);
-  box-shadow: 0 4px 16px rgba(33, 27, 20, 0.15);
+  background: linear-gradient(135deg, #3a2414, #271707);
+  border: 1px solid rgba(255, 138, 0, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 18px rgba(255, 85, 0, 0.12);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .public-brand-logo:hover {
   transform: scale(1.03);
-  box-shadow: 0 6px 20px rgba(33, 27, 20, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), 0 0 24px rgba(255, 85, 0, 0.2);
 }
 
 .public-brand-logo img {
-  height: 70%;
+  height: 80%;
   width: auto;
   object-fit: contain;
   filter: brightness(1.05) contrast(1.05);

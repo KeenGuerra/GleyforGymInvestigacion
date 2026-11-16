@@ -147,11 +147,11 @@ class Pago(Base):
     id_cliente_membresia = Column(Integer, ForeignKey("cliente_membresias.id_cliente_membresia"), nullable=True)
 
     monto = Column(Float, nullable=False)
-    metodo_pago = Column(String(50), nullable=False)  # EFECTIVO, YAPE, PLIN, TRANSFERENCIA, TARJETA
+    metodo_pago = Column(String(50), nullable=False)  # EFECTIVO, YAPE, PLIN, TRANSFERENCIA
     fecha_pago = Column(Date, nullable=False)
-    estado = Column(String(30), default="PAGADO")  # PAGADO, PENDIENTE, ANULADO, FALLIDO, REEMBOLSADO
+    estado = Column(String(30), default="PAGADO")  # PAGADO, PENDIENTE, ANULADO
     observacion = Column(String, nullable=True)
-    id_transaccion_externa = Column(String(100), nullable=True)  # referencia de la pasarela de pago (ver app/pagos_gateway)
+    id_transaccion_externa = Column(String(100), nullable=True)  # vestigio de la pasarela de pago eliminada; ninguna ruta lo asigna hoy
     origen = Column(String(20), nullable=True)  # STAFF (POST /pagos/) o AUTOSERVICIO (POST /cliente-membresias/comprar)
 
     cliente = relationship("Cliente", back_populates="pagos")
@@ -516,9 +516,9 @@ class Venta(Base):
     # ENTREGADA (ya se la llevó) -> ANULADA. Una venta de mostrador
     # (POST /ventas/, el staff entrega en el momento) nace directo en
     # ENTREGADA, sin pasar por CONFIRMADA.
-    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ENTREGADA, ANULADA, FALLIDA
+    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ENTREGADA, ANULADA
     observaciones = Column(Text, nullable=True)
-    id_transaccion_externa = Column(String(100), nullable=True)  # referencia de la pasarela de pago (ver app/pagos_gateway)
+    id_transaccion_externa = Column(String(100), nullable=True)  # vestigio de la pasarela de pago eliminada; ninguna ruta lo asigna hoy
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

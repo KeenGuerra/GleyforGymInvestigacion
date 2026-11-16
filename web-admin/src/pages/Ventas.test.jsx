@@ -78,7 +78,7 @@ describe("Ventas Page Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Buscar..."), { target: { value: "noexiste" } });
 
     await waitFor(() => {
-      expect(screen.getByText("No hay ventas registradas.")).toBeDefined();
+      expect(screen.getByText("No hay ventas con ese filtro.")).toBeDefined();
     });
   });
 
@@ -379,6 +379,33 @@ describe("Ventas Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("No se pudo descargar la boleta")).toBeDefined();
+    });
+  });
+
+  it("filters the sales list by estado using the status chips", async () => {
+    mockApiGet([
+      mockVentaPendiente,
+      { ...mockVentaPendiente, id_venta: 2, nombre_cliente: "Carlos Ruiz", estado: "ENTREGADA" },
+    ]);
+
+    render(<Ventas />);
+    await waitFor(() => {
+      expect(screen.getByText("Ana López")).toBeDefined();
+      expect(screen.getByText("Carlos Ruiz")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^PENDIENTE/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Ana López")).toBeDefined();
+      expect(screen.queryByText("Carlos Ruiz")).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Todas/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Ana López")).toBeDefined();
+      expect(screen.getByText("Carlos Ruiz")).toBeDefined();
     });
   });
 

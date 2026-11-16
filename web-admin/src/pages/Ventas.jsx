@@ -15,6 +15,7 @@ function Ventas() {
   const [cargando, setCargando] = useState(false);
   const [procesando, setProcesando] = useState(null);
   const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("TODAS");
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [detalle, setDetalle] = useState([]);
@@ -190,7 +191,7 @@ function Ventas() {
     }
   };
 
-  const filtradas = ventas.filter((v) => {
+  const filtradasPorBusqueda = ventas.filter((v) => {
     const t = busqueda.toLowerCase();
     return (
       String(v.id_venta || "").includes(t) ||
@@ -199,6 +200,19 @@ function Ventas() {
       String(v.estado || "").toLowerCase().includes(t)
     );
   });
+
+  // Agrupar por estado para que el staff vea primero lo que necesita accion
+  // (pendientes de confirmar) en vez de una sola grilla con todo mezclado.
+  const conteoPorEstado = filtradasPorBusqueda.reduce((acc, v) => {
+    acc[v.estado] = (acc[v.estado] || 0) + 1;
+    return acc;
+  }, {});
+  const ESTADOS_VENTA = ["PENDIENTE", "CONFIRMADA", "ENTREGADA", "ANULADA"];
+
+  const filtradas =
+    filtroEstado === "TODAS"
+      ? filtradasPorBusqueda
+      : filtradasPorBusqueda.filter((v) => v.estado === filtroEstado);
 
   const badgeColor = (estado) => {
     if (estado === "ENTREGADA") return "badge badge-success";
@@ -323,7 +337,37 @@ function Ventas() {
           <div><h2>Historial de ventas</h2></div>
           <input className="search-input" placeholder="Buscar..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
-        {filtradas.length === 0 ? <p className="empty-message">No hay ventas registradas.</p> : (
+
+        <div className="estado-filtros">
+          {ESTADOS_VENTA.map((estado) => (
+            <button
+              key={estado}
+              type="button"
+              className={filtroEstado === estado ? "active" : ""}
+              onClick={() => setFiltroEstado(estado)}
+            >
+              {estado}
+              <span className="count">{conteoPorEstado[estado] || 0}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className={filtroEstado === "TODAS" ? "active" : ""}
+            onClick={() => setFiltroEstado("TODAS")}
+          >
+            Todas
+            <span className="count">{filtradasPorBusqueda.length}</span>
+          </button>
+        </div>
+
+        {(pagina > 0 || haySiguiente) && (
+          <p className="item-description">
+            El filtro y los conteos son solo de esta página (las {VENTAS_POR_PAGINA} ventas más recientes
+            cargadas); cambia de página para revisar el resto del historial.
+          </p>
+        )}
+
+        {filtradas.length === 0 ? <p className="empty-message">No hay ventas con ese filtro.</p> : (
           <div className="cards-grid">
             {filtradas.map((v) => (
               <div key={v.id_venta} className="card item-card">

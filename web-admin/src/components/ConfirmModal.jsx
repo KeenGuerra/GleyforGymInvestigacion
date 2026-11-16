@@ -15,11 +15,11 @@ function ConfirmModal({ pregunta, onResponder }) {
     <>
       <div className="modal-backdrop show" style={{ zIndex: 1090 }}></div>
       <div
-        className="modal d-block"
+        className="modal"
         tabIndex="-1"
         role="dialog"
         aria-modal="true"
-        style={{ zIndex: 1091 }}
+        style={{ zIndex: 1091, display: "block" }}
       >
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">

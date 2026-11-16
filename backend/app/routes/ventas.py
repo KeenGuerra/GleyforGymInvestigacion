@@ -583,10 +583,9 @@ def entregar_venta(
 def aplicar_confirmacion_venta(db: Session, venta: models.Venta, id_usuario: int | None) -> None:
     """
     Descuenta stock y registra el movimiento de inventario de una venta
-    PENDIENTE -> CONFIRMADA. Se extrajo de confirmar_venta() para que el
-    webhook de pagos (POST /webhooks/pagos) pueda aplicar el mismo efecto
-    de inventario cuando el pago se confirma en línea, en vez de solo
-    cambiar el estado y dejar el stock desincronizado.
+    PENDIENTE -> CONFIRMADA. Se mantiene como función aparte de
+    confirmar_venta() para no mezclar la validación/cambio de estado del
+    endpoint con el efecto de inventario en sí.
     """
     detalles = db.query(models.DetalleVenta).filter(
         models.DetalleVenta.id_venta == venta.id_venta

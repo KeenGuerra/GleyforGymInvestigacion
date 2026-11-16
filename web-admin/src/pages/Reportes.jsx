@@ -13,6 +13,12 @@ function primerDiaDelMes() {
 
 function Reportes() {
   const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
+  // Agrupa las ~13 secciones de este reporte en pestañas para que no sea
+  // una sola pagina larguisima con todo mezclado. Los paneles inactivos se
+  // ocultan con CSS (no se dejan de montar) para no perder lo ya consultado
+  // en otra pestaña al volver.
+  const [tabActivo, setTabActivo] = useState("finanzas");
+  const panelClass = (id) => `tab-panel${tabActivo === id ? "" : " tab-panel-oculto"}`;
   const [desde, setDesde] = useState(primerDiaDelMes());
   const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
   const [resumenGeneral, setResumenGeneral] = useState(null);
@@ -752,6 +758,23 @@ function Reportes() {
         </div>
       </section>
 
+      <nav className="tabs-nav">
+        <button type="button" className={tabActivo === "finanzas" ? "active" : ""} onClick={() => setTabActivo("finanzas")}>
+          Resumen y finanzas
+        </button>
+        <button type="button" className={tabActivo === "whatsapp" ? "active" : ""} onClick={() => setTabActivo("whatsapp")}>
+          Mensajería WhatsApp
+        </button>
+        <button type="button" className={tabActivo === "tesis" ? "active" : ""} onClick={() => setTabActivo("tesis")}>
+          Exportaciones de tesis
+        </button>
+        <button type="button" className={tabActivo === "mantenimiento" ? "active" : ""} onClick={() => setTabActivo("mantenimiento")}>
+          Mantenimiento
+        </button>
+      </nav>
+
+      <div className={panelClass("finanzas")}>
+
       {resumenGeneral && resumenGeneral.ingresos && (
         <section className="table-card">
           <div className="table-header">
@@ -1016,6 +1039,10 @@ function Reportes() {
         </section>
       )}
 
+      </div>
+
+      <div className={panelClass("whatsapp")}>
+
       <section className="table-card">
         <div className="card-header">
           <div>
@@ -1047,7 +1074,7 @@ function Reportes() {
           membresiasPorVencer.length === 0 ? (
             <p className="empty-message">No hay membresías por vencer en ese rango de días.</p>
           ) : (
-            <div className="cards-grid">
+            <div className="whatsapp-cards">
               {membresiasPorVencer.map((fila) => (
                 <article className="card item-card" key={fila.id_cliente_membresia}>
                   <div className="item-card-top">
@@ -1117,7 +1144,7 @@ function Reportes() {
                   S/ {saldosPendientes.reduce((t, f) => t + Number(f.saldo_pendiente), 0).toFixed(2)}
                 </strong>
               </p>
-              <div className="cards-grid">
+              <div className="whatsapp-cards">
                 {saldosPendientes.map((fila) => (
                   <article className="card item-card" key={fila.id_cliente_membresia}>
                     <div className="item-card-top">
@@ -1176,7 +1203,7 @@ function Reportes() {
           cumpleanosHoy.length === 0 ? (
             <p className="empty-message">Nadie cumple años hoy.</p>
           ) : (
-            <div className="cards-grid">
+            <div className="whatsapp-cards">
               {cumpleanosHoy.map((fila) => (
                 <article className="card item-card" key={fila.id_cliente}>
                   <div className="item-card-top">
@@ -1241,7 +1268,7 @@ function Reportes() {
           sociosNuevos.length === 0 ? (
             <p className="empty-message">No hay socios nuevos en ese rango de días.</p>
           ) : (
-            <div className="cards-grid">
+            <div className="whatsapp-cards">
               {sociosNuevos.map((fila) => (
                 <article className="card item-card" key={fila.id_cliente}>
                   <div className="item-card-top">
@@ -1306,7 +1333,7 @@ function Reportes() {
           clientesInactivos.length === 0 ? (
             <p className="empty-message">No hay clientes inactivos en ese rango de días.</p>
           ) : (
-            <div className="cards-grid">
+            <div className="whatsapp-cards">
               {clientesInactivos.map((fila) => (
                 <article className="card item-card" key={fila.id_cliente}>
                   <div className="item-card-top">
@@ -1373,7 +1400,7 @@ function Reportes() {
           clientesParaFeriado.length === 0 ? (
             <p className="empty-message">No hay clientes activos.</p>
           ) : (
-            <div className="cards-grid">
+            <div className="whatsapp-cards">
               {clientesParaFeriado.map((fila) => (
                 <article className="card item-card" key={fila.id_cliente}>
                   <div className="item-card-top">
@@ -1394,6 +1421,10 @@ function Reportes() {
           )
         )}
       </section>
+
+      </div>
+
+      <div className={panelClass("tesis")}>
 
       <section className="table-card">
         <div className="card-header">
@@ -1428,6 +1459,10 @@ function Reportes() {
         </div>
       </section>
 
+      </div>
+
+      <div className={panelClass("mantenimiento")}>
+
       <section className="table-card">
         <div className="card-header">
           <div>
@@ -1459,6 +1494,8 @@ function Reportes() {
 
         {resultadoLimpieza && <p className="empty-message">{resultadoLimpieza}</p>}
       </section>
+
+      </div>
 
       <ConfirmModal pregunta={pregunta} onResponder={responderConfirmacion} />
     </div>
