@@ -609,6 +609,14 @@ USUARIO ||--o{ REGISTRO_AUDITORIA : realiza
 CLIENTE ||--o{ ENVIO_WHATSAPP : recibe
 USUARIO ||--o{ ENVIO_WHATSAPP : registra
 USUARIO ||--o{ CONTEO_INVENTARIO : realiza
+USUARIO ||--o{ RUTINA : revisa
+USUARIO ||--o{ PLAN_NUTRICIONAL : revisa
+CLIENTE ||--o{ VENTA : realiza
+USUARIO ||--o{ VENTA : registra
+USUARIO ||--o{ COMPRA : registra
+USUARIO ||--o{ MOVIMIENTO_STOCK : registra
+LOTE ||--o{ MOVIMIENTO_STOCK : afecta
+LOTE ||--o{ DETALLE_VENTA : "se vende de"
 @enduml
 ```
 
@@ -1198,7 +1206,6 @@ skinparam ArrowColor #333333
 skinparam roundcorner 6
 hide empty members
 hide circle
-skinparam linetype ortho
 skinparam ClassBackgroundColor #F7F7F7
 skinparam ClassBorderColor #333333
 skinparam PackageBorderColor #777777
@@ -1315,6 +1322,16 @@ DetalleConteoInventario "*" --> "1" Producto
 
 Usuario "1" --> "*" RegistroAuditoria
 Cliente "1" --> "*" EnvioWhatsApp
+Usuario "1" --> "*" Rutina : revisa
+Usuario "1" --> "*" PlanNutricional : revisa
+Cliente "1" --> "*" Venta
+Usuario "1" --> "*" Venta
+Usuario "1" --> "*" Compra
+Usuario "1" --> "*" MovimientoStock
+Lote "1" --> "*" MovimientoStock
+Lote "1" --> "*" DetalleVenta
+Usuario "1" --> "*" EnvioWhatsApp
+Usuario "1" --> "*" ConteoInventario
 Comida -[hidden]down- Categoria
 Comida -[hidden]down- Proveedor
 Pago -[hidden]down- ConteoInventario
