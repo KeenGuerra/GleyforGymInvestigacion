@@ -147,10 +147,14 @@ describe("DashboardAdmin Page Component", () => {
 
     render(<DashboardAdmin />);
 
+    // El titulo "Productos mas vendidos" es estatico (se muestra en el
+    // primer render, antes de que resuelva cargarDatos) -- esperar solo a
+    // que aparezca no garantiza que ya haya datos. Se espera a que
+    // desaparezca el mensaje vacio, que si depende del estado cargado.
     await waitFor(() => {
       expect(screen.getByText("Productos más vendidos")).toBeDefined();
+      expect(screen.queryByText("No hay ventas de productos registradas este mes.")).toBeNull();
     });
-    expect(screen.queryByText("No hay ventas de productos registradas este mes.")).toBeNull();
   });
 
   it("shows an empty message when there are no best-selling products this month", async () => {
