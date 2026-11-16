@@ -616,16 +616,16 @@ USUARIO ||--o{ CONTEO_INVENTARIO : realiza
 
 **Primera forma normal (1FN).** Se eliminaron los grupos repetitivos: las medidas corporales del progreso físico se almacenan en columnas atómicas independientes (brazo izquierdo, brazo derecho, pierna izquierda, pierna derecha, pecho, cintura) en lugar de una lista o campo compuesto, decisión documentada como DA-013.
 
-**Modelo lógico.** El esquema físico implementado comprende 30 tablas en PostgreSQL (26 del diseño original más `registro_tiempos_sistema`, `envios_whatsapp`, `conteos_inventario` y `detalle_conteos_inventario`, agregadas en la Quinta ronda y en consolidaciones previas para instrumentar el postest de la tesis, los avisos masivos por WhatsApp y el conteo físico de inventario — ver sección 3.4), con sus tipos de datos y restricciones definidos mediante SQLAlchemy, documentadas campo por campo en `Arquitectura_BaseDatos.md`. El saldo pendiente de una membresía (`ClienteMembresia.monto_pagado`/`saldo_pendiente`) y el RUC/IGV del comprobante en ticket 80mm (`Compra.igv` y la configuración `RUC_EMPRESA`/`RAZON_SOCIAL`) se calculan sobre columnas y propiedades ya existentes, sin tabla nueva; el rol RECEPCIONISTA tampoco agrega una tabla, es un valor más del campo `Usuario.rol`. El siguiente diagrama muestra las entidades centrales del bloque deportivo con su cardinalidad:
+**Modelo lógico.** El esquema físico implementado comprende 30 tablas en PostgreSQL (26 del diseño original más `registro_tiempos_sistema`, `envios_whatsapp`, `conteos_inventario` y `detalle_conteos_inventario`, agregadas en la Quinta ronda y en consolidaciones previas para instrumentar el postest de la tesis, los avisos masivos por WhatsApp y el conteo físico de inventario — ver sección 3.4), con sus tipos de datos y restricciones definidos mediante SQLAlchemy, documentadas campo por campo en `Arquitectura_BaseDatos.md`. El saldo pendiente de una membresía (`ClienteMembresia.monto_pagado`/`saldo_pendiente`) y el RUC/IGV del comprobante en ticket 80mm (`Compra.igv` y la configuración `RUC_EMPRESA`/`RAZON_SOCIAL`) se calculan sobre columnas y propiedades ya existentes, sin tabla nueva; el rol RECEPCIONISTA tampoco agrega una tabla, es un valor más del campo `Usuario.rol`. Los dos diagramas siguientes muestran el modelo lógico completo de las 30 tablas, con su cardinalidad, divididos en bloque deportivo (Figura 6a) y bloque comercial y de soporte transversal (Figura 6b) para que cada uno se lea en una sola página:
 
-**Figura 6**
+**Figura 6a**
 
-*Modelo lógico de la base de datos: entidades centrales del bloque deportivo*
+*Modelo lógico de la base de datos (1/2): bloque deportivo*
 
 ```plantuml
-@startuml fig06_modelo_logico
+@startuml fig06a_modelo_logico_deportivo
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 12
 skinparam shadowing false
 skinparam backgroundColor white
 skinparam ArrowColor #333333
@@ -642,22 +642,43 @@ entity "Usuario" as USUARIO {
   correo : varchar <<UK>>
   password_hash : varchar
   rol : varchar
+  estado : varchar
+  fecha_creacion : datetime
+  reset_token : varchar(100)
+  reset_token_expira : datetime
+  correo_verificado : boolean
+  token_verificacion : varchar(100)
+  token_verificacion_expira : datetime
 }
 entity "Cliente" as CLIENTE {
   * id_cliente : int <<PK>>
   --
-  id_usuario : int <<FK>>
-  dni : varchar <<UK>>
+  id_usuario : int <<FK>> <<UK>>
+  dni : varchar(8) <<UK>>
   nombres : varchar
+  apellidos : varchar
+  telefono : varchar
+  fecha_nacimiento : date
+  sexo : varchar
+  direccion : varchar
+  edad : int
+  peso : float
+  estatura : float
   objetivo : varchar
   nivel : varchar
   restricciones_medicas : varchar
+  restricciones_otras : varchar
+  nivel_actividad : varchar(30)
+  restricciones_alimentarias : varchar
+  peso_actualizado_en : datetime
+  fecha_registro : datetime
+  estado : varchar
 }
 entity "Entrenador" as ENTRENADOR {
   * id_entrenador : int <<PK>>
   --
-  id_usuario : int <<FK>>
-  dni : varchar
+  id_usuario : int <<FK>> <<UK>>
+  dni : varchar(8) <<UK>>
   nombres : varchar
   apellidos : varchar
   telefono : varchar
@@ -668,8 +689,11 @@ entity "Membresia" as MEMBRESIA {
   * id_membresia : int <<PK>>
   --
   nombre : varchar
+  descripcion : varchar
   duracion_dias : int
   precio : float
+  beneficios : varchar
+  estado : varchar
 }
 entity "ClienteMembresia" as CLIENTE_MEMBRESIA {
   * id_cliente_membresia : int <<PK>>
@@ -678,8 +702,8 @@ entity "ClienteMembresia" as CLIENTE_MEMBRESIA {
   id_membresia : int <<FK>>
   fecha_inicio : date
   fecha_fin : date
-  precio_asignado : float
   estado : varchar
+  precio_asignado : float
 }
 entity "Pago" as PAGO {
   * id_pago : int <<PK>>
@@ -687,18 +711,156 @@ entity "Pago" as PAGO {
   id_cliente : int <<FK>>
   id_cliente_membresia : int <<FK>>
   monto : float
+  metodo_pago : varchar(50)
+  fecha_pago : date
+  estado : varchar(30)
+  observacion : varchar
+  id_transaccion_externa : varchar(100)
+  origen : varchar(20)
+}
+entity "Asistencia" as ASISTENCIA {
+  * id_asistencia : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  fecha : date
+  hora_entrada : time
+  hora_salida : time
+  observacion : varchar
   estado : varchar
 }
 entity "Progreso" as PROGRESO {
   * id_progreso : int <<PK>>
   --
   id_cliente : int <<FK>>
+  peso : float
+  porcentaje_grasa : float
+  masa_grasa : float
+  masa_magra : float
+  medida_pecho : float
+  medida_cintura : float
   medida_brazo_izquierdo : float
   medida_brazo_derecho : float
   medida_pierna_izquierda : float
   medida_pierna_derecha : float
-  medida_pecho : float
-  medida_cintura : float
+  fecha_registro : date
+  observacion : varchar
+}
+entity "Rutina" as RUTINA {
+  * id_rutina : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  revisado_por : int <<FK>>
+  nombre : varchar
+  objetivo : varchar
+  nivel : varchar
+  descripcion : varchar
+  dias_semana : int
+  generada_por_ia : boolean
+  fecha_creacion : datetime
+  estado : varchar
+  estado_revision : varchar(30)
+  fecha_revision : datetime
+  observaciones_revision : text
+  editado_antes_revision : boolean
+  origen_ia : varchar(20)
+  modelo_ia : varchar(50)
+  tiempo_respuesta_ms : int
+  justificacion_ia : text
+}
+entity "RutinaEjercicio" as RUTINA_EJERCICIO {
+  * id_rutina_ejercicio : int <<PK>>
+  --
+  id_rutina : int <<FK>>
+  id_ejercicio : int <<FK>>
+  nombre_ejercicio : varchar
+  grupo_muscular : varchar
+  series : int
+  repeticiones : varchar
+  descanso_segundos : int
+  dia_semana : varchar
+  orden : int
+}
+entity "Ejercicio" as EJERCICIO {
+  * id_ejercicio : int <<PK>>
+  --
+  nombre : varchar(100)
+  grupo_muscular : varchar(50)
+  nivel : varchar(50)
+  objetivo : varchar(100)
+  descripcion : text
+  instrucciones : text
+  video_url : text
+  cloudinary_public_id : varchar(255)
+  imagen_referencial_url : text
+  cloudinary_public_id_imagen : varchar(255)
+  estado : varchar(20)
+  restricciones : varchar
+}
+entity "PlanNutricional" as PLAN_NUTRICIONAL {
+  * id_plan : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  revisado_por : int <<FK>>
+  objetivo : varchar
+  calorias_diarias : int
+  proteinas : int
+  carbohidratos : int
+  grasas : int
+  calorias_reales : int
+  proteinas_reales : int
+  carbohidratos_reales : int
+  grasas_reales : int
+  restricciones : varchar
+  generada_por_ia : boolean
+  fecha_creacion : datetime
+  estado : varchar
+  estado_revision : varchar(30)
+  fecha_revision : datetime
+  observaciones_revision : text
+  editado_antes_revision : boolean
+  fuente_peso : varchar(20)
+  peso_usado : float
+  ajuste_tendencia_kcal : int
+  justificacion_ajuste : text
+  origen_ia : varchar(20)
+  modelo_ia : varchar(50)
+  tiempo_respuesta_ms : int
+  justificacion_ia : text
+}
+entity "PlanComida" as PLAN_COMIDA {
+  * id_comida : int <<PK>>
+  --
+  id_plan : int <<FK>>
+  id_comida_catalogo : int <<FK>>
+  tipo_comida : varchar
+  descripcion : varchar
+  calorias_aprox : int
+  hora_recomendada : varchar
+}
+entity "Comida" as COMIDA {
+  * id_comida_catalogo : int <<PK>>
+  --
+  nombre : varchar
+  tipo_comida : varchar
+  descripcion : varchar
+  calorias : int
+  proteinas : int
+  carbohidratos : int
+  grasas : int
+  objetivo : varchar
+  estado : varchar
+  restricciones : varchar
+}
+entity "RegistroAuditoria" as REGISTRO_AUDITORIA {
+  * id_registro : int <<PK>>
+  --
+  id_usuario : int <<FK>>
+  correo_usuario : varchar
+  accion : varchar(30)
+  entidad : varchar(50)
+  id_entidad : int
+  detalle : varchar
+  fecha : datetime
 }
 
 USUARIO ||--o| CLIENTE
@@ -707,11 +869,237 @@ CLIENTE ||--o{ CLIENTE_MEMBRESIA
 MEMBRESIA ||--o{ CLIENTE_MEMBRESIA
 CLIENTE_MEMBRESIA ||--o{ PAGO
 CLIENTE ||--o{ PAGO
+CLIENTE ||--o{ ASISTENCIA
 CLIENTE ||--o{ PROGRESO
+CLIENTE ||--o{ RUTINA
+USUARIO ||--o{ RUTINA : revisa
+RUTINA ||--|{ RUTINA_EJERCICIO
+EJERCICIO ||--o{ RUTINA_EJERCICIO
+CLIENTE ||--o{ PLAN_NUTRICIONAL
+USUARIO ||--o{ PLAN_NUTRICIONAL : revisa
+PLAN_NUTRICIONAL ||--|{ PLAN_COMIDA
+COMIDA ||--o{ PLAN_COMIDA
+USUARIO ||--o{ REGISTRO_AUDITORIA
 @enduml
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py`. No se incluye `monto_pagado` ni `saldo_pendiente` como columnas de `ClienteMembresia`: son propiedades calculadas en tiempo de ejecución a partir de `Pago`, no columnas almacenadas (ver Figura 8).
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Primera mitad del modelo lógico completo de las 30 tablas (bloque deportivo); continúa en la Figura 6b (bloque comercial y soporte transversal). No se incluyen `nombre_membresia`, `monto_pagado` ni `saldo_pendiente` como columnas de `ClienteMembresia`: son propiedades calculadas en tiempo de ejecución a partir de `Pago`, no columnas almacenadas (ver Figura 8, diagrama de clases).
+
+**Figura 6b**
+
+*Modelo lógico de la base de datos (2/2): bloque comercial y soporte transversal*
+
+```plantuml
+@startuml fig06b_modelo_logico_comercial
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+hide circle
+skinparam linetype ortho
+skinparam ClassBackgroundColor #F7F7F7
+skinparam ClassBorderColor #333333
+skinparam ClassAttributeIconSize 0
+
+entity "Usuario" as USUARIO {
+  * id_usuario : int <<PK>>
+}
+entity "Cliente" as CLIENTE {
+  * id_cliente : int <<PK>>
+}
+
+entity "Categoria" as CATEGORIA {
+  * id_categoria : int <<PK>>
+  --
+  nombre : varchar(100) <<UK>>
+  descripcion : text
+  estado : varchar(20)
+  fecha_creacion : datetime
+}
+entity "Producto" as PRODUCTO {
+  * id_producto : int <<PK>>
+  --
+  id_categoria : int <<FK>>
+  nombre : varchar(150)
+  descripcion : text
+  imagen_url : text
+  cloudinary_public_id : varchar(255)
+  codigo_barras : varchar(50) <<UK>>
+  precio_compra : float
+  precio_venta : float
+  unidad_medida : varchar(30)
+  stock_minimo : float
+  controla_lote : boolean
+  controla_vencimiento : boolean
+  visible_tienda : boolean
+  estado : varchar(20)
+  fecha_creacion : datetime
+}
+entity "Inventario" as INVENTARIO {
+  * id_inventario : int <<PK>>
+  --
+  id_producto : int <<FK>> <<UK>>
+  stock_actual : float
+  stock_minimo : float
+  ultimo_costo : float
+  fecha_actualizacion : datetime
+}
+entity "Lote" as LOTE {
+  * id_lote : int <<PK>>
+  --
+  id_producto : int <<FK>>
+  numero_lote : varchar(50)
+  cantidad : float
+  fecha_vencimiento : date
+  fecha_ingreso : datetime
+  estado : varchar(20)
+}
+entity "MovimientoStock" as MOVIMIENTO_STOCK {
+  * id_movimiento : int <<PK>>
+  --
+  id_producto : int <<FK>>
+  id_lote : int <<FK>>
+  id_usuario : int <<FK>>
+  tipo_movimiento : varchar(30)
+  referencia_tipo : varchar(30)
+  referencia_id : int
+  cantidad : float
+  costo_unitario : float
+  descripcion : text
+  fecha_movimiento : datetime
+}
+entity "Proveedor" as PROVEEDOR {
+  * id_proveedor : int <<PK>>
+  --
+  razon_social : varchar(150)
+  ruc : varchar(20)
+  telefono : varchar(20)
+  correo : varchar(100)
+  direccion : varchar(200)
+  contacto : varchar(100)
+  estado : varchar(20)
+  fecha_creacion : datetime
+}
+entity "Compra" as COMPRA {
+  * id_compra : int <<PK>>
+  --
+  id_proveedor : int <<FK>>
+  id_usuario : int <<FK>>
+  fecha_compra : datetime
+  subtotal : float
+  igv : float
+  total : float
+  estado : varchar(20)
+  observaciones : text
+  created_at : datetime
+  updated_at : datetime
+}
+entity "DetalleCompra" as DETALLE_COMPRA {
+  * id_detalle_compra : int <<PK>>
+  --
+  id_compra : int <<FK>>
+  id_producto : int <<FK>>
+  cantidad : float
+  precio_unitario : float
+  subtotal : float
+}
+entity "Venta" as VENTA {
+  * id_venta : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  id_usuario : int <<FK>>
+  fecha_venta : datetime
+  subtotal : float
+  descuento : float
+  total : float
+  metodo_pago : varchar(50)
+  estado : varchar(20)
+  observaciones : text
+  id_transaccion_externa : varchar(100)
+  created_at : datetime
+  updated_at : datetime
+}
+entity "DetalleVenta" as DETALLE_VENTA {
+  * id_detalle_venta : int <<PK>>
+  --
+  id_venta : int <<FK>>
+  id_producto : int <<FK>>
+  id_lote : int <<FK>>
+  cantidad : float
+  precio_unitario : float
+  descuento : float
+  subtotal : float
+}
+entity "ConteoInventario" as CONTEO_INVENTARIO {
+  * id_conteo : int <<PK>>
+  --
+  id_usuario : int <<FK>>
+  fecha : datetime
+  observaciones : text
+}
+entity "DetalleConteoInventario" as DETALLE_CONTEO_INVENTARIO {
+  * id_detalle_conteo : int <<PK>>
+  --
+  id_conteo : int <<FK>>
+  id_producto : int <<FK>>
+  stock_sistema : float
+  stock_fisico : float
+  diferencia : float
+}
+entity "Aviso" as AVISO {
+  * id_aviso : int <<PK>>
+  --
+  titulo : varchar(150)
+  contenido : text
+  tipo : varchar(30)
+  fecha_evento : date
+  estado : varchar
+  fecha_creacion : datetime
+}
+entity "EnvioWhatsApp" as ENVIO_WHATSAPP {
+  * id_envio : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  id_usuario : int <<FK>>
+  tipo : varchar(30)
+  fecha_envio : datetime
+}
+entity "RegistroTiempoSistema" as REGISTRO_TIEMPO_SISTEMA {
+  * id_registro : int <<PK>>
+  --
+  metodo : varchar(10)
+  ruta : varchar(200)
+  modulo : varchar(50)
+  duracion_ms : float
+  fecha : datetime
+}
+
+CATEGORIA ||--o{ PRODUCTO
+PRODUCTO ||--|| INVENTARIO
+PRODUCTO ||--o{ LOTE
+PRODUCTO ||--o{ MOVIMIENTO_STOCK
+LOTE ||--o{ MOVIMIENTO_STOCK
+USUARIO ||--o{ MOVIMIENTO_STOCK
+PROVEEDOR ||--o{ COMPRA
+USUARIO ||--o{ COMPRA
+COMPRA ||--|{ DETALLE_COMPRA
+PRODUCTO ||--o{ DETALLE_COMPRA
+CLIENTE ||--o{ VENTA
+USUARIO ||--o{ VENTA
+VENTA ||--|{ DETALLE_VENTA
+PRODUCTO ||--o{ DETALLE_VENTA
+LOTE ||--o{ DETALLE_VENTA
+CONTEO_INVENTARIO ||--|{ DETALLE_CONTEO_INVENTARIO
+PRODUCTO ||--o{ DETALLE_CONTEO_INVENTARIO
+USUARIO ||--o{ CONTEO_INVENTARIO
+CLIENTE ||--o{ ENVIO_WHATSAPP
+USUARIO ||--o{ ENVIO_WHATSAPP
+@enduml
+```
+
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Segunda mitad del modelo lógico completo de las 30 tablas (bloque comercial y soporte transversal), continuación de la Figura 6a. `Usuario` y `Cliente` se muestran aquí solo con su llave primaria, por ser las tablas referenciadas desde este bloque: su detalle completo de columnas está en la Figura 6a, a la que pertenecen.
 
 **Segunda forma normal (2FN) y relaciones N:M.** Las relaciones muchos-a-muchos se resuelven mediante tablas intermedias: `cliente_membresias` (entre clientes y membresías, con la fecha de asignación y el precio vigente al momento de la asignación), y `detalle_compras`/`detalle_ventas` (entre compras/ventas y productos, con cantidad y precio unitario). No existen dependencias parciales sobre claves compuestas.
 
@@ -933,7 +1321,7 @@ Pago -[hidden]down- ConteoInventario
 @enduml
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Incluye las 30 clases del modelo de datos con sus multiplicidades; se detallan los atributos de las clases centrales del bloque deportivo, y los del resto de clases se documentan campo por campo en `Arquitectura_BaseDatos.md`. `monto_pagado()` y `saldo_pendiente()` se muestran como métodos, no como atributos: son propiedades calculadas en tiempo de ejecución a partir de los pagos asociados, no columnas almacenadas (ver Figura 6).
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Incluye las 30 clases del modelo de datos con sus multiplicidades; se detallan los atributos de las clases centrales del bloque deportivo, y los del resto de clases se documentan campo por campo en `Arquitectura_BaseDatos.md`. `monto_pagado()` y `saldo_pendiente()` se muestran como métodos, no como atributos: son propiedades calculadas en tiempo de ejecución a partir de los pagos asociados, no columnas almacenadas (ver Figura 6a).
 
 #### 4.3.3. Diagrama de secuencia — inicio de sesión
 
