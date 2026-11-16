@@ -53,17 +53,43 @@ Flujo general de autenticación y acceso por rol (P01–P08):
 
 *Diagrama de flujo: autenticación y acceso por rol (P01–P08)*
 
-```mermaid
-graph TD
-    A([Inicio]) --> B[Usuario solicita acceso]
-    B --> C{Posee credenciales validas?}
-    C -- No --> D[Error de autenticacion] --> B
-    C -- Si --> E[JWT + Rol]
-    E --> F{Rol}
-    F -- ADMIN --> G1[Dashboard General] --> G2[Clientes/Usuarios] & G3[Membresias] & G4[Pagos]
-    F -- ENTRENADOR --> H1[Gestion Deportiva] --> H2[Ejercicios/Comidas] & H3[Rutinas/Nutricion] & H4[Fichas de clientes]
-    F -- CLIENTE --> I1[Perfil de Socio] --> I2[Membresia/Pagos] & I3[Rutina/Dieta] & I4[Progreso diario]
-    G2 & G3 & G4 & H2 & H3 & H4 & I2 & I3 & I4 --> J[(PostgreSQL)]
+```plantuml
+@startuml fig01_flujo_autenticacion
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam monochrome false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+skinparam ActivityBackgroundColor #F2F2F2
+skinparam ActivityBorderColor #333333
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #333333
+start
+:Usuario solicita acceso;
+while (¿Posee credenciales válidas?) is (No)
+  :Error de autenticación;
+  :Usuario solicita acceso;
+endwhile (Sí)
+:Emitir JWT con el rol del usuario;
+switch (Rol)
+case (ADMIN)
+  :Dashboard general;
+  :Clientes / usuarios, membresías, pagos;
+case (ENTRENADOR)
+  :Gestión deportiva;
+  :Ejercicios / comidas, rutinas / nutrición,\nfichas de clientes;
+case (RECEPCIONISTA)
+  :Atención de mostrador;
+  :Clientes / asistencias, membresías y pagos,\nventa de mostrador;
+case (CLIENTE)
+  :Perfil de socio;
+  :Membresía / pagos, rutina / dieta,\nprogreso diario;
+endswitch
+:Lectura y escritura en PostgreSQL;
+stop
+@enduml
 ```
 
 *Nota.* Elaboración propia, a partir de `backend/app/main.py` y los routers protegidos por rol.
@@ -74,19 +100,48 @@ Proceso P09 — gestión comercial:
 
 *Diagrama de flujo: proceso P09, gestión comercial (compras y ventas)*
 
-```mermaid
-graph TD
-    A([Solicitud de compra/venta]) --> B{Origen}
-    B -- Admin, mostrador --> C[Registrar venta directa]
-    B -- Cliente, tienda publica --> D[POST /ventas/solicitar]
-    C --> E[Venta PENDIENTE]
-    D --> E
-    E --> F{Confirmar pago}
-    F -- Si --> G[Venta CONFIRMADA] --> H[Movimiento SALIDA_VENTA] --> I[(Inventario actualizado)]
-    F -- No / anulado --> J[Venta ANULADA] --> K[Reversa de stock si ya estaba confirmada]
-    L([Compra a proveedor]) --> M[Compra PENDIENTE] --> N{Confirmar}
-    N -- Si --> O[Movimiento ENTRADA_COMPRA] --> I
-    N -- No --> P[Compra ANULADA]
+```plantuml
+@startuml fig02_flujo_comercial
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam monochrome false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+skinparam ActivityBackgroundColor #F2F2F2
+skinparam ActivityBorderColor #333333
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #333333
+start
+split
+  :Solicitud de venta;
+  if (Origen) then (Staff, mostrador)
+    :Registrar venta directa;
+  else (Cliente, tienda pública)
+    :POST /ventas/solicitar;
+  endif
+  :Venta PENDIENTE;
+  if (¿Pago confirmado por el staff?) then (Sí)
+    :Venta CONFIRMADA;
+    :Movimiento SALIDA_VENTA;
+    :Inventario actualizado;
+  else (No / anulada)
+    :Venta ANULADA;
+    :Reversa de stock si ya estaba confirmada;
+  endif
+split again
+  :Compra a proveedor;
+  :Compra PENDIENTE;
+  if (¿Confirmar compra?) then (Sí)
+    :Movimiento ENTRADA_COMPRA;
+    :Inventario actualizado;
+  else (No)
+    :Compra ANULADA;
+  endif
+end split
+stop
+@enduml
 ```
 
 *Nota.* Elaboración propia, a partir de `backend/app/routes/compras.py` y `backend/app/routes/ventas.py`.
@@ -99,42 +154,48 @@ Diagrama de proceso con carriles (BPMN) para el flujo de asignación de membres�
 
 *Diagrama de proceso con carriles (BPMN): asignación de membresía y registro de pago (P02–P03)*
 
-```mermaid
-flowchart TB
-    subgraph L1[" ADMIN "]
-        direction TB
-        A1([Inicio]) --> A2[Registrar cliente]
-        A2 --> A3[Seleccionar plan de membresia]
-        A3 --> A4[Asignar membresia al cliente]
-        A8[Registrar pago]
-        A9([Fin])
-    end
-    subgraph L2[" ENTRENADOR "]
-        direction TB
-        B1[Evaluar objetivo y nivel del cliente]
-    end
-    subgraph L3[" CLIENTE "]
-        direction TB
-        C1{Acepta el plan?}
-        C2[Realiza el pago]
-    end
-    subgraph L4[" SISTEMA "]
-        direction TB
-        D1[Calcular fecha de fin]
-        D2[Congelar precio_asignado]
-        D3{Monto > 0?}
-        D4[Registrar pago con estado PAGADO]
-        D5[Rechazar: monto invalido]
-    end
-
-    A4 --> D1 --> D2 --> B1 --> C1
-    C1 -- No --> A9
-    C1 -- Si --> C2 --> A8 --> D3
-    D3 -- Si --> D4 --> A9
-    D3 -- No --> D5 --> A8
+```plantuml
+@startuml fig03_bpmn_membresia_pago
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam monochrome false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+skinparam ActivityBackgroundColor #F2F2F2
+skinparam ActivityBorderColor #333333
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #333333
+skinparam SwimlaneBorderColor #333333
+|ADMIN|
+start
+:Registrar cliente;
+:Seleccionar plan de membresía;
+:Asignar membresía al cliente;
+|SISTEMA|
+:Calcular fecha de fin;
+:Congelar precio_asignado;
+|ENTRENADOR|
+:Evaluar objetivo y nivel del cliente;
+|CLIENTE|
+if (¿Acepta el plan?) then (Sí)
+  :Realiza el pago;
+  |ADMIN|
+  repeat
+    :Registrar pago;
+    |SISTEMA|
+    :Validar monto;
+  repeat while (¿Monto > 0?) is (No, monto inválido)
+  :Registrar pago con estado PAGADO;
+else (No)
+endif
+|ADMIN|
+stop
+@enduml
 ```
 
-*Nota.* Elaboración propia, equivalente funcional a un diagrama BPMN de Bizagi, expresado en notación Mermaid dado que el equipo no dispone de licencia de esa herramienta.
+*Nota.* Elaboración propia, equivalente funcional a un diagrama BPMN de Bizagi, expresado como diagrama de actividad UML con carriles (PlantUML) para mantener una notación uniforme con el resto de diagramas del documento.
 
 Este diagrama cubre el requisito de modelado con carriles por actor solicitado por la metodología.
 
@@ -332,7 +393,7 @@ El equipo, de tamaño reducido, no empleó herramientas formales de gestión de 
 | Gestor de base de datos | PostgreSQL |
 | IDE de desarrollo | Visual Studio Code |
 | Prototipos y mockups | Imágenes estáticas (`docs/09_mockups/`) |
-| Modelado de sistema | Diagramas Mermaid (este documento) |
+| Modelado de sistema | PlantUML (diagramas UML y de actividad) y Mermaid (cronograma) |
 | Testing backend | pytest, pytest-cov |
 | Testing frontend | Vitest, @testing-library/react, @vitest/coverage-v8 |
 | Calidad de código | SonarQube (instancia local) |
@@ -424,7 +485,7 @@ La priorización se realizó mediante la técnica **MoSCoW**, aplicada sobre los
 | **Must have** (imprescindible) | Autenticación y roles (RF-001 a RF-015, Alta), gestión de clientes (RF-016 a RF-035, Alta), membresías y asignación (RF-036 a RF-065, Alta), pagos (RF-066 a RF-080, Alta), asistencias (RF-081 a RF-090, Alta), motor de recomendación de rutinas y nutrición (RF-136 a RF-155, Alta — es el componente que distingue al sistema del resto de software administrativo de gimnasios) |
 | **Should have** (debería tener) | Seguimiento de progreso físico (RF-091 a RF-110, Media-Alta), catálogos de ejercicios y comidas (RF-111 a RF-135, Alta), dashboard de KPIs (RF-166 a RF-175, Media), módulo de Comercio (RF-191 a RF-224, Media-Alta — ya implementado y desplegado, pero no forma parte del núcleo original de gestión deportiva), confirmación manual de pagos de autoservicio y reportes consolidados (RF-225 y RF-226) |
 | **Could have** (podría tener) | Avisos editables desde el panel (RF-176 a RF-190, Media-Alta), exportación CSV/PDF, paginación de listados |
-| **Won't have** (esta versión) | Pasarela de pago real (evaluada contra el sandbox real de Culqi y descartada por decisión del equipo, ver sección 9.3), modelo predictivo de no renovación de membresías |
+| **Won't have** (esta versión) | Pasarela de pago real (evaluada con Culqi y descartada por decisión del equipo, ver sección 9.3), modelo predictivo de no renovación de membresías |
 
 *Nota.* Elaboración propia.
 
@@ -464,23 +525,94 @@ El framework backend enruta por módulo (`app/routes/*.py`) sin capas MVC explí
 
 *Modelo conceptual de la base de datos*
 
-```mermaid
-erDiagram
-    USUARIO ||--o| CLIENTE : "tiene"
-    CLIENTE ||--o{ ASISTENCIA : "registra"
-    CLIENTE ||--o{ PROGRESO : "registra"
-    CLIENTE ||--o{ RUTINA : "recibe"
-    CLIENTE ||--o{ NUTRICION : "recibe"
-    CLIENTE ||--o{ CLIENTE_MEMBRESIA : "contrata"
-    MEMBRESIA ||--o{ CLIENTE_MEMBRESIA : "es plan de"
-    PRODUCTO ||--|| INVENTARIO : "tiene"
-    PRODUCTO ||--o{ DETALLE_COMPRA : "se adquiere en"
-    COMPRA ||--o{ DETALLE_COMPRA : "detalla"
-    PRODUCTO ||--o{ DETALLE_VENTA : "se vende en"
-    VENTA ||--o{ DETALLE_VENTA : "detalla"
+```plantuml
+@startuml fig05_modelo_conceptual
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+hide circle
+hide empty members
+skinparam ClassBackgroundColor #F7F7F7
+skinparam ClassBorderColor #333333
+skinparam PackageBorderColor #777777
+left to right direction
+
+package "Gestión deportiva" {
+  entity USUARIO
+  entity CLIENTE
+  entity ENTRENADOR
+  entity MEMBRESIA
+  entity CLIENTE_MEMBRESIA
+  entity PAGO
+  entity ASISTENCIA
+  entity PROGRESO
+  entity RUTINA
+  entity RUTINA_EJERCICIO
+  entity EJERCICIO
+  entity PLAN_NUTRICIONAL
+  entity PLAN_COMIDA
+  entity COMIDA
+}
+
+package "Gestión comercial" {
+  entity CATEGORIA
+  entity PRODUCTO
+  entity INVENTARIO
+  entity LOTE
+  entity MOVIMIENTO_STOCK
+  entity PROVEEDOR
+  entity COMPRA
+  entity DETALLE_COMPRA
+  entity VENTA
+  entity DETALLE_VENTA
+  entity CONTEO_INVENTARIO
+  entity DETALLE_CONTEO_INVENTARIO
+}
+
+package "Soporte transversal" {
+  entity REGISTRO_AUDITORIA
+  entity AVISO
+  entity ENVIO_WHATSAPP
+  entity REGISTRO_TIEMPO_SISTEMA
+}
+
+USUARIO ||--o| CLIENTE : tiene
+USUARIO ||--o| ENTRENADOR : tiene
+CLIENTE ||--o{ CLIENTE_MEMBRESIA : contrata
+MEMBRESIA ||--o{ CLIENTE_MEMBRESIA : "es plan de"
+CLIENTE_MEMBRESIA ||--o{ PAGO : genera
+CLIENTE ||--o{ ASISTENCIA : registra
+CLIENTE ||--o{ PROGRESO : registra
+CLIENTE ||--o{ RUTINA : recibe
+RUTINA ||--|{ RUTINA_EJERCICIO : contiene
+EJERCICIO ||--o{ RUTINA_EJERCICIO : "se usa en"
+CLIENTE ||--o{ PLAN_NUTRICIONAL : recibe
+PLAN_NUTRICIONAL ||--|{ PLAN_COMIDA : contiene
+COMIDA ||--o{ PLAN_COMIDA : "se usa en"
+
+CATEGORIA ||--o{ PRODUCTO : agrupa
+PRODUCTO ||--|| INVENTARIO : tiene
+PRODUCTO ||--o{ LOTE : "se almacena en"
+PRODUCTO ||--o{ MOVIMIENTO_STOCK : registra
+PROVEEDOR ||--o{ COMPRA : abastece
+COMPRA ||--|{ DETALLE_COMPRA : detalla
+PRODUCTO ||--o{ DETALLE_COMPRA : "se adquiere en"
+VENTA ||--|{ DETALLE_VENTA : detalla
+PRODUCTO ||--o{ DETALLE_VENTA : "se vende en"
+CONTEO_INVENTARIO ||--|{ DETALLE_CONTEO_INVENTARIO : detalla
+PRODUCTO ||--o{ DETALLE_CONTEO_INVENTARIO : "se cuenta en"
+
+USUARIO ||--o{ REGISTRO_AUDITORIA : realiza
+CLIENTE ||--o{ ENVIO_WHATSAPP : recibe
+USUARIO ||--o{ ENVIO_WHATSAPP : registra
+USUARIO ||--o{ CONTEO_INVENTARIO : realiza
+@enduml
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py` y `docs/04_Arquitectura/Arquitectura_BaseDatos.md`. El diagrama muestra un subconjunto representativo de las entidades y relaciones del sistema (las dos ramas de negocio, deportiva y comercial), no las 30 tablas completas del esquema físico (ver más abajo) — las tablas de soporte transversal (auditoría, instrumentación del postest, avisos por WhatsApp, conteo físico de inventario) se documentan campo por campo en `Arquitectura_BaseDatos.md`, no en este diagrama conceptual.
+*Nota.* Elaboración propia, a partir de `backend/app/models.py` y `docs/04_Arquitectura/Arquitectura_BaseDatos.md`. El diagrama muestra las 30 entidades del esquema físico, agrupadas en gestión deportiva, gestión comercial y soporte transversal (auditoría, avisos, envíos por WhatsApp e instrumentación del postest); los atributos de cada tabla se documentan campo por campo en `Arquitectura_BaseDatos.md`.
 
 **Primera forma normal (1FN).** Se eliminaron los grupos repetitivos: las medidas corporales del progreso físico se almacenan en columnas atómicas independientes (brazo izquierdo, brazo derecho, pierna izquierda, pierna derecha, pecho, cintura) en lugar de una lista o campo compuesto, decisión documentada como DA-013.
 
@@ -490,45 +622,96 @@ erDiagram
 
 *Modelo lógico de la base de datos: entidades centrales del bloque deportivo*
 
-```mermaid
-erDiagram
-    CLIENTE {
-        int id_cliente PK
-        int id_usuario FK
-        string dni UK
-        string nombres
-        string objetivo
-        string nivel
-        string restricciones_medicas
-    }
-    CLIENTE_MEMBRESIA {
-        int id_cliente_membresia PK
-        int id_cliente FK
-        int id_membresia FK
-        date fecha_inicio
-        date fecha_fin
-        float precio_asignado
-        string estado
-    }
-    MEMBRESIA {
-        int id_membresia PK
-        string nombre
-        int duracion_dias
-        float precio
-    }
-    PAGO {
-        int id_pago PK
-        int id_cliente FK
-        int id_cliente_membresia FK
-        float monto
-        string estado
-    }
-    CLIENTE ||--o{ CLIENTE_MEMBRESIA : contrata
-    MEMBRESIA ||--o{ CLIENTE_MEMBRESIA : "es plan de"
-    CLIENTE_MEMBRESIA ||--o{ PAGO : genera
+```plantuml
+@startuml fig06_modelo_logico
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+hide circle
+skinparam linetype ortho
+skinparam ClassBackgroundColor #F7F7F7
+skinparam ClassBorderColor #333333
+skinparam ClassAttributeIconSize 0
+
+entity "Usuario" as USUARIO {
+  * id_usuario : int <<PK>>
+  --
+  correo : varchar <<UK>>
+  password_hash : varchar
+  rol : varchar
+}
+entity "Cliente" as CLIENTE {
+  * id_cliente : int <<PK>>
+  --
+  id_usuario : int <<FK>>
+  dni : varchar <<UK>>
+  nombres : varchar
+  objetivo : varchar
+  nivel : varchar
+  restricciones_medicas : varchar
+}
+entity "Entrenador" as ENTRENADOR {
+  * id_entrenador : int <<PK>>
+  --
+  id_usuario : int <<FK>>
+  dni : varchar
+  nombres : varchar
+  apellidos : varchar
+  telefono : varchar
+  especialidad : varchar
+  estado : varchar
+}
+entity "Membresia" as MEMBRESIA {
+  * id_membresia : int <<PK>>
+  --
+  nombre : varchar
+  duracion_dias : int
+  precio : float
+}
+entity "ClienteMembresia" as CLIENTE_MEMBRESIA {
+  * id_cliente_membresia : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  id_membresia : int <<FK>>
+  fecha_inicio : date
+  fecha_fin : date
+  precio_asignado : float
+  estado : varchar
+}
+entity "Pago" as PAGO {
+  * id_pago : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  id_cliente_membresia : int <<FK>>
+  monto : float
+  estado : varchar
+}
+entity "Progreso" as PROGRESO {
+  * id_progreso : int <<PK>>
+  --
+  id_cliente : int <<FK>>
+  medida_brazo_izquierdo : float
+  medida_brazo_derecho : float
+  medida_pierna_izquierda : float
+  medida_pierna_derecha : float
+  medida_pecho : float
+  medida_cintura : float
+}
+
+USUARIO ||--o| CLIENTE
+USUARIO ||--o| ENTRENADOR
+CLIENTE ||--o{ CLIENTE_MEMBRESIA
+MEMBRESIA ||--o{ CLIENTE_MEMBRESIA
+CLIENTE_MEMBRESIA ||--o{ PAGO
+CLIENTE ||--o{ PAGO
+CLIENTE ||--o{ PROGRESO
+@enduml
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py`.
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. No se incluye `monto_pagado` ni `saldo_pendiente` como columnas de `ClienteMembresia`: son propiedades calculadas en tiempo de ejecución a partir de `Pago`, no columnas almacenadas (ver Figura 8).
 
 **Segunda forma normal (2FN) y relaciones N:M.** Las relaciones muchos-a-muchos se resuelven mediante tablas intermedias: `cliente_membresias` (entre clientes y membresías, con la fecha de asignación y el precio vigente al momento de la asignación), y `detalle_compras`/`detalle_ventas` (entre compras/ventas y productos, con cantidad y precio unitario). No existen dependencias parciales sobre claves compuestas.
 
@@ -545,39 +728,68 @@ erDiagram
 
 *Diagrama de casos de uso*
 
-```mermaid
-graph LR
-    Publico((Visitante público))
-    Cliente((CLIENTE))
-    Recepcion((RECEPCIONISTA))
-    Entrenador((ENTRENADOR))
-    Admin((ADMIN))
+```plantuml
+@startuml fig07_casos_de_uso
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+left to right direction
+skinparam actorStyle stick
+skinparam UsecaseBackgroundColor #F7F7F7
+skinparam UsecaseBorderColor #333333
+skinparam RectangleBorderColor #333333
+skinparam ActorBorderColor #333333
 
-    Publico --> UC1[Ver landing]
-    Publico --> UC2[Ver avisos]
-    Publico --> UC3[Ver productos en tienda]
+actor "Visitante público" as Publico
+actor "CLIENTE" as Cliente
+actor "RECEPCIONISTA" as Recepcion
+actor "ENTRENADOR" as Entrenador
+actor "ADMIN" as Admin
 
-    Cliente --> UC4[Ver mi perfil/rutina/nutricion/progreso]
-    Cliente --> UC5[Ver mi membresia/pagos]
-    Cliente --> UC6[Registrar asistencia]
-    Cliente --> UC7[Solicitar compra en tienda]
+rectangle "Sistema GleyforGym" {
+  usecase "UC1 Ver landing" as UC1
+  usecase "UC2 Ver avisos" as UC2
+  usecase "UC3 Ver productos en tienda" as UC3
+  usecase "UC4 Ver mi perfil, rutina,\nnutrición y progreso" as UC4
+  usecase "UC5 Ver mi membresía y pagos" as UC5
+  usecase "UC6 Registrar asistencia" as UC6
+  usecase "UC7 Solicitar compra en tienda" as UC7
+  usecase "UC8 Gestionar clientes,\nejercicios y comidas" as UC8
+  usecase "UC9 Generar rutina y nutrición" as UC9
+  usecase "UC10 Gestionar usuarios,\nmembresías y pagos" as UC10
+  usecase "UC11 Gestionar Comercio" as UC11
+  usecase "UC12 Gestionar avisos" as UC12
+  usecase "UC13 Consultar auditoría" as UC13
+  usecase "UC14 Gestionar clientes\ny asistencias" as UC14
+  usecase "UC15 Asignar membresía\ny confirmar pago" as UC15
+  usecase "UC16 Registrar venta\nde mostrador" as UC16
+}
 
-    Recepcion --> UC14[Gestionar clientes/asistencias]
-    Recepcion --> UC15[Asignar membresia y confirmar pago]
-    Recepcion --> UC16[Registrar venta de mostrador]
-
-    Entrenador --> UC8[Gestionar clientes/ejercicios/comidas]
-    Entrenador --> UC9[Generar rutina/nutricion]
-
-    Admin --> UC10[Gestionar usuarios/membresias/pagos]
-    Admin --> UC11[Gestionar Comercio]
-    Admin --> UC12[Gestionar avisos]
-    Admin --> UC13[Consultar auditoria]
-    Admin --> UC8
-    Admin --> UC9
-    Admin --> UC14
-    Admin --> UC15
-    Admin --> UC16
+Publico --> UC1
+Publico --> UC2
+Publico --> UC3
+Cliente --> UC4
+Cliente --> UC5
+Cliente --> UC6
+Cliente --> UC7
+Recepcion --> UC14
+Recepcion --> UC15
+Recepcion --> UC16
+Entrenador --> UC8
+Entrenador --> UC9
+UC8 <-- Admin
+UC9 <-- Admin
+UC10 <-- Admin
+UC11 <-- Admin
+UC12 <-- Admin
+UC13 <-- Admin
+UC14 <-- Admin
+UC15 <-- Admin
+UC16 <-- Admin
+@enduml
 ```
 
 *Nota.* Elaboración propia, a partir de las rutas y permisos por rol verificados en `backend/app/routes/`. RECEPCIONISTA no tiene acceso a UC9, UC11 (fuera de la venta de mostrador, ya cubierta en UC16), UC12 ni UC13.
@@ -588,33 +800,140 @@ graph LR
 
 *Diagrama de clases (modelo de datos)*
 
-```mermaid
-classDiagram
-    Usuario "1" -- "0..1" Cliente
-    Usuario "1" -- "0..1" Entrenador
-    Cliente "1" --> "many" Asistencia
-    Cliente "1" --> "many" Progreso
-    Cliente "1" --> "many" ClienteMembresia
-    ClienteMembresia "many" --> "1" Membresia
-    ClienteMembresia "1" --> "many" Pago
-    Cliente "1" --> "many" Rutina
-    Rutina "1" --> "many" RutinaEjercicio
-    RutinaEjercicio "many" --> "1" Ejercicio
-    Cliente "1" --> "many" PlanNutricional
-    PlanNutricional "1" --> "many" PlanComida
-    Categoria "1" --> "many" Producto
-    Producto "1" --> "1" Inventario
-    Producto "1" --> "many" Lote
-    Producto "1" --> "many" MovimientoStock
-    Proveedor "1" --> "many" Compra
-    Compra "1" --> "many" DetalleCompra
-    DetalleCompra "many" --> "1" Producto
-    Venta "1" --> "many" DetalleVenta
-    DetalleVenta "many" --> "1" Producto
-    Usuario "1" --> "many" RegistroAuditoria
+```plantuml
+@startuml fig08_diagrama_clases
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+hide empty members
+hide circle
+skinparam linetype ortho
+skinparam ClassBackgroundColor #F7F7F7
+skinparam ClassBorderColor #333333
+skinparam PackageBorderColor #777777
+skinparam ClassAttributeIconSize 0
+
+package "Gestión deportiva" {
+  class Usuario {
+    id_usuario : int
+    correo : str
+    password_hash : str
+    rol : str
+  }
+  class Cliente {
+    id_cliente : int
+    dni : str
+    nombres : str
+    objetivo : str
+    nivel : str
+    restricciones_medicas : str
+  }
+  class Entrenador {
+    dni : str
+    nombres : str
+    apellidos : str
+    telefono : str
+    especialidad : str
+    estado : str
+  }
+  class Membresia {
+    id_membresia : int
+    nombre : str
+    duracion_dias : int
+    precio : float
+  }
+  class ClienteMembresia {
+    fecha_inicio : date
+    fecha_fin : date
+    precio_asignado : float
+    estado : str
+    monto_pagado() : float
+    saldo_pendiente() : float
+  }
+  class Pago {
+    id_pago : int
+    monto : float
+    estado : str
+  }
+  class Asistencia
+  class Progreso {
+    medida_brazo_izquierdo : float
+    medida_brazo_derecho : float
+    medida_pierna_izquierda : float
+    medida_pierna_derecha : float
+    medida_pecho : float
+    medida_cintura : float
+  }
+  class Rutina
+  class RutinaEjercicio
+  class Ejercicio
+  class PlanNutricional
+  class PlanComida
+  class Comida
+}
+
+package "Gestión comercial" {
+  class Categoria
+  class Producto
+  class Inventario
+  class Lote
+  class MovimientoStock
+  class Proveedor
+  class Compra {
+    igv : float
+  }
+  class DetalleCompra
+  class Venta
+  class DetalleVenta
+  class ConteoInventario
+  class DetalleConteoInventario
+}
+
+package "Soporte transversal" {
+  class RegistroAuditoria
+  class Aviso
+  class EnvioWhatsApp
+  class RegistroTiempoSistema
+}
+
+Usuario "1" -- "0..1" Cliente
+Usuario "1" -- "0..1" Entrenador
+Cliente "1" --> "*" Asistencia
+Cliente "1" --> "*" Progreso
+Cliente "1" --> "*" ClienteMembresia
+ClienteMembresia "*" --> "1" Membresia
+ClienteMembresia "1" --> "*" Pago
+Cliente "1" --> "*" Rutina
+Rutina "1" *-- "*" RutinaEjercicio
+RutinaEjercicio "*" --> "1" Ejercicio
+Cliente "1" --> "*" PlanNutricional
+PlanNutricional "1" *-- "*" PlanComida
+PlanComida "*" --> "1" Comida
+
+Categoria "1" --> "*" Producto
+Producto "1" -- "1" Inventario
+Producto "1" --> "*" Lote
+Producto "1" --> "*" MovimientoStock
+Proveedor "1" --> "*" Compra
+Compra "1" *-- "*" DetalleCompra
+DetalleCompra "*" --> "1" Producto
+Venta "1" *-- "*" DetalleVenta
+DetalleVenta "*" --> "1" Producto
+ConteoInventario "1" *-- "*" DetalleConteoInventario
+DetalleConteoInventario "*" --> "1" Producto
+
+Usuario "1" --> "*" RegistroAuditoria
+Cliente "1" --> "*" EnvioWhatsApp
+Comida -[hidden]down- Categoria
+Comida -[hidden]down- Proveedor
+Pago -[hidden]down- ConteoInventario
+@enduml
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Igual que las Figuras 5 y 6, muestra las clases con relaciones de negocio relevantes para el modelado, no las 30 tablas completas: quedan fuera las de soporte transversal sin relación de negocio directa (`RegistroTiempoSistema`, `EnvioWhatsApp`, `ConteoInventario`, `DetalleConteoInventario`), documentadas en `Arquitectura_BaseDatos.md`.
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Incluye las 30 clases del modelo de datos con sus multiplicidades; se detallan los atributos de las clases centrales del bloque deportivo, y los del resto de clases se documentan campo por campo en `Arquitectura_BaseDatos.md`. `monto_pagado()` y `saldo_pendiente()` se muestran como métodos, no como atributos: son propiedades calculadas en tiempo de ejecución a partir de los pagos asociados, no columnas almacenadas (ver Figura 6).
 
 #### 4.3.3. Diagrama de secuencia — inicio de sesión
 
@@ -622,20 +941,39 @@ classDiagram
 
 *Diagrama de secuencia: inicio de sesión*
 
-```mermaid
-sequenceDiagram
-    participant U as Usuario
-    participant F as React (Login.jsx)
-    participant A as FastAPI (/usuarios/login)
-    participant DB as PostgreSQL
-    U->>F: correo + contraseña
-    F->>A: POST /usuarios/login
-    A->>DB: SELECT usuario WHERE correo
-    DB-->>A: usuario + password_hash
-    A->>A: verificar bcrypt + limite de intentos
-    A-->>F: JWT {id_usuario, rol}
-    F->>F: almacenar sesion local
-    F->>U: redirige al panel segun rol
+```plantuml
+@startuml fig09_secuencia_login
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+skinparam ParticipantBackgroundColor #F7F7F7
+skinparam ParticipantBorderColor #333333
+skinparam ActorBorderColor #333333
+skinparam SequenceLifeLineBorderColor #777777
+autonumber
+actor Usuario as U
+participant "React\n(Login.jsx)" as F
+participant "FastAPI\n(/usuarios/login)" as A
+database "PostgreSQL" as DB
+U -> F : correo + contraseña
+F -> A : POST /usuarios/login
+activate A
+A -> DB : SELECT usuario WHERE correo
+DB --> A : usuario + password_hash
+A -> A : verificar bcrypt y límite de intentos
+alt credenciales válidas
+  A --> F : JWT {id_usuario, rol}
+  F -> F : almacenar sesión local
+  F --> U : redirige al panel según el rol
+else credenciales inválidas o límite superado
+  A --> F : 401 / 429
+  F --> U : mensaje de error
+end
+deactivate A
+@enduml
 ```
 
 *Nota.* Elaboración propia, a partir de `backend/app/routes/usuarios.py` y `backend/app/security.py`.
@@ -646,21 +984,37 @@ sequenceDiagram
 
 *Diagrama de secuencia: generación de rutina*
 
-```mermaid
-sequenceDiagram
-    participant C as Cliente/Entrenador
-    participant F as React
-    participant A as FastAPI (/ia/rutina/generar)
-    participant DB as PostgreSQL
-    C->>F: solicita generar rutina
-    F->>A: POST /ia/rutina/generar/{id_cliente}
-    A->>DB: obtener objetivo, nivel, restricciones
-    A->>A: excluir grupos musculares por restriccion
-    A->>DB: seleccionar ejercicios activos filtrados
-    A->>A: aplicar reglas de series/repeticiones/dias
-    A->>DB: registrar rutina generada
-    A-->>F: rutina generada
-    F-->>C: mostrar rutina por dia
+```plantuml
+@startuml fig10_secuencia_rutina
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam roundcorner 6
+skinparam ParticipantBackgroundColor #F7F7F7
+skinparam ParticipantBorderColor #333333
+skinparam ActorBorderColor #333333
+skinparam SequenceLifeLineBorderColor #777777
+autonumber
+actor "Cliente / Entrenador" as C
+participant "React" as F
+participant "FastAPI\n(/ia/rutina/generar)" as A
+database "PostgreSQL" as DB
+C -> F : solicita generar rutina
+F -> A : POST /ia/rutina/generar/{id_cliente}
+activate A
+A -> DB : obtener objetivo, nivel y restricciones
+DB --> A : perfil del cliente
+A -> A : excluir grupos musculares por restricción
+A -> DB : seleccionar ejercicios activos filtrados
+DB --> A : ejercicios candidatos
+A -> A : aplicar reglas de series, repeticiones y días
+A -> DB : registrar rutina generada
+A --> F : rutina generada
+deactivate A
+F --> C : mostrar rutina por día
+@enduml
 ```
 
 *Nota.* Elaboración propia, a partir de `backend/app/ia/rutina/recomendador_rutinas.py`.
@@ -837,9 +1191,9 @@ El módulo de Comercio cuenta con 10 pruebas propias (`backend/tests/test_comerc
 
   *Nota.* Elaboración propia, a partir de `backend/medir_tiempo_respuesta.py`.
 
-  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye la latencia de red real y el *cold start* descrito en 7.2) ni la comparación con el proceso manual *antes* del sistema. La medición contra el despliegue de Render se repetirá una vez el gimnasio esté operando con el sistema y con su catálogo real cargado, momento en el que será representativa del uso real y no solo de la disponibilidad técnica del servicio.
+  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye la latencia de red real y el *cold start* descrito en 7.2) ni la comparación con el proceso manual *antes* del sistema. La medición sobre el despliegue en Render se realizará cuando el gimnasio opere con el sistema y su catálogo real, condición necesaria para que el valor refleje el uso real y no solo la disponibilidad técnica del servicio.
 
-> **Dato fuera del alcance del código fuente (trabajo de campo)**: el dato de **pretest** — cuánto demora hoy un entrenador en armar una rutina a mano, y los demás valores de O₁ para cada indicador de la matriz de operacionalización (precisión de registros, exactitud de inventario, percepción vía cuestionario Likert) — requiere observación directa del proceso manual actual del gimnasio y aplicación de las fichas e instrumentos del Plan de Tesis con la muestra real de 92 usuarios. Sin ese dato no es posible completar la comparación O₁ vs. O₂ ni correr las pruebas estadísticas (Shapiro-Wilk, t-Student/Wilcoxon) que exige el Capítulo III del Plan de Tesis.
+  **Alcance respecto al diseño preexperimental.** Los valores reportados en esta sección corresponden a la medición postest (O₂) de los indicadores, obtenida sobre el sistema ya construido. La medición pretest (O₁) —tiempo que demora un entrenador en elaborar una rutina de forma manual, precisión de los registros, exactitud del inventario y percepción de los usuarios mediante el cuestionario Likert— se obtiene mediante la observación directa del proceso manual del gimnasio y la aplicación de los instrumentos del Plan de Tesis a la muestra de 92 usuarios. La comparación entre O₁ y O₂, junto con las pruebas estadísticas correspondientes (Shapiro-Wilk y t-Student o Wilcoxon), se presentará en el capítulo de resultados de la tesis, conforme al diseño establecido en el Capítulo III del Plan de Tesis.
 
 ### 6.3. Automatización de pruebas
 
@@ -941,7 +1295,7 @@ Las fuentes de datos del motor son las propias tablas operativas del sistema, pe
 
 *Nota.* Elaboración propia, a partir de `backend/validacion_motor_recomendacion.py`. Catálogo sintético construido para la prueba, no el catálogo real del gimnasio (ver limitación más abajo).
 
-Este conteo confirma el propósito del script de validación de la sección 8.4: con un catálogo sin huecos, cualquier ausencia de ejercicios en una rutina generada debe explicarse por una restricción médica activa, nunca por falta de contenido en el catálogo — lo cual se verifica empíricamente a continuación. Se señala como limitación que este conteo se hizo sobre un catálogo sintético construido para la prueba, no sobre un conteo `GROUP BY grupo_muscular, nivel` del catálogo real del gimnasio: al momento de esta validación, el sistema está desplegado (sección 7.2) pero el equipo del gimnasio aún no ha cargado su catálogo completo de ejercicios ni opera con él en el día a día, por lo que un conteo contra la base de datos desplegada no reflejaría todavía el uso real. Este conteo real queda documentado como una verificación a repetir una vez el gimnasio esté operando con el sistema (ver `Pendientes.md`).
+Este conteo confirma el propósito del script de validación de la sección 8.4: con un catálogo sin huecos, cualquier ausencia de ejercicios en una rutina generada debe explicarse por una restricción médica activa, nunca por falta de contenido en el catálogo — lo cual se verifica empíricamente a continuación. Se señala como limitación que este conteo se hizo sobre un catálogo sintético construido para la prueba, no sobre un conteo `GROUP BY grupo_muscular, nivel` del catálogo real del gimnasio: al momento de esta validación, el sistema está desplegado (sección 7.2) pero el equipo del gimnasio aún no ha cargado su catálogo completo de ejercicios ni opera con él en el día a día, por lo que un conteo contra la base de datos desplegada no reflejaría todavía el uso real. Este conteo se repetirá sobre el catálogo real cuando el gimnasio opere con el sistema.
 
 ### 8.2. Preparación de los datos
 
