@@ -281,6 +281,14 @@ class PagoResponse(PagoCreate):
     id_transaccion_externa: Optional[str] = None
     origen: Optional[str] = None  # "STAFF" o "AUTOSERVICIO", ver models.Pago.origen
 
+    # Se leen como str (no MetodoPago/EstadoPago) porque un pago antiguo
+    # puede tener un valor de la epoca de Culqi (ej. metodo_pago=TARJETA)
+    # que ya no es valido para crear/editar pagos pero sigue existiendo en
+    # la base real -- restringir el tipo tambien en la lectura rompia el
+    # listado completo (ResponseValidationError) en cuanto apareciera uno.
+    metodo_pago: str
+    estado: str
+
     model_config = ConfigDict(from_attributes=True)
 
 
