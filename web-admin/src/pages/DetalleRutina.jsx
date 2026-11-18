@@ -79,6 +79,19 @@ function DetalleRutina() {
   if (error) return <p className="error-message">{error}</p>;
   if (!rutina) return <p className="empty-message">No se encontró la rutina.</p>;
 
+  // Agrupa por día en vez de una sola grilla plana con todos los ejercicios
+  // mezclados -- el propio PDF (ver backend/app/recibos.py) ya agrupa por
+  // día, la pantalla se quedaba atrás en organización. Se conserva el orden
+  // de aparición de cada día tal cual viene de la rutina (ya ordenada por
+  // día/orden desde el backend), no un orden alfabético.
+  const gruposPorDia = (rutina.ejercicios || []).reduce((acc, ejercicio) => {
+    const dia = ejercicio.dia_semana || "Sin día asignado";
+    if (!acc.has(dia)) acc.set(dia, []);
+    acc.get(dia).push(ejercicio);
+    return acc;
+  }, new Map());
+  const diasConEjercicios = Array.from(gruposPorDia.entries());
+
   return (
     <div className="page-container">
       <section className="page-header-pro">
@@ -117,45 +130,49 @@ function DetalleRutina() {
           <p>Cuando se agreguen ejercicios, aparecerán aquí.</p>
         </section>
       ) : (
-        <section className="cards-grid">
-          {rutina.ejercicios.map((ejercicio) => (
-            <div className="card item-card" key={ejercicio.id_rutina_ejercicio}>
-              <div className="video-box">
-                {ejercicio.video_url ? (
-                  <video src={ejercicio.video_url} controls>
-                    <track kind="captions" src="" srcLang="es" label="Español" default />
-                  </video>
-                ) : (
-                  <div className="empty-video">Sin video</div>
-                )}
-              </div>
+        diasConEjercicios.map(([dia, ejercicios]) => (
+          <section key={dia} className="rutina-dia">
+            <h2 className="rutina-dia-titulo">{dia}</h2>
+            <div className="cards-grid">
+              {ejercicios.map((ejercicio) => (
+                <div className="card item-card" key={ejercicio.id_rutina_ejercicio}>
+                  <div className="video-box">
+                    {ejercicio.video_url ? (
+                      <video src={ejercicio.video_url} controls>
+                        <track kind="captions" src="" srcLang="es" label="Español" default />
+                      </video>
+                    ) : (
+                      <div className="empty-video">Sin video</div>
+                    )}
+                  </div>
 
-              <h3>{ejercicio.nombre || "Ejercicio sin nombre"}</h3>
-              <p>{ejercicio.grupo_muscular || "Grupo no definido"}</p>
+                  <h3>{ejercicio.nombre || "Ejercicio sin nombre"}</h3>
+                  <p>{ejercicio.grupo_muscular || "Grupo no definido"}</p>
 
-              <div className="tags-row">
-                <span className="badge">{ejercicio.dia_semana || "Sin día"}</span>
-                <span className="badge">{ejercicio.series || "-"} series</span>
-                <span className="badge">{ejercicio.repeticiones || "-"} reps</span>
-                <span className="badge">
-                  {ejercicio.descanso_segundos || "-"}s descanso
-                </span>
-              </div>
+                  <div className="tags-row">
+                    <span className="badge">{ejercicio.series || "-"} series</span>
+                    <span className="badge">{ejercicio.repeticiones || "-"} reps</span>
+                    <span className="badge">
+                      {ejercicio.descanso_segundos || "-"}s descanso
+                    </span>
+                  </div>
 
-              {ejercicio.descripcion && (
-                <p className="item-description">
-                  <strong>Descripción:</strong> {ejercicio.descripcion}
-                </p>
-              )}
+                  {ejercicio.descripcion && (
+                    <p className="item-description">
+                      <strong>Descripción:</strong> {ejercicio.descripcion}
+                    </p>
+                  )}
 
-              {ejercicio.instrucciones && (
-                <p className="item-description">
-                  <strong>Instrucciones:</strong> {ejercicio.instrucciones}
-                </p>
-              )}
+                  {ejercicio.instrucciones && (
+                    <p className="item-description">
+                      <strong>Instrucciones:</strong> {ejercicio.instrucciones}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
+          </section>
+        ))
       )}
     </div>
   );

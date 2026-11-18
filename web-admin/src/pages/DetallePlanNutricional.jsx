@@ -56,6 +56,17 @@ function DetallePlanNutricional() {
   if (error) return <p className="error-message">{error}</p>;
   if (!plan) return <p className="empty-message">No se encontró el plan nutricional.</p>;
 
+  // Mismo orden de franjas que usa el motor de recomendación (ver
+  // backend/app/ia/nutricion/recomendador_nutricion.py, HORAS_POR_TIPO) --
+  // el backend no ordena la relación PlanComida, así que para un plan
+  // editado a mano el orden que llega puede no ser cronológico.
+  const ORDEN_FRANJAS = ["DESAYUNO", "MEDIA MAÑANA", "ALMUERZO", "MERIENDA", "CENA"];
+  const comidasOrdenadas = [...(plan.comidas || [])].sort((a, b) => {
+    const posA = ORDEN_FRANJAS.indexOf((a.tipo_comida || "").toUpperCase());
+    const posB = ORDEN_FRANJAS.indexOf((b.tipo_comida || "").toUpperCase());
+    return (posA === -1 ? ORDEN_FRANJAS.length : posA) - (posB === -1 ? ORDEN_FRANJAS.length : posB);
+  });
+
   return (
     <div className="page-container">
       <section className="page-header-pro">
@@ -144,7 +155,7 @@ function DetallePlanNutricional() {
           </div>
 
           <div className="list">
-            {plan.comidas.map((comida) => (
+            {comidasOrdenadas.map((comida) => (
               <div key={comida.id_comida} className="list-item">
                 <div>
                   <strong>{comida.tipo_comida || "Comida"}</strong>

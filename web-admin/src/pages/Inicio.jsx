@@ -171,7 +171,7 @@ function Inicio() {
         </div>
       </section>
 
-      <section className="public-section" id="contacto">
+      <section className="public-section public-content" id="contacto">
         <div className="content-grid">
           <div className="card info-card">
             <span className="badge">Contacto</span>

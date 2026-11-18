@@ -835,42 +835,6 @@ function Reportes() {
         </section>
       )}
 
-      {ingresos && (
-        <section className="table-card">
-          <div className="table-header">
-            <h2>Ingresos por día</h2>
-            <button className="btn-secondary" onClick={exportarIngresos}>
-              Exportar CSV
-            </button>
-          </div>
-
-          <p>
-            Total de membresías del período: <strong>S/ {Number(ingresos.total).toFixed(2)}</strong>
-          </p>
-
-          {ingresos.por_dia.length === 0 ? (
-            <p className="empty-message">No hay ingresos registrados en este rango.</p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ingresos.por_dia.map((fila) => (
-                  <tr key={fila.fecha}>
-                    <td>{fila.fecha}</td>
-                    <td>S/ {Number(fila.monto).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      )}
-
       {compras && Array.isArray(compras.por_dia) && (
         <section className="table-card">
           <div className="table-header">
@@ -927,6 +891,44 @@ function Reportes() {
                 </tbody>
               </table>
             </>
+          )}
+        </section>
+      )}
+
+      <div className="reportes-grid">
+
+      {ingresos && (
+        <section className="table-card">
+          <div className="table-header">
+            <h2>Ingresos por día</h2>
+            <button className="btn-secondary" onClick={exportarIngresos}>
+              Exportar CSV
+            </button>
+          </div>
+
+          <p>
+            Total de membresías del período: <strong>S/ {Number(ingresos.total).toFixed(2)}</strong>
+          </p>
+
+          {ingresos.por_dia.length === 0 ? (
+            <p className="empty-message">No hay ingresos registrados en este rango.</p>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ingresos.por_dia.map((fila) => (
+                  <tr key={fila.fecha}>
+                    <td>{fila.fecha}</td>
+                    <td>S/ {Number(fila.monto).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </section>
       )}
@@ -1038,6 +1040,8 @@ function Reportes() {
           )}
         </section>
       )}
+
+      </div>
 
       </div>
 

@@ -60,7 +60,7 @@ function Avisos() {
     <div className="public-page">
       <Navbar />
 
-      <section className="public-section tight-top">
+      <section className="public-section public-content tight-top">
         <div className="section-title">
           <span className="badge">Avisos</span>
           <h2>Horarios y novedades de GleyforGym</h2>

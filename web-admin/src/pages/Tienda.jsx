@@ -122,7 +122,7 @@ function Tienda() {
     <div className="public-page">
       <Navbar cartCount={totalCarrito} onCartClick={() => setTab("carrito")} />
 
-      <section className="public-section" id="tienda">
+      <section className="public-section public-content" id="tienda">
         <div className="section-title centered">
           <span className="badge">Tienda</span>
           <h2>Productos y suplementos</h2>

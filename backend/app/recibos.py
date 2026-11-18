@@ -13,6 +13,8 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 # pyrefly: ignore [missing-import]
 from reportlab.pdfgen import canvas
+# pyrefly: ignore [missing-import]
+from reportlab.lib import colors
 
 from app import config
 
@@ -20,6 +22,16 @@ logger = logging.getLogger("gleyforgym")
 
 IGV_TASA = 0.18
 TIMEOUT_IMAGEN_SEGUNDOS = 5.0
+
+# Misma paleta de marca que web-admin/src/index.css (:root) -- para que el
+# PDF de rutina/nutricion se sienta del mismo sistema visual que el panel,
+# no una hoja de texto plano aparte.
+COLOR_MARCA = colors.HexColor("#FF5500")
+COLOR_MARCA_OSCURO = colors.HexColor("#C2410C")
+COLOR_TEXTO = colors.HexColor("#221B14")
+COLOR_MUTED = colors.HexColor("#776D62")
+COLOR_FRANJA_SUAVE = colors.HexColor("#FFF1E6")
+COLOR_LINEA = colors.HexColor("#E8DFD3")
 
 # Comprobantes de pago (membresía y venta de productos) en formato ticket de
 # 80mm -- el que de verdad se usa en mostradores con impresora térmica POS en
@@ -46,14 +58,6 @@ def _desglose_igv(total_con_igv: float) -> tuple[float, float]:
     op_gravada = round(total_con_igv / (1 + IGV_TASA), 2)
     igv = round(total_con_igv - op_gravada, 2)
     return op_gravada, igv
-
-
-def _linea(c: canvas.Canvas, y: float, etiqueta: str, valor: str) -> float:
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(2 * cm, y, etiqueta)
-    c.setFont("Helvetica", 10)
-    c.drawString(6 * cm, y, valor)
-    return y - 0.7 * cm
 
 
 def _envolver_texto(texto: str, fuente: str, tamano: int, ancho_max: float) -> list[str]:
@@ -230,12 +234,22 @@ def generar_boleta_venta(venta, cliente) -> bytes:
     return _renderizar_ticket(builder)
 
 
+ALTO_FRANJA_ENCABEZADO = 2.6 * cm
+
+
 def _encabezado_a4(c: canvas.Canvas, ancho: float, alto: float, titulo: str) -> float:
-    c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(ancho / 2, alto - 2 * cm, "GLEYFORGYM")
+    """Franja de color de marca con "GLEYFORGYM" + el título del documento,
+    en vez de texto negro plano sobre blanco -- misma idea que el encabezado
+    de .public-navbar/.page-header-pro en el panel."""
+    c.setFillColor(COLOR_MARCA)
+    c.rect(0, alto - ALTO_FRANJA_ENCABEZADO, ancho, ALTO_FRANJA_ENCABEZADO, stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 20)
+    c.drawCentredString(ancho / 2, alto - 1.15 * cm, "GLEYFORGYM")
     c.setFont("Helvetica", 12)
-    c.drawCentredString(ancho / 2, alto - 2.8 * cm, titulo)
-    return alto - 4 * cm
+    c.drawCentredString(ancho / 2, alto - 1.95 * cm, titulo)
+    c.setFillColor(COLOR_TEXTO)
+    return alto - ALTO_FRANJA_ENCABEZADO - 0.9 * cm
 
 
 def _nueva_pagina_si_hace_falta(c: canvas.Canvas, y: float, alto: float, margen_inferior: float = 2.5 * cm) -> float:
@@ -243,6 +257,35 @@ def _nueva_pagina_si_hace_falta(c: canvas.Canvas, y: float, alto: float, margen_
         c.showPage()
         return alto - 2 * cm
     return y
+
+
+def _chip(c: canvas.Canvas, x: float, y: float, texto: str) -> float:
+    """Dibuja una "pill" de color (como un .badge del panel) y devuelve la
+    coordenada x justo después, para encadenar varios chips en una fila."""
+    c.setFont("Helvetica-Bold", 9)
+    ancho_texto = stringWidth(texto, "Helvetica-Bold", 9)
+    ancho_chip = ancho_texto + 0.6 * cm
+    alto_chip = 0.55 * cm
+    c.setFillColor(COLOR_FRANJA_SUAVE)
+    c.roundRect(x, y, ancho_chip, alto_chip, alto_chip / 2, stroke=0, fill=1)
+    c.setFillColor(COLOR_MARCA_OSCURO)
+    c.drawCentredString(x + ancho_chip / 2, y + 0.18 * cm, texto)
+    c.setFillColor(COLOR_TEXTO)
+    return x + ancho_chip + 0.3 * cm
+
+
+def _encabezado_grupo(c: canvas.Canvas, y: float, ancho_util: float, x_inicio: float, titulo: str) -> float:
+    """Banda de color para el encabezado de un grupo (un día de rutina, o
+    una franja horaria de comidas) -- mismo rol que el badge naranja que ya
+    usa DetalleRutina.jsx para agrupar por día en pantalla."""
+    alto_banda = 0.75 * cm
+    c.setFillColor(COLOR_FRANJA_SUAVE)
+    c.rect(x_inicio, y - alto_banda + 0.2 * cm, ancho_util, alto_banda, stroke=0, fill=1)
+    c.setFillColor(COLOR_MARCA_OSCURO)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(x_inicio + 0.3 * cm, y - 0.35 * cm, titulo)
+    c.setFillColor(COLOR_TEXTO)
+    return y - alto_banda - 0.15 * cm
 
 
 def _obtener_imagen_reader(url: str | None) -> "ImageReader | None":
@@ -268,14 +311,28 @@ def generar_pdf_rutina(rutina, cliente) -> bytes:
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     ancho, alto = A4
+    margen = 2 * cm
+    ancho_util = ancho - 2 * margen
 
     y = _encabezado_a4(c, ancho, alto, "Rutina de entrenamiento")
 
-    y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
-    y = _linea(c, y, "DNI:", cliente.dni or "-")
-    y = _linea(c, y, "Rutina:", rutina.nombre)
-    y = _linea(c, y, "Objetivo:", rutina.objetivo or "-")
-    y = _linea(c, y, "Nivel:", rutina.nivel or "-")
+    c.setFont("Helvetica-Bold", 15)
+    c.drawString(margen, y, rutina.nombre or "Rutina sin nombre")
+    y -= 0.6 * cm
+
+    c.setFillColor(COLOR_MUTED)
+    c.setFont("Helvetica", 10)
+    c.drawString(margen, y, f"{cliente.nombres} {cliente.apellidos} — DNI: {cliente.dni or '-'}")
+    c.setFillColor(COLOR_TEXTO)
+    y -= 0.5 * cm
+
+    x_chip = margen
+    x_chip = _chip(c, x_chip, y - 0.55 * cm, rutina.objetivo or "Sin objetivo")
+    _chip(c, x_chip, y - 0.55 * cm, rutina.nivel or "Sin nivel")
+    y -= 0.95 * cm
+
+    c.setStrokeColor(COLOR_LINEA)
+    c.line(margen, y, ancho - margen, y)
     y -= 0.5 * cm
 
     ejercicios_ordenados = sorted(
@@ -289,44 +346,49 @@ def generar_pdf_rutina(rutina, cliente) -> bytes:
         imagen = _obtener_imagen_reader(
             item.ejercicio.imagen_referencial_url if item.ejercicio else None
         )
-        margen_fila = (ALTO_IMAGEN_EJERCICIO + 0.4 * cm) if imagen else 2.5 * cm
+        margen_fila = (ALTO_IMAGEN_EJERCICIO + 0.4 * cm) if imagen else 3 * cm
         y = _nueva_pagina_si_hace_falta(c, y, alto, margen_inferior=margen_fila)
 
         if item.dia_semana != dia_actual:
             dia_actual = item.dia_semana
-            y -= 0.3 * cm
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(2 * cm, y, dia_actual or "Sin día asignado")
-            y -= 0.7 * cm
+            y = _encabezado_grupo(c, y, ancho_util, margen, dia_actual or "Sin día asignado")
+            y -= 0.15 * cm
 
         nombre = item.ejercicio.nombre if item.ejercicio else item.nombre_ejercicio
         detalle = f"{item.series or '-'} series x {item.repeticiones or '-'} rep."
         if item.descanso_segundos:
             detalle += f" — descanso {item.descanso_segundos}s"
 
-        texto_x = 2.5 * cm
-        altura_fila = 0.6 * cm
+        texto_x = margen + 0.3 * cm
+        altura_fila = 0.95 * cm
 
         if imagen:
             try:
                 c.drawImage(
-                    imagen, 2.3 * cm, y - ALTO_IMAGEN_EJERCICIO + 0.3 * cm,
+                    imagen, margen + 0.1 * cm, y - ALTO_IMAGEN_EJERCICIO + 0.3 * cm,
                     width=ALTO_IMAGEN_EJERCICIO, height=ALTO_IMAGEN_EJERCICIO,
                     preserveAspectRatio=True, mask="auto",
                 )
-                texto_x = 2.3 * cm + ALTO_IMAGEN_EJERCICIO + 0.3 * cm
+                texto_x = margen + 0.1 * cm + ALTO_IMAGEN_EJERCICIO + 0.3 * cm
                 altura_fila = ALTO_IMAGEN_EJERCICIO + 0.3 * cm
             except Exception:
                 logger.warning("No se pudo incrustar la imagen de referencia del ejercicio en el PDF")
 
-        c.setFont("Helvetica", 10)
-        c.drawString(texto_x, y, f"• {nombre}")
-        c.drawString(11 * cm, y, detalle)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(texto_x, y, nombre)
+        c.setFillColor(COLOR_MUTED)
+        c.setFont("Helvetica", 9)
+        c.drawString(texto_x, y - 0.38 * cm, detalle)
+        c.setFillColor(COLOR_TEXTO)
+
         y -= altura_fila
+        c.setStrokeColor(COLOR_LINEA)
+        c.line(margen, y + 0.15 * cm, ancho - margen, y + 0.15 * cm)
+        y -= 0.15 * cm
 
     if not ejercicios_ordenados:
         c.setFont("Helvetica-Oblique", 10)
-        c.drawString(2 * cm, y, "Esta rutina todavía no tiene ejercicios asignados.")
+        c.drawString(margen, y, "Esta rutina todavía no tiene ejercicios asignados.")
 
     c.showPage()
     c.save()
@@ -340,48 +402,79 @@ def generar_pdf_plan_nutricional(plan, cliente) -> bytes:
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     ancho, alto = A4
+    margen = 2 * cm
+    ancho_util = ancho - 2 * margen
 
     y = _encabezado_a4(c, ancho, alto, "Plan nutricional")
 
-    y = _linea(c, y, "Cliente:", f"{cliente.nombres} {cliente.apellidos}")
-    y = _linea(c, y, "DNI:", cliente.dni or "-")
-    y = _linea(c, y, "Objetivo:", plan.objetivo or "-")
-    y -= 0.3 * cm
+    c.setFont("Helvetica-Bold", 15)
+    c.drawString(margen, y, plan.objetivo or "Plan nutricional")
+    y -= 0.6 * cm
+
+    c.setFillColor(COLOR_MUTED)
+    c.setFont("Helvetica", 10)
+    c.drawString(margen, y, f"{cliente.nombres} {cliente.apellidos} — DNI: {cliente.dni or '-'}")
+    c.setFillColor(COLOR_TEXTO)
+    y -= 0.9 * cm
 
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(2 * cm, y, "Macros (objetivo vs. real)")
-    y -= 0.7 * cm
+    c.drawString(margen, y, "Macros (objetivo vs. real)")
+    y -= 0.6 * cm
 
+    # Tabla de 4 columnas (una por macro) en vez de 4 líneas sueltas de
+    # "etiqueta: objetivo / real".
     filas_macros = [
-        ("Calorías", plan.calorias_diarias, plan.calorias_reales),
-        ("Proteínas (g)", plan.proteinas, plan.proteinas_reales),
-        ("Carbohidratos (g)", plan.carbohidratos, plan.carbohidratos_reales),
-        ("Grasas (g)", plan.grasas, plan.grasas_reales),
+        ("Calorías", plan.calorias_diarias, plan.calorias_reales, "kcal"),
+        ("Proteínas", plan.proteinas, plan.proteinas_reales, "g"),
+        ("Carbohidratos", plan.carbohidratos, plan.carbohidratos_reales, "g"),
+        ("Grasas", plan.grasas, plan.grasas_reales, "g"),
     ]
-    for etiqueta, objetivo, real in filas_macros:
-        valor = f"{objetivo if objetivo is not None else '-'} / {real if real is not None else '-'}"
-        y = _linea(c, y, f"{etiqueta}:", valor)
+    ancho_col = ancho_util / len(filas_macros)
+    alto_tabla = 1.7 * cm
 
-    y -= 0.5 * cm
+    c.setFillColor(COLOR_FRANJA_SUAVE)
+    c.roundRect(margen, y - alto_tabla, ancho_util, alto_tabla, 0.2 * cm, stroke=0, fill=1)
+
+    for indice, (etiqueta, objetivo, real, unidad) in enumerate(filas_macros):
+        x_centro = margen + ancho_col * indice + ancho_col / 2
+        c.setFillColor(COLOR_MARCA_OSCURO)
+        c.setFont("Helvetica-Bold", 9)
+        c.drawCentredString(x_centro, y - 0.5 * cm, etiqueta)
+        c.setFillColor(COLOR_TEXTO)
+        c.setFont("Helvetica-Bold", 13)
+        valor_objetivo = objetivo if objetivo is not None else "-"
+        c.drawCentredString(x_centro, y - 1.05 * cm, f"{valor_objetivo} {unidad}")
+        c.setFillColor(COLOR_MUTED)
+        c.setFont("Helvetica", 8)
+        valor_real = real if real is not None else "-"
+        c.drawCentredString(x_centro, y - 1.45 * cm, f"real: {valor_real} {unidad}")
+    c.setFillColor(COLOR_TEXTO)
+    y -= alto_tabla + 0.6 * cm
+
     y = _nueva_pagina_si_hace_falta(c, y, alto)
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(2 * cm, y, "Comidas asignadas")
+    c.drawString(margen, y, "Comidas asignadas")
     y -= 0.7 * cm
 
     for comida in plan.comidas:
-        y = _nueva_pagina_si_hace_falta(c, y, alto)
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(2.5 * cm, y, f"{comida.tipo_comida} ({comida.hora_recomendada or '-'})")
-        y -= 0.5 * cm
+        y = _nueva_pagina_si_hace_falta(c, y, alto, margen_inferior=3 * cm)
+        y = _encabezado_grupo(
+            c, y, ancho_util, margen,
+            f"{comida.tipo_comida} — {comida.hora_recomendada or 'sin hora'}",
+        )
+
         c.setFont("Helvetica", 10)
-        c.drawString(3 * cm, y, comida.descripcion)
+        c.drawString(margen + 0.3 * cm, y, comida.descripcion or "-")
         if comida.calorias_aprox:
-            c.drawString(15 * cm, y, f"~{comida.calorias_aprox} kcal")
-        y -= 0.7 * cm
+            c.setFillColor(COLOR_MUTED)
+            c.setFont("Helvetica", 9)
+            c.drawRightString(ancho - margen, y, f"~{comida.calorias_aprox} kcal")
+            c.setFillColor(COLOR_TEXTO)
+        y -= 0.85 * cm
 
     if not plan.comidas:
         c.setFont("Helvetica-Oblique", 10)
-        c.drawString(2 * cm, y, "Este plan todavía no tiene comidas asignadas.")
+        c.drawString(margen, y, "Este plan todavía no tiene comidas asignadas.")
 
     c.showPage()
     c.save()

@@ -930,6 +930,68 @@ tr:hover td {
   min-height: 160px;
 }
 
+/* Tarjetas de venta (Ventas.jsx): mas anchas que .cards-grid normal porque
+   cada tarjeta puede tener hasta 4 botones de accion (Confirmar/Marcar
+   entregado/Avisar por WhatsApp/Descargar boleta/Anular) -- con el ancho
+   minimo generico (280px) esos botones quedaban apilados y con anchos
+   inconsistentes segun el largo del texto. */
+.ventas-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+.venta-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.venta-actions button {
+  width: 100%;
+}
+
+/* Un solo boton de accion (ej. solo "Confirmar", o solo "Anular" cuando no
+   hay mas acciones para ese estado) ocupa toda la fila en vez de quedar a
+   la mitad con un hueco vacio al lado. */
+.venta-actions button:only-child {
+  grid-column: 1 / -1;
+}
+
+/* Agrupa las tablas mas chicas de Reportes (Ingresos, Asistencias,
+   Productos mas vendidos, Ventas por metodo) de a dos por fila en vez de
+   cada una a ancho completo -- son tablas de 2-3 columnas, no necesitan
+   todo el ancho de la pantalla. "Resumen general" y "Compras" se dejan
+   fuera de esta rejilla porque tienen mas contenido (varias stats o
+   sub-tablas) y se ven mejor a ancho completo. */
+.reportes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 24px;
+}
+
+.reportes-grid > .table-card {
+  margin-bottom: 0;
+}
+
+/* Agrupa los ejercicios de DetalleRutina.jsx por dia de entrenamiento en
+   vez de una sola grilla plana -- el PDF de la rutina ya los agrupa por
+   dia, esto alinea la pantalla con su propio PDF. */
+.rutina-dia {
+  margin-bottom: 32px;
+}
+
+.rutina-dia-titulo {
+  display: inline-block;
+  margin: 0 0 16px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: rgba(255, 85, 0, 0.12);
+  color: var(--orange-text);
+  font-size: 15px;
+}
+
 .user-info {
   display: flex;
   align-items: center;
@@ -1492,8 +1554,19 @@ tr:hover td {
 
 .public-page {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #faf7f2;
   color: var(--text);
+}
+
+/* Empuja el footer hasta el fondo cuando el contenido mide menos que la
+   pantalla (ej. Avisos con pocas tarjetas) -- sin esto, .public-page se
+   estira igual hasta 100vh y el sobrante queda pintado con su propio fondo
+   (mas claro que el de .public-section/.public-footer), lo que se ve como
+   un bloque en blanco de mas debajo del footer. */
+.public-content {
+  flex: 1 0 auto;
 }
 
 .public-navbar {

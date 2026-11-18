@@ -368,7 +368,7 @@ function Ventas() {
         )}
 
         {filtradas.length === 0 ? <p className="empty-message">No hay ventas con ese filtro.</p> : (
-          <div className="cards-grid">
+          <div className="ventas-cards">
             {filtradas.map((v) => (
               <div key={v.id_venta} className="card item-card">
                 <div className="item-card-top">
@@ -391,7 +391,7 @@ function Ventas() {
                     ))}
                   </div>
                 )}
-                <div className="item-actions">
+                <div className="venta-actions">
                   {v.estado === "PENDIENTE" && ["ADMIN", "ENTRENADOR", "RECEPCIONISTA"].includes(rol) && (
                     <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => confirmar(v.id_venta)}>
                       {procesando === v.id_venta ? "Confirmando..." : "Confirmar"}
