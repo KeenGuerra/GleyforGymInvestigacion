@@ -398,6 +398,87 @@ def test_ejercicios_crud():
     assert res_actualizar.status_code == 200
     assert res_actualizar.json()["nivel"] == "Avanzado"
 
-    # 5. Eliminar (Desactivar) Ejercicio
+    # 5. Eliminar Ejercicio (borrado real, no desactivacion)
     res_eliminar = client.delete(f"/ejercicios/{id_ejercicio}", headers=headers)
     assert res_eliminar.status_code == 200
+    assert res_eliminar.json()["mensaje"] == "Ejercicio eliminado correctamente"
+
+    res_obtener_borrado = client.get(f"/ejercicios/{id_ejercicio}", headers=headers)
+    assert res_obtener_borrado.status_code == 404
+
+
+def test_eliminar_ejercicio_en_uso_no_rompe_la_rutina():
+    """Un ejercicio ya asignado en una rutina se puede eliminar del catalogo
+    sin perder el historial de esa rutina -- RutinaEjercicio guarda su propia
+    copia de nombre_ejercicio/grupo_muscular para sobrevivir justo a esto."""
+    headers = get_auth_headers()
+
+    res_crear = client.post(
+        "/ejercicios/",
+        data={
+            "nombre": "Sentadilla",
+            "grupo_muscular": "Piernas",
+            "nivel": "Intermedio",
+            "estado": "ACTIVO",
+        },
+        headers=headers,
+    )
+    id_ejercicio = res_crear.json()["id_ejercicio"]
+
+    db = TestingSessionLocal()
+    cliente = db.query(models.Cliente).filter(models.Cliente.estado == "ACTIVO").first()
+    id_cliente = cliente.id_cliente
+    db.close()
+
+    res_rutina = client.post(
+        "/rutinas/",
+        json={
+            "id_cliente": id_cliente,
+            "nombre": "Rutina de prueba",
+            "objetivo": "Fuerza",
+            "nivel": "Intermedio",
+        },
+        headers=headers,
+    )
+    id_rutina = res_rutina.json()["id_rutina"]
+
+    res_asignar = client.put(
+        f"/rutinas/{id_rutina}/ejercicios",
+        json={
+            "ejercicios": [{
+                "id_ejercicio": id_ejercicio,
+                "nombre_ejercicio": "Sentadilla",
+                "grupo_muscular": "Piernas",
+                "series": 4,
+                "repeticiones": "10",
+                "dia_semana": "Día 1",
+                "orden": 1,
+            }],
+        },
+        headers=headers,
+    )
+    assert res_asignar.status_code == 200
+
+    res_eliminar = client.delete(f"/ejercicios/{id_ejercicio}", headers=headers)
+    assert res_eliminar.status_code == 200
+
+    res_detalle = client.get(f"/rutinas/{id_rutina}/detalle", headers=headers)
+    assert res_detalle.status_code == 200
+    item = res_detalle.json()["ejercicios"][0]
+    assert item["nombre"] == "Sentadilla"
+    assert item["grupo_muscular"] == "Piernas"
+    assert item["video_url"] is None
+
+
+def test_reemplazar_media_ejercicio_requiere_archivo():
+    headers = get_auth_headers()
+
+    res_crear = client.post(
+        "/ejercicios/",
+        data={"nombre": "Plancha", "grupo_muscular": "Abdomen", "nivel": "Principiante"},
+        headers=headers,
+    )
+    id_ejercicio = res_crear.json()["id_ejercicio"]
+
+    res_sin_archivo = client.put(f"/ejercicios/{id_ejercicio}/media", headers=headers)
+    assert res_sin_archivo.status_code == 400

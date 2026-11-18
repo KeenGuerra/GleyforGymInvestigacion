@@ -119,6 +119,16 @@ function Ejercicios() {
           estado: form.estado,
           restricciones: form.restricciones || null,
         });
+
+        if (video || imagenRef) {
+          const mediaData = new FormData();
+          if (video) mediaData.append("video", video);
+          if (imagenRef) mediaData.append("imagen", imagenRef);
+
+          await api.put(`/ejercicios/${editandoId}/media`, mediaData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
       } else {
         const data = new FormData();
 
@@ -146,12 +156,12 @@ function Ejercicios() {
 
   const desactivar = async (id) => {
     const confirmado = await confirmarAccion(
-      "¿Seguro que deseas desactivar este ejercicio?"
+      "¿Seguro que deseas desactivar este ejercicio? Podrás activarlo de nuevo cuando quieras."
     );
     if (!confirmado) return;
 
     try {
-      await api.delete(`/ejercicios/${id}`);
+      await api.put(`/ejercicios/${id}`, { estado: "INACTIVO" });
       await cargar();
     } catch (error) {
       console.error("Error al desactivar ejercicio:", error);
@@ -166,6 +176,21 @@ function Ejercicios() {
     } catch (error) {
       console.error("Error al activar ejercicio:", error);
       setError("No se pudo activar el ejercicio");
+    }
+  };
+
+  const eliminar = async (id) => {
+    const confirmado = await confirmarAccion(
+      "¿Eliminar este ejercicio definitivamente? Esta acción no se puede deshacer. Las rutinas que ya lo tenían asignado conservarán el nombre y grupo muscular, pero perderán el video."
+    );
+    if (!confirmado) return;
+
+    try {
+      await api.delete(`/ejercicios/${id}`);
+      await cargar();
+    } catch (error) {
+      console.error("Error al eliminar ejercicio:", error);
+      setError("No se pudo eliminar el ejercicio");
     }
   };
 
@@ -279,38 +304,41 @@ function Ejercicios() {
               </select>
             </div>
 
-            {editandoId ? (
-              <div className="form-field field-large">
+            <div className="form-field">
+              <label htmlFor="video">{editandoId ? "Reemplazar video (opcional)" : "Video"}</label>
+              <input
+                id="video"
+                ref={fileRef}
+                type="file"
+                accept="video/*"
+                onChange={(e) => setVideo(e.target.files[0] || null)}
+              />
+              {editandoId && (
                 <p className="muted-text" style={{ margin: 0 }}>
-                  El video y la imagen no se pueden cambiar desde aquí. Para reemplazarlos,
-                  desactiva este ejercicio y registra uno nuevo con los archivos actualizados.
+                  Déjalo vacío para conservar el video actual.
                 </p>
-              </div>
-            ) : (
-              <>
-                <div className="form-field">
-                  <label htmlFor="video">Video</label>
-                  <input
-                    id="video"
-                    ref={fileRef}
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => setVideo(e.target.files[0] || null)}
-                  />
-                </div>
+              )}
+            </div>
 
-                <div className="form-field">
-                  <label htmlFor="imagen">Imagen de referencia (para el PDF de la rutina)</label>
-                  <input
-                    id="imagen"
-                    ref={fileRefImagen}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setImagenRef(e.target.files[0] || null)}
-                  />
-                </div>
-              </>
-            )}
+            <div className="form-field">
+              <label htmlFor="imagen">
+                {editandoId
+                  ? "Reemplazar imagen de referencia (opcional)"
+                  : "Imagen de referencia (para el PDF de la rutina)"}
+              </label>
+              <input
+                id="imagen"
+                ref={fileRefImagen}
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImagenRef(e.target.files[0] || null)}
+              />
+              {editandoId && (
+                <p className="muted-text" style={{ margin: 0 }}>
+                  Déjala vacía para conservar la imagen actual.
+                </p>
+              )}
+            </div>
 
             <div className="form-field field-large">
               <label htmlFor="descripcion">Descripción</label>
@@ -428,12 +456,16 @@ function Ejercicios() {
                     </button>
                   ) : (
                     <button
-                      className="btn-danger"
+                      className="btn-secondary"
                       onClick={() => desactivar(e.id_ejercicio)}
                     >
                       Desactivar
                     </button>
                   )}
+
+                  <button className="btn-danger" onClick={() => eliminar(e.id_ejercicio)}>
+                    Eliminar
+                  </button>
                 </div>
               </div>
             ))}

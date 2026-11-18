@@ -117,7 +117,7 @@ describe("Ejercicios Page Component", () => {
   });
 
   it("desactivates an exercise on confirmation", async () => {
-    api.delete.mockResolvedValue({ data: {} });
+    api.put.mockResolvedValue({ data: {} });
 
     render(<Ejercicios />);
 
@@ -126,6 +126,26 @@ describe("Ejercicios Page Component", () => {
     });
 
     fireEvent.click(screen.getByText("Desactivar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith("/ejercicios/1", { estado: "INACTIVO" });
+    });
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes an exercise permanently on confirmation", async () => {
+    api.delete.mockResolvedValue({ data: {} });
+
+    render(<Ejercicios />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Eliminar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Eliminar"));
 
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByText("Confirmar"));
@@ -167,7 +187,7 @@ describe("Ejercicios Page Component", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByText("Cancelar"));
 
-    expect(api.delete).not.toHaveBeenCalled();
+    expect(api.put).not.toHaveBeenCalled();
   });
 
   it("filters exercises cards based on search input", async () => {
@@ -252,7 +272,7 @@ describe("Ejercicios Page Component", () => {
     });
   });
 
-  it("opens the edit form prefilled with the exercise data and hides the video field", async () => {
+  it("opens the edit form prefilled with the exercise data and allows replacing the video/image", async () => {
     render(<Ejercicios />);
 
     await waitFor(() => {
@@ -263,14 +283,11 @@ describe("Ejercicios Page Component", () => {
 
     expect(screen.getByRole("heading", { name: "Editar ejercicio" })).toBeDefined();
     expect(screen.getByLabelText("Nombre").value).toBe("Sentadilla");
-    expect(screen.queryByLabelText("Video")).toBeNull();
-    expect(screen.queryByLabelText("Imagen de referencia (para el PDF de la rutina)")).toBeNull();
-    expect(
-      screen.getByText(/El video y la imagen no se pueden cambiar desde aquí/)
-    ).toBeDefined();
+    expect(screen.getByLabelText("Reemplazar video (opcional)")).toBeDefined();
+    expect(screen.getByLabelText("Reemplazar imagen de referencia (opcional)")).toBeDefined();
   });
 
-  it("submits edits via PUT with the updated fields and without the video", async () => {
+  it("submits edits via PUT with the updated fields and without touching the media endpoint when no file is chosen", async () => {
     api.put.mockResolvedValue({ data: {} });
     render(<Ejercicios />);
 
@@ -288,11 +305,40 @@ describe("Ejercicios Page Component", () => {
         grupo_muscular: "Piernas",
       }));
     });
+    expect(api.put).toHaveBeenCalledTimes(1);
     expect(api.post).not.toHaveBeenCalled();
   });
 
+  it("replaces the video when editing by also calling the media endpoint", async () => {
+    api.put.mockResolvedValue({ data: {} });
+    render(<Ejercicios />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Editar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Editar"));
+
+    const file = new File(["nuevo"], "nuevo.mp4", { type: "video/mp4" });
+    fireEvent.change(screen.getByLabelText("Reemplazar video (opcional)"), {
+      target: { files: [file] },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        "/ejercicios/1/media",
+        expect.any(FormData),
+        expect.objectContaining({ headers: { "Content-Type": "multipart/form-data" } })
+      );
+    });
+    const mediaCall = api.put.mock.calls.find((call) => call[0] === "/ejercicios/1/media");
+    expect(mediaCall[1].get("video")).toBe(file);
+  });
+
   it("shows error if exercise deactivation fails", async () => {
-    api.delete.mockRejectedValue(new Error("Delete Error"));
+    api.put.mockRejectedValue(new Error("Put Error"));
 
     render(<Ejercicios />);
     await waitFor(() => {
@@ -306,6 +352,24 @@ describe("Ejercicios Page Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("No se pudo desactivar el ejercicio")).toBeDefined();
+    });
+  });
+
+  it("shows error if exercise deletion fails", async () => {
+    api.delete.mockRejectedValue(new Error("Delete Error"));
+
+    render(<Ejercicios />);
+    await waitFor(() => {
+      expect(screen.getByText("Eliminar")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Eliminar"));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Confirmar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudo eliminar el ejercicio")).toBeDefined();
     });
   });
 });
