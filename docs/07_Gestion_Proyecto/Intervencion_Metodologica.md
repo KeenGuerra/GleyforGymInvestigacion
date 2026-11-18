@@ -2,9 +2,9 @@
 
 # Sistema Gimnasio GleyforGym
 
-> La información de este capítulo se obtuvo mediante la revisión directa del código fuente del sistema y de su historial de control de versiones. El alcance cubre el sistema web (backend FastAPI y panel de administración React); la aplicación móvil complementaria (Flutter) queda fuera del alcance de este documento.
+> La información de este capítulo se obtuvo mediante la revisión directa del código fuente del sistema web (backend FastAPI y panel de administración React) y de su historial de control de versiones.
 >
-> **Relación con el Plan de Tesis**: este documento describe el proceso de *ingeniería de software* (cómo se construyó, probó y desplegó el sistema). El diseño de *investigación* formal del proyecto — enfoque cuantitativo, diseño preexperimental con pretest y postest en un solo grupo (`G: O₁ → X → O₂`), población de 120 usuarios activos, muestra de 92 usuarios, instrumentos validados y análisis estadístico (Shapiro-Wilk, t-Student/Wilcoxon) — se define en el Capítulo III del Plan de Tesis y no se duplica aquí. Donde este documento mide un indicador que coincide con uno de la matriz de operacionalización del Plan de Tesis (ej. tiempo de respuesta del sistema, cumplimiento funcional), se cita explícitamente la correspondencia.
+> **Relación con el Plan de Tesis**: este documento describe el proceso de *ingeniería de software* (cómo se construyó, probó y desplegó el sistema). El diseño de *investigación* formal del proyecto — enfoque cuantitativo, diseño preexperimental con pretest y postest en un solo grupo (`G: O₁ → X → O₂`), población de 120 usuarios activos con muestra censal (los mismos 120 usuarios), 18 fichas de recolección validadas por juicio de expertos y análisis estadístico (Shapiro-Wilk, t de Student para muestras relacionadas o Wilcoxon) — se define en el Capítulo III del Plan de Tesis y no se duplica aquí. Donde este documento mide un indicador de la matriz de operacionalización del Plan de Tesis (por ejemplo, I4 tiempo de respuesta del sistema o I6 cumplimiento funcional), se cita explícitamente la correspondencia.
 
 ---
 
@@ -14,11 +14,11 @@
 
 GLEYFORGYM es un gimnasio ubicado en la provincia de Chupaca, región Junín, Perú, cuyos procesos administrativos, deportivos y comerciales se gestionan de forma manual: registro de clientes y membresías en cuadernos y hojas sueltas, control de pagos sin sistema unificado, registro de asistencias sin consolidación, seguimiento físico sin registro sistemático, e inexistencia de reportes consolidados para la toma de decisiones (véase Plan de Tesis, Tabla 3, "Situación actual de la gestión de procesos del gimnasio GLEYFORGYM"). Esta situación generaba duplicidad de registros, pérdida de información, demoras en la atención e incapacidad para ajustar oportunamente rutinas y planes nutricionales.
 
-El proyecto responde a esta problemática con una plataforma web que centraliza: control de acceso por rol, ficha biométrica del socio, venta y control de membresías, registro de asistencia física, seguimiento de progreso corporal, y generación asistida de rutinas y planes nutricionales mediante un motor de recomendación. Durante el levantamiento de requisitos se identificó además una ampliación de alcance ya implementada en el sistema: una tienda de productos del gimnasio (suplementos y merchandising) con control de inventario, categorías, proveedores y compras — correspondiente a la dimensión de **gestión comercial** del Plan de Tesis.
+El proyecto responde a esta problemática con una plataforma web que centraliza: control de acceso por rol, ficha biométrica del socio, venta y control de membresías, registro de asistencia física, seguimiento de progreso corporal, y generación asistida de rutinas y planes nutricionales mediante un motor de recomendación. Incluye además la **gestión comercial** prevista en el Plan de Tesis: una tienda de productos del gimnasio (suplementos y merchandising) con control de inventario, categorías, proveedores, compras y ventas.
 
-**Población y muestra** (tomadas del Plan de Tesis, sección 3.4, ya calculadas con la fórmula de poblaciones finitas para un nivel de confianza del 95% y margen de error del 5%): la población está conformada por los **120 usuarios activos** del gimnasio GLEYFORGYM que participan en los procesos administrativos, deportivos y comerciales; la muestra queda conformada por **92 usuarios activos**, seleccionados mediante muestreo probabilístico aleatorio simple.
+**Población y muestra** (tomadas del Plan de Tesis, sección 3.4): la población está conformada por los **120 usuarios activos** del gimnasio GLEYFORGYM que participan en los procesos administrativos, deportivos y comerciales. La fórmula de poblaciones finitas (95 % de confianza, 5 % de error) arroja 92 usuarios, el 76.7 % de la población; como la reducción no es significativa, se toma a toda la población y la muestra es de tipo **censal**, conformada por los **120 usuarios activos**, lo que evita el error de muestreo.
 
-El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por tratarse de un servicio no regulado. Las referencias a estándares en el proyecto corresponden a calidad de software, no a normativa de negocio: los requerimientos no funcionales de este documento se alinean al modelo de calidad ISO/IEC 25010 (ver sección 3.1), mientras que el Plan de Tesis cita ISO/IEC 9126-1 en sus bases teóricas para la característica de eficiencia. **Nota de unificación**: ISO/IEC 25010:2011 reemplazó formalmente a ISO/IEC 9126-1 como el modelo de calidad de producto de software vigente; las tres subcaracterísticas de eficiencia que usa el Plan de Tesis (comportamiento en el tiempo, utilización de recursos, cumplimiento de la eficiencia) provienen literalmente de 9126-1 y se conservan con el mismo nombre en 25010 bajo la característica "Eficiencia de desempeño" (*Performance efficiency*), por lo que ambos documentos son compatibles: 9126-1 es la fuente histórica de esas tres subcaracterísticas específicas, y 25010 es el estándar vigente usado para el resto del modelo de calidad en este documento.
+El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por tratarse de un servicio no regulado. Las referencias a estándares en el proyecto corresponden a calidad de software, no a normativa de negocio: los requerimientos no funcionales de este documento se alinean al modelo de calidad ISO/IEC 25010 (ver sección 3.1), el mismo que usa el Plan de Tesis para la dimensión de eficiencia del sistema y sus tres indicadores: comportamiento en el tiempo (I4), utilización de recursos (I5) y cumplimiento de la eficiencia (I6).
 
 #### 1.1.1. Identificación de procesos (macroprocesos y procedimientos)
 
@@ -43,7 +43,7 @@ El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por 
 
 *Nota.* Elaboración propia, a partir de las rutas del backend del sistema (`backend/app/routes/`).
 
-Los procesos P09 a P12 (gestión comercial, avisos, auditoría y gestión de entrenadores) amplían el alcance inicial, centrado en la gestión administrativa y deportiva; sus requerimientos funcionales se detallan en la sección 3.1.
+Los procesos P09 a P12 (gestión comercial, avisos, auditoría y gestión de entrenadores) completan el alcance funcional del sistema definido en el Plan de Tesis, junto a la gestión administrativa y deportiva; sus requerimientos funcionales se detallan en la sección 3.1.
 
 #### 1.1.2. Diagrama de procesos
 
@@ -258,7 +258,7 @@ stop
 
 ### 1.3. Definición del modelo de recomendación
 
-El motor de generación de rutinas y planes nutricionales de GLEYFORGYM **no es un modelo de machine learning entrenado**, sino un **sistema basado en reglas, determinístico**, implementado como un módulo propio del backend. Esta es una decisión de arquitectura explícita del proyecto, justificada por tres razones:
+El motor de generación de rutinas y planes nutricionales de GLEYFORGYM es un **sistema de recomendación basado en conocimiento** que combina dos capas: un **motor de reglas determinístico**, que se ejecuta siempre, y un **modelo de lenguaje (Claude, de Anthropic)** como capa opcional de selección. Constituye la inteligencia artificial del sistema porque, conforme a las bases teóricas del Plan de Tesis (sección 2.2.1.1), los sistemas de recomendación basados en conocimiento emplean reglas y criterios explícitos del dominio para sugerir a cada usuario los elementos más adecuados a partir de su información, y porque la capa generativa razona sobre el perfil del cliente para elegir y ordenar esas opciones. No es un modelo de machine learning entrenado con datos del gimnasio; esta decisión de arquitectura se justifica por tres razones:
 
 1. **Trazabilidad y seguridad clínica**: las restricciones médicas del cliente deben excluir determinísticamente ciertos grupos musculares (ej. una lesión de rodilla excluye ejercicios de pierna). Un modelo probabilístico introduciría el riesgo de recomendar, aunque sea ocasionalmente, un ejercicio contraindicado — inaceptable en un contexto de seguridad física.
 2. **Volumen de datos insuficiente para entrenamiento supervisado confiable**: el sistema es de reciente despliegue y no cuenta todavía con el historial de uso necesario para entrenar y validar un modelo con métricas estadísticamente significativas (ver limitación detallada más abajo).
@@ -266,13 +266,13 @@ El motor de generación de rutinas y planes nutricionales de GLEYFORGYM **no es 
 
 **Variables de entrada:**
 - Motor de rutinas: objetivo, nivel físico y restricciones médicas del cliente.
-- Motor de nutrición: peso, estatura, edad (derivada de la fecha de nacimiento), sexo, nivel de actividad física, objetivo y restricciones médicas.
+- Motor de nutrición: peso, estatura, edad (derivada de la fecha de nacimiento), sexo, nivel de actividad física, objetivo y restricciones alimentarias.
 
 **Algoritmo — rutinas:** reglas que mapean objetivo → series/repeticiones/descanso, y nivel → días de entrenamiento por semana; una tabla de exclusión descarta grupos musculares según la restricción médica declarada. La selección final de ejercicios dentro de cada grupo permitido se realiza aleatoriamente entre los que cumplen los filtros de estado activo y nivel apto.
 
 **Algoritmo — nutrición:** fórmula de Mifflin-St Jeor (`TMB = 10·peso + 6.25·estatura_cm − 5·edad + constante_sexo`, `GET = TMB × multiplicador_de_actividad`), con ajuste calórico según objetivo (déficit de 500 kcal o superávit de 350 kcal) y reparto de macronutrientes (proteína 1.8 g/kg de peso, grasa 25% de las calorías totales, el resto en carbohidratos). Las comidas concretas se seleccionan por cercanía al presupuesto calórico de cada franja horaria, filtradas por objetivo y estado activo.
 
-**Limitación identificada:** las restricciones médicas se almacenan en el plan nutricional como referencia informativa, pero actualmente no filtran el catálogo de comidas — a diferencia del motor de rutinas, que sí las aplica como filtro activo. Esta es una oportunidad de mejora concreta para una futura iteración del sistema.
+**Capa de IA generativa:** cuando el sistema tiene configurada una clave de la API de Anthropic, el motor de reglas entrega a Claude únicamente la lista de ejercicios o comidas que ya pasaron todos los filtros (estado activo, nivel, objetivo, restricciones médicas y restricciones alimentarias). Claude elige y ordena las opciones dentro de esa lista —los ejercicios de cada día con sus series, repeticiones, descanso y una justificación breve, o las comidas de cada franja horaria con su porción— y no puede incorporar elementos que no estén en ella. Solo recibe datos biométricos anónimos (código interno, edad, sexo, peso, estatura, nivel y objetivo), nunca el nombre, el DNI, el teléfono ni el correo del cliente. Su respuesta se valida y se descarta si no cumple el formato estructurado exigido, si incluye un elemento fuera de la lista de candidatos o, en nutrición, si las calorías se desvían más de ±5 % del requerimiento del cliente. Ante cualquier fallo (clave no configurada, error de red, tiempo de espera de 20 segundos o respuesta inválida), y tras un reintento, el sistema entrega el resultado del motor de reglas, de modo que siempre se genera una rutina o un plan completo. Las restricciones alimentarias filtran el catálogo de comidas del mismo modo que las restricciones médicas filtran los ejercicios. Si después del filtrado una franja horaria o un grupo muscular se queda sin opciones compatibles, el sistema no omite el filtro: genera la rutina o el plan con lo disponible, deja vacía esa franja, lo informa al entrenador en pantalla y lo registra en el historial de auditoría. Cada resultado registra su origen (Claude o reglas de respaldo) y queda sujeto a la revisión del entrenador, que lo aprueba o lo rechaza; al aprobarlo, el sistema distingue automáticamente si se aprobó tal como se generó (aprobada) o si se editó antes de aprobarse (aprobada con cambios), dato con el que se calcula el indicador I8 del Plan de Tesis (rutinas aprobadas sin modificaciones).
 
 **Evaluación de factibilidad de un modelo predictivo complementario:** se evaluó la posibilidad de incorporar, además del motor de reglas, un modelo de aprendizaje supervisado para predecir la no renovación de membresías (*churn*), usando como variables de entrada la frecuencia de asistencia, los días desde la última visita, los pagos atrasados, el tipo de membresía, el objetivo y la edad del socio, comparando algoritmos como Regresión Logística, Random Forest y XGBoost mediante F1-score, AUC-ROC y matriz de confusión. Esta línea de trabajo queda planteada como una extensión futura del proyecto y no se implementa en la presente versión, dado que el volumen de datos históricos reales disponible en producción aún no es suficiente para entrenar y validar un modelo cuyas métricas sean estadísticamente representativas: reportar cifras de un modelo entrenado sobre una muestra insuficiente produciría resultados poco confiables.
 
@@ -442,6 +442,8 @@ Los requerimientos funcionales y no funcionales completos se documentan en la es
 
 Los requerimientos no funcionales (`RNF-001` a `RNF-030`) se organizan según el modelo de calidad ISO/IEC 25010, en ocho categorías: seguridad, rendimiento, disponibilidad, usabilidad, compatibilidad, mantenibilidad, escalabilidad e integración multimedia.
 
+
+
 ### 3.2. Historias de usuario y criterios de aceptación
 
 Cada requerimiento funcional se tradujo en una o varias historias de usuario con su correspondiente criterio de aceptación. A continuación se presenta una muestra representativa por módulo (el detalle completo de los 226 requerimientos funcionales se encuentra en la especificación de requisitos del proyecto):
@@ -499,7 +501,7 @@ El backlog, reconstruido en orden real de implementación:
 7. Segunda iteración de consolidación: auditoría y trazabilidad, recuperación de contraseña, recibos en PDF.
 8. Tercera iteración de consolidación: autogestión de contraseñas, avisos editables desde el panel, indicador de asistencias, paginación de listados.
 9. Documentación técnica de requisitos, casos de prueba y arquitectura de los módulos de Comercio, Avisos, Auditoría y Entrenadores.
-10. Cuarta iteración de consolidación: pago de la tienda en línea mediante código QR de Yape confirmado por el personal; incorporación del rol RECEPCIONISTA; saldo pendiente para membresías pagadas en partes; motor de rutinas con más ejercicios por día y la división "Piernas" separada en subgrupos (Cuádriceps, Gemelos, Glúteos, Femorales); comprobantes de pago con RUC, razón social y desglose de IGV, en formato ticket de 80 mm para impresora térmica; avisos masivos por WhatsApp (cumpleaños, bienvenida, inactividad, feriados) y aviso automático al cliente cuando se confirma su pago; dashboard con gráficos de ingresos, asistencias, membresías por estado y productos más vendidos; reporte de clientes con saldo pendiente.
+10. Cuarta iteración de consolidación: pago de la tienda en línea mediante código QR de Yape confirmado por el personal; incorporación del rol RECEPCIONISTA; saldo pendiente para membresías pagadas en partes; motor de rutinas con más ejercicios por día y la división "Piernas" separada en subgrupos (Cuádriceps, Gemelos, Glúteos, Femorales); comprobantes de venta con RUC, razón social y desglose de IGV, en formato ticket de 80 mm para impresora térmica; avisos masivos por WhatsApp (cumpleaños, bienvenida, inactividad, feriados); dashboard con gráficos de ingresos, asistencias, membresías por estado y productos más vendidos; reporte de clientes con saldo pendiente.
 11. Quinta iteración de consolidación: unificación del diseño visual y modal de confirmación propio; lector de código de barras en Productos, Ventas y Compras; confirmación manual por el personal de todos los pagos (Yape, Plin o efectivo); reporte general del negocio y reporte de apoyo a las fichas de campo del postest, exportables a Excel; corrección de defectos detectados en las pruebas.
 
 ---
@@ -1421,7 +1423,7 @@ F --> C : mostrar rutina por día
 
 ### 4.4. Modelado de interfaces (prototipos)
 
-Se diseñaron tres mockups en estilo visual "Dark Luxury Glassmorphic": el panel administrativo web, que corresponde directamente al dashboard implementado en el sistema, y dos mockups de la aplicación móvil complementaria (rutinas y nutrición), que ilustran el ecosistema completo del producto aunque no forman parte del alcance evaluado de este documento.
+Se diseñó un mockup del panel administrativo web en estilo visual "Dark Luxury Glassmorphic", que corresponde directamente al dashboard implementado en el sistema. Las capturas siguientes muestran las pantallas principales tal como quedaron implementadas:
 
 **Figura 11**
 
@@ -1499,7 +1501,7 @@ El proyecto sigue convenciones de codificación definidas por el equipo: nomencl
 
 ### 6.1. Diseño de casos de prueba
 
-El backend cuenta con 183 funciones de prueba distribuidas en 10 archivos, que cubren el núcleo de la API (81), el módulo de Comercio (31), el motor de rutinas (13), los comprobantes (12), los cálculos de nutrición (10), la integración con el asistente de IA (9), la compra de membresías (9), las operaciones CRUD (7), el registro de nuevos socios (7) y el envío de correo (4); se ejecutan sobre un cliente de pruebas de FastAPI con base de datos SQLite aislada. El frontend cuenta con 55 archivos de prueba basados en Vitest y Testing Library, uno por cada página, componente o utilidad con lógica propia, que simulan las llamadas a la API y verifican el comportamiento de la interfaz. La trazabilidad entre requerimientos y pruebas se documenta en 73 casos de prueba (CP-001 a CP-073).
+El backend cuenta con 193 funciones de prueba que cubren el núcleo de la API, el módulo de Comercio, el motor de rutinas, la recomendación nutricional (incluido el filtro por restricciones alimentarias), los comprobantes, la integración con el asistente de IA, la compra de membresías, las operaciones CRUD, el registro de nuevos socios y el envío de correo; se ejecutan sobre un cliente de pruebas de FastAPI con base de datos SQLite aislada. El frontend cuenta con 397 pruebas basadas en Vitest y Testing Library, organizadas en un archivo por cada página, componente o utilidad con lógica propia, que simulan las llamadas a la API y verifican el comportamiento de la interfaz. La trazabilidad entre requerimientos y pruebas se documenta en 73 casos de prueba (CP-001 a CP-073).
 
 #### 6.1.1. Casos de prueba de verificación (análisis estático)
 
@@ -1527,7 +1529,7 @@ Las tres calificaciones (mantenibilidad, confiabilidad, seguridad) son A tras la
 **Hallazgos de la primera ejecución y su resolución:**
 
 1. **Vulnerabilidad (MAJOR)** en el motor de rutinas: SonarQube marcó el uso del generador pseudoaleatorio estándar de Python (`random.shuffle`) como potencialmente inseguro (regla `python:S2245`). Se revisó y se resolvió como **falso positivo** en la propia herramienta, no mediante una supresión en el código: `random` se usa únicamente para variar qué ejercicios se eligen dentro de un grupo muscular ya filtrado como seguro (sección 1.3), no para ningún fin criptográfico o de seguridad (tokens, contraseñas).
-2. **3 bugs MINOR** en el componente de diseño general del panel: elementos con manejador de clic sin manejador de teclado equivalente (accesibilidad). **Corregido**: se añadieron atributos de accesibilidad (`role`, `tabIndex`, `aria-label`) y manejo de teclado al menú móvil y a la navegación lateral, y el logo móvil pasó a ser un botón.
+2. **3 bugs MINOR** en el componente de diseño general del panel: elementos con manejador de clic sin manejador de teclado equivalente (accesibilidad). **Corregido**: se añadieron atributos de accesibilidad (`role`, `tabIndex`, `aria-label`) y manejo de teclado al menú desplegable de pantallas pequeñas y a la navegación lateral, y el logo de esa vista pasó a ser un botón.
 3. **3 bugs MAJOR** en los formularios de Clientes, Ejercicios y Pagos: botones sin atributo `type` explícito, que por defecto toman `type="submit"` dentro de un formulario y podrían disparar un envío no intencionado. **Corregido**: se declaró `type="submit"` en los tres botones, que son efectivamente los botones de envío de cada formulario, por lo que su comportamiento no cambia.
 
 Las correcciones se verificaron sin introducir regresiones: la suite completa de Vitest (143 pruebas en esa fecha) siguió pasando al 100% después de los cambios.
@@ -1544,10 +1546,10 @@ La validación del software en ejecución se realizó mediante las suites de pru
 
 | Suite | Resultado |
 |---|---|
-| Backend (`pytest`) | 183 pruebas aprobadas, 0 fallidas (verificado el 15/11/2026) |
-| Frontend (`vitest run`) | 390 pruebas aprobadas, 0 fallidas, en 55 archivos (verificado el 15/11/2026) |
+| Backend (`pytest`) | 193 pruebas aprobadas, 0 fallidas (verificado el 18/11/2026) |
+| Frontend (`vitest run`) | 397 pruebas aprobadas, 0 fallidas (verificado el 18/11/2026) |
 
-*Nota.* Elaboración propia. Conteos de pruebas verificados el 15/11/2026; las cifras de cobertura por línea de la Tabla 13 corresponden a la medición de septiembre de 2026.
+*Nota.* Elaboración propia. Conteos de pruebas verificados el 18/11/2026, confirmados por el pipeline de integración continua; las cifras de cobertura por línea de la Tabla 13 corresponden a la medición de septiembre de 2026.
 
 **Desglose de pruebas de backend por módulo** (medición de septiembre de 2026):
 
@@ -1575,10 +1577,10 @@ La validación del software en ejecución se realizó mediante las suites de pru
 
 El módulo de Comercio cuenta con 10 pruebas propias que ejercitan su lógica de negocio real: alta y baja de categorías y proveedores con validación de nombre duplicado, confirmación y anulación de compras con su efecto correcto sobre el inventario y el registro de movimientos de stock (incluido el cálculo del IGV de 18%), venta directa con descuento inmediato de stock, rechazo de ventas sin stock suficiente, anulación de ventas con reversión de stock, el flujo de "venta solicitada" por un cliente hasta su confirmación por el gimnasio, y ajustes manuales de inventario. Esto elevó la cobertura de línea de esos seis archivos de un rango de 17%–43% (solo por el registro de rutas al iniciar la aplicación, sin ejercitar lógica) a un rango de 48%–88%. Posteriormente se agregó una prueba dedicada a cada una de las siete páginas de Comercio del frontend, lo que elevó su cobertura de un rango de 1.3%–2.8% a 87.9%–100%, y la cobertura total del frontend de 78.21% a 94.33%.
 
-**Correspondencia con los indicadores del Plan de Tesis (Anexo 02, Matriz de Operacionalización de Variables):**
+**Correspondencia con los indicadores de la variable independiente del Plan de Tesis (Anexo 02, Matriz de Operacionalización de Variables).** Según el Plan de Tesis, estos indicadores describen el sistema ya construido: no tienen pretest y su resultado se compara con el valor objetivo definido para cada uno, sin contraste de hipótesis.
 
-- *Cumplimiento funcional de los módulos implementados* (`Cumplimiento = Funciones correctamente implementadas / Total de funciones evaluadas × 100`): sobre las 183 pruebas de backend y 390 de frontend ejecutadas al 15/11/2026, el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (573 de 573 pruebas aprobadas, 0 fallidas, 0 observadas). Este porcentaje describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema.
-- *Tiempo de respuesta del sistema en la generación de rutinas y planes nutricionales*: medido con un script propio que invoca los endpoints reales `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}` de extremo a extremo (20 repeticiones, catálogo representativo en SQLite local):
+- *I6 — Cumplimiento de la eficiencia* (`Cumplimiento = Funciones correctas / Total de funciones evaluadas × 100`, ficha F-06): sobre las 193 pruebas de backend y 397 de frontend ejecutadas al 18/11/2026, el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (590 de 590 pruebas aprobadas, 0 fallidas, 0 observadas). Este porcentaje describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema.
+- *I4 — Comportamiento en el tiempo* (tiempo de respuesta del sistema en sus operaciones principales, ficha F-04), en la operación de generación de rutinas y planes nutricionales: medido con un script propio que invoca los endpoints reales `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}` de extremo a extremo (20 repeticiones, catálogo representativo en SQLite local):
 
   **Tabla 14**
 
@@ -1591,9 +1593,9 @@ El módulo de Comercio cuenta con 10 pruebas propias que ejercitan su lógica de
 
   *Nota.* Elaboración propia, a partir de `backend/medir_tiempo_respuesta.py`.
 
-  **Alcance de esta medición**: es el lado *postest* (sistema ya construido) del indicador, medido en un entorno local de prueba — no el tiempo en producción (que incluye la latencia de red real y el *cold start* descrito en 7.2) ni la comparación con el proceso manual *antes* del sistema. La medición sobre el despliegue en Render se realizará cuando el gimnasio opere con el sistema y su catálogo real, condición necesaria para que el valor refleje el uso real y no solo la disponibilidad técnica del servicio.
+  **Alcance de esta medición**: se obtuvo en un entorno local de prueba, por lo que no incluye la latencia de red real ni el *cold start* descrito en 7.2. La medición de I4 sobre el despliegue en Render, en las operaciones de registro, consulta y generación, se realizará durante el periodo de uso con el catálogo real del gimnasio y se comparará con el valor objetivo del indicador.
 
-  **Alcance respecto al diseño preexperimental.** Los valores reportados en esta sección corresponden a la medición postest (O₂) de los indicadores, obtenida sobre el sistema ya construido. La medición pretest (O₁) —tiempo que demora un entrenador en elaborar una rutina de forma manual, precisión de los registros, exactitud del inventario y percepción de los usuarios mediante el cuestionario Likert— se obtiene mediante la observación directa del proceso manual del gimnasio y la aplicación de los instrumentos del Plan de Tesis a la muestra de 92 usuarios. La comparación entre O₁ y O₂, junto con las pruebas estadísticas correspondientes (Shapiro-Wilk y t-Student o Wilcoxon), se presentará en el capítulo de resultados de la tesis, conforme al diseño establecido en el Capítulo III del Plan de Tesis.
+  **Alcance respecto al diseño preexperimental.** El contraste antes y después (O₁ y O₂) corresponde a la variable dependiente, gestión de los procesos del gimnasio (indicadores I10 a I18). El pretest (O₁) mide el proceso manual —tiempos de registro de clientes, membresías, pagos y ventas, tiempo de elaboración de rutinas y planes nutricionales, registros sin errores ni duplicidad, seguimiento del progreso físico, exactitud del inventario y tiempo de consulta de stock— mediante las fichas F-10 a F-18 aplicadas a los 120 usuarios de la muestra censal; el postest (O₂) repite esas mediciones con el sistema en uso. La comparación entre O₁ y O₂, con las pruebas estadísticas correspondientes (Shapiro-Wilk y t de Student para muestras relacionadas o Wilcoxon), se presentará en el capítulo de resultados de la tesis, conforme al Capítulo III del Plan de Tesis.
 
 ### 6.3. Automatización de pruebas
 
@@ -1676,8 +1678,9 @@ Las fuentes de datos del motor son las propias tablas operativas del sistema, pe
 | `fecha_nacimiento` | Cliente | Date | usada para derivar la edad en años |
 | `sexo` | Cliente | Enum (texto) | {M, F, no declarado} |
 | `nivel_actividad` | Cliente | Enum (texto) | {SEDENTARIO, LIGERO, MODERADO, ACTIVO, MUY_ACTIVO} |
-| `grupo_muscular`, `nivel`, `estado` | Ejercicio (catálogo) | Texto / Enum | 8 grupos musculares × 3 niveles |
-| `tipo_comida`, `objetivo`, `calorias`, `estado` | Comida (catálogo) | Texto / Entero | 5 franjas horarias |
+| `restricciones_alimentarias` | Cliente | Lista de códigos (texto) | {LACTOSA, GLUTEN, VEGETARIANO, VEGANO, FRUTOS_SECOS, MARISCOS, HUEVO, DIABETES_AZUCARES} |
+| `grupo_muscular`, `nivel`, `estado`, `restricciones` | Ejercicio (catálogo) | Texto / Enum | 8 grupos musculares × 3 niveles |
+| `tipo_comida`, `objetivo`, `calorias`, `estado`, `restricciones` | Comida (catálogo) | Texto / Entero | 5 franjas horarias |
 
 *Nota.* Elaboración propia, a partir de `backend/app/models.py`.
 
@@ -1706,7 +1709,7 @@ El filtro de `estado` activo, aplicado tanto a ejercicios como a comidas antes d
 #### 8.2.2. Transformación de variables
 
 - **Rutinas**: la restricción médica del cliente (texto) se transforma en el conjunto de grupos musculares a excluir; el nivel del cliente se usa para filtrar ejercicios por su nivel apto.
-- **Nutrición**: el peso, estatura, fecha de nacimiento y sexo del cliente se transforman en TMB (fórmula de Mifflin-St Jeor) y luego en GET (TMB × multiplicador de actividad); el objetivo del cliente transforma el GET en un presupuesto calórico ajustado (± 500/350 kcal) y en un reparto de macronutrientes por franja horaria, contra el cual se filtran y seleccionan las comidas del catálogo.
+- **Nutrición**: el peso, estatura, fecha de nacimiento y sexo del cliente se transforman en TMB (fórmula de Mifflin-St Jeor) y luego en GET (TMB × multiplicador de actividad); el objetivo del cliente transforma el GET en un presupuesto calórico ajustado (± 500/350 kcal) y en un reparto de macronutrientes por franja horaria; la restricción alimentaria del cliente (texto) se transforma en el conjunto de comidas a excluir del catálogo, del mismo modo que la restricción médica excluye ejercicios.
 
 #### 8.2.3. División de datos de entrenamiento y evaluación (80/20)
 
@@ -1736,7 +1739,7 @@ El script genera una rutina para las **90 combinaciones** posibles de objetivo (
 
 1. **Tasa de ejercicios contraindicados**: proporción de rutinas generadas que incluyen al menos un ejercicio de un grupo muscular excluido por la restricción médica del perfil.
 2. **Error porcentual absoluto medio (MAPE) calórico**: al tratarse de una diferencia porcentual entre las calorías objetivo (Mifflin-St Jeor) y las calorías reales del plan generado, la métrica aplicable es el *Mean Absolute Percentage Error* (MAPE). El umbral de aceptación para esta validación se fija en **MAPE ≤ 15%**, margen justificado por la mecánica de selección del motor: para cada franja horaria, el sistema elige, de un conjunto acotado de comidas activas filtradas por objetivo (8.1), la que tenga la caloría real más cercana al presupuesto calculado — nunca interpola ni ajusta porciones. Esto fija un piso de error que depende directamente de la granularidad del catálogo disponible por franja: cuantas menos comidas distintas existan para una franja y objetivo dados, mayor es la distancia mínima posible entre el presupuesto exacto y la opción más cercana disponible. El 15% se fija como el margen que, dado el tamaño actual del catálogo de prueba (8.1), separa un ajuste razonable de ese piso estructural de un error atribuible a un defecto del algoritmo de selección.
-3. **Cobertura**: proporción de perfiles que reciben una rutina o plan sin huecos, distinguiendo si el hueco se debe a una restricción médica activa (comportamiento esperado) o a catálogo insuficiente (defecto real).
+3. **Cobertura**: proporción de perfiles que reciben una rutina o plan sin huecos, distinguiendo si el hueco se debe a una restricción activa (comportamiento esperado) o a catálogo insuficiente (defecto real).
 
 #### 8.4.2. Resultados obtenidos
 
@@ -1751,7 +1754,7 @@ El script genera una rutina para las **90 combinaciones** posibles de objetivo (
 | Huecos por restricción médica activa (grupo bloqueado intencionalmente) | 85 instancias día×grupo, concentradas en 70 de los 75 perfiles (de 90) que tienen al menos una restricción médica distinta de "ninguna" — comportamiento esperado, no un defecto. Los otros 5 perfiles restringidos (ver fila siguiente) no generan huecos porque su restricción no afecta ningún grupo incluido en su división de entrenamiento |
 | Perfiles con rutina íntegra, sin ningún grupo bloqueado | **20 de 90** (22.2%): los 15 perfiles sin restricción médica, más 5 perfiles con restricción de hombro en nivel Principiante, cuya división de entrenamiento de 3 días no incluye el grupo Hombros |
 | MAPE calórico (150 perfiles de nutrición) | **10.77%** entre las calorías objetivo y las calorías reales del plan seleccionado — dentro del umbral de aceptación definido (≤15%) |
-| Cobertura del plan nutricional (franjas horarias sin opciones) | **100%** — las 150 combinaciones recibieron un plan completo en las 5 franjas horarias |
+| Cobertura del plan nutricional (franjas horarias sin opciones) | **100%** — las 150 combinaciones recibieron un plan completo en las 5 franjas horarias (ninguno de estos perfiles sintéticos tiene restricción alimentaria activa; el comportamiento cuando sí la hay, incluida la exclusión de la comida correspondiente y el aviso al entrenador si una franja se queda sin opciones, se cubre mediante pruebas automatizadas dedicadas — sección 6.1) |
 
 *Nota.* Elaboración propia, a partir de `backend/validacion_motor_recomendacion.py`.
 
@@ -1792,17 +1795,32 @@ El motor de recomendación está integrado en producción a través de los endpo
 
 #### 8.5.2. Validación de predicción en producción
 
-Al no ser un modelo con una "predicción" en el sentido estadístico (sección 8.3.2), no se valida contra un resultado real observado después del hecho (como se haría con un modelo de clasificación). La validación aplicable una vez el gimnasio esté operando con el sistema será doble: (a) el tiempo de respuesta real de los endpoints en producción — el valor reportado en la sección 6.2 se midió en un entorno local de prueba, no contra el despliegue de Render con uso real —, y (b) el conteo de adopción: el panel administrativo ya está preparado para consolidar en tiempo real cuántas rutinas y planes nutricionales son generados por el motor frente a los creados manualmente por un entrenador, indicador que será representativo del uso real de la herramienta recién cuando el equipo del gimnasio comience a operar con el sistema.
+Al no ser un modelo con una "predicción" en el sentido estadístico (sección 8.3.2), no se valida contra un resultado real observado después del hecho (como se haría con un modelo de clasificación). La validación aplicable una vez el gimnasio esté operando con el sistema será doble: (a) el tiempo de respuesta real de los endpoints en producción — el valor reportado en la sección 6.2 se midió en un entorno local de prueba, no contra el despliegue de Render con uso real —, y (b) el conteo de adopción: el panel administrativo ya está preparado para consolidar en tiempo real cuántas rutinas y planes nutricionales son generados por el motor frente a los creados manualmente por un entrenador, indicador que será representativo del uso real de la herramienta recién cuando el equipo del gimnasio comience a operar con el sistema. A esto se suma el indicador I8 del Plan de Tesis (rutinas aprobadas sin modificaciones): `estado_revision` distingue automáticamente, en el momento de aprobar, si la rutina o el plan se aprobó tal como se generó o si se editó antes de aprobarse, dato ya disponible en producción para calcularlo en cualquier momento (sección 8.5.4).
 
 #### 8.5.3. Alcance de modelo y limitaciones
 
-El motor de nutrición registra las restricciones médicas del cliente en el plan generado como referencia informativa, pero actualmente no las utiliza como filtro del catálogo de comidas — a diferencia del motor de rutinas, que sí excluye grupos musculares por restricción médica. Se identifica como una mejora concreta para una futura iteración del sistema. Adicionalmente, el cálculo de Katch-McArdle (sección 8.4.3) está fuera del alcance actual porque el sistema no exige el porcentaje de grasa corporal como dato obligatorio.
+El cálculo de Katch-McArdle (sección 8.4.3) está fuera del alcance actual porque el sistema no exige el porcentaje de grasa corporal como dato obligatorio en la ficha del cliente.
 
 El MAPE calórico de 10.77% obtenido en 8.4.2 tiene como límite inferior estructural la granularidad del catálogo de comidas por franja horaria (razón explicada en 8.4.1): el motor no interpola ni ajusta porciones, solo elige la comida más cercana al presupuesto entre las disponibles. Ampliar la variedad de comidas por franja y objetivo es, en consecuencia, la palanca directa para reducir este error en una futura iteración, antes que cualquier cambio en la lógica de selección.
 
 #### 8.5.4. Reportes para toma de decisiones
 
-El indicador de adopción descrito en 8.5.2 (rutinas y planes generados por el motor vs. creados manualmente), una vez que el gimnasio opere con el sistema, será en sí mismo un reporte para la toma de decisiones del equipo del gimnasio: permitirá evaluar si el motor está siendo efectivamente usado por los entrenadores o si, por el contrario, se sigue preferiendo la creación manual — información relevante para decidir si se justifica invertir en mejoras del motor (como resolver la limitación de 8.5.3) o en capacitación del personal.
+El indicador de adopción descrito en 8.5.2 (rutinas y planes generados por el motor vs. creados manualmente), una vez que el gimnasio opere con el sistema, será en sí mismo un reporte para la toma de decisiones del equipo del gimnasio: permitirá evaluar si el motor está siendo efectivamente usado por los entrenadores o si, por el contrario, se sigue prefiriendo la creación manual.
+
+El indicador I8 (rutinas aprobadas sin modificaciones) puede calcularse en cualquier momento sobre la base de datos de producción, sin necesidad de cambios en el sistema, con la siguiente consulta:
+
+```sql
+-- I8: % de rutinas aprobadas SIN modificaciones, sobre el total de rutinas ya revisadas
+SELECT
+  ROUND(
+    100.0 * SUM(CASE WHEN estado_revision = 'aprobada' THEN 1 ELSE 0 END)
+    / NULLIF(SUM(CASE WHEN estado_revision IN ('aprobada', 'aprobada_con_cambios', 'rechazada') THEN 1 ELSE 0 END), 0),
+    2
+  ) AS i8_porcentaje
+FROM rutinas;
+```
+
+La misma consulta, sobre `planes_nutricionales`, da el indicador equivalente para los planes nutricionales generados por el motor.
 
 ---
 
@@ -1810,12 +1828,40 @@ El indicador de adopción descrito en 8.5.2 (rutinas y planes generados por el m
 
 ### 9.1. Manual de usuario
 
+Este manual describe el uso del sistema GLEYFORGYM desde el punto de vista de cada tipo de usuario: cómo ingresar, qué funciones tiene disponibles cada rol y cómo realizar las operaciones más frecuentes del día a día del gimnasio. El panel web se utiliza desde cualquier navegador actualizado (Google Chrome, Microsoft Edge o Mozilla Firefox), en computadora, tableta o teléfono, sin instalar ningún programa adicional.
+
+#### 9.1.1. Acceso al sistema
+
+**Inicio de sesión**
+
+1. Ingresar a la dirección web del sistema y abrir la pantalla de inicio de sesión (Figura 11).
+2. Escribir el correo electrónico y la contraseña registrados, y confirmar el ingreso.
+3. Si los datos son correctos, el sistema abre automáticamente el panel que corresponde al rol del usuario (Figura 12); cada rol ve en su menú solo los módulos a los que tiene acceso.
+
+Si el correo o la contraseña son incorrectos, el sistema muestra el mensaje «Credenciales incorrectas», sin indicar cuál de los dos datos falló. Como medida de seguridad, tras cinco intentos fallidos en un lapso de 15 minutos el sistema bloquea temporalmente nuevos intentos y muestra un aviso para volver a intentarlo en unos minutos.
+
+**Recuperación y cambio de contraseña**
+
+- Un usuario que olvidó su contraseña puede solicitar su recuperación desde la pantalla de inicio de sesión, indicando su correo registrado; el sistema le envía a ese correo un enlace para definir una contraseña nueva.
+- Cualquier usuario puede cambiar su propia contraseña desde su perfil, indicando la contraseña actual y la nueva.
+- El ADMIN es el único rol que puede restablecer directamente la contraseña de otro usuario, por ejemplo, cuando un cliente no tiene acceso a su correo.
+
+**Registro de un nuevo socio**
+
+Una persona puede crear su propia cuenta desde la página del gimnasio y, desde ese momento, iniciar sesión. Al registrarse, el sistema le envía un correo de verificación: confirmar el correo desde el enlace recibido es necesario para inscribirse como socio desde el sistema y, mientras no tenga perfil de socio, para comprar en la tienda en línea. Si el correo no llega, se recomienda revisar la carpeta de correo no deseado antes de solicitar un nuevo envío.
+
+**Cierre de sesión**
+
+Al terminar de usar el sistema, se recomienda cerrar la sesión desde el menú del panel, sobre todo en equipos compartidos, como la computadora de recepción. Cada operación registrada queda asociada al usuario que la realizó, por lo que no se deben compartir cuentas entre trabajadores.
+
+#### 9.1.2. Funciones disponibles por rol
+
 El comportamiento del sistema por rol, según las páginas del panel administrativo y sus rutas protegidas, es el siguiente:
 
 **Visitante público (sin iniciar sesión)**
 - Página de inicio: planes de membresía e información general del gimnasio.
-- Avisos: horarios, entrenadores, clases y comunicados vigentes.
 - Tienda: catálogo de productos disponibles, solo consulta.
+- Avisos: horarios, entrenadores, clases y comunicados vigentes.
 
 **ADMIN** (acceso completo)
 - Panel principal con indicadores: clientes activos, recaudación del mes, rutinas generadas por el motor de recomendación, asistencias del día y del mes.
@@ -1827,6 +1873,7 @@ El comportamiento del sistema por rol, según las páginas del panel administrat
 **ENTRENADOR**
 - Panel con resumen de clientes asignados.
 - Gestión deportiva: clientes, asistencias, progreso, ejercicios, comidas, rutinas y nutrición.
+- Reportes del gimnasio, incluidos los avisos masivos por WhatsApp.
 - Sin acceso a usuarios, membresías, pagos ni al módulo de Comercio.
 
 **RECEPCIONISTA** (atención de mostrador)
@@ -1836,9 +1883,153 @@ El comportamiento del sistema por rol, según las páginas del panel administrat
 
 **CLIENTE** (acceso restringido a su propia información)
 - Mi perfil: datos personales y deportivos, cambio de contraseña propio.
-- Mi rutina, mi nutrición, mi progreso (con registro de nuevas mediciones), mi membresía y mis pagos, con descarga de recibo en PDF.
+- Mi rutina, mi nutrición, mi progreso (consulta del historial de mediciones), mi membresía y mis pagos, con descarga de recibo en PDF.
 
 Los módulos de Entrenadores (como entidad de negocio) y Auditoría cuentan con página propia en el panel administrativo, ambas restringidas al rol ADMIN: Entrenadores permite registrar, editar y dar de baja la ficha de cada entrenador (DNI, nombres, apellidos, teléfono, especialidad, estado), y Auditoría es una vista de solo lectura del historial de operaciones críticas del sistema (anulaciones, confirmaciones de pago, cambios de rol, etc.), con filtro por entidad.
+
+La Tabla 20 resume, módulo por módulo, qué puede hacer cada rol:
+
+**Tabla 20**
+
+*Módulos del panel disponibles por rol*
+
+| Módulo | ADMIN | ENTRENADOR | CLIENTE | RECEPCIONISTA |
+|---|---|---|---|---|
+| Usuarios y roles | Sí | — | — | — |
+| Clientes | Sí | Sí | Solo su perfil | Sí |
+| Planes de membresía | Sí | — | Consulta | — |
+| Asignación de membresías | Sí | — | Solo la suya | Sí |
+| Pagos y comprobantes | Sí | — | Solo los suyos | Sí |
+| Asistencias | Sí | Sí | Registra la suya | Sí |
+| Progreso físico | Sí | Sí | Solo el suyo | — |
+| Ejercicios y comidas | Sí | Sí | — | — |
+| Rutinas y planes nutricionales | Sí | Sí | Solo los suyos | — |
+| Ventas | Sí | — | Compra en la tienda | Venta de mostrador |
+| Categorías, productos, proveedores, compras e inventario | Sí | — | — | — |
+| Avisos | Sí | — | Consulta | — |
+| Reportes | Sí | Sí | — | — |
+| Entrenadores y auditoría | Sí | — | — | — |
+
+*Nota.* Elaboración propia, a partir de los permisos por rol definidos en el sistema. "Solo su perfil", "solo los suyos" y expresiones similares indican que el cliente accede únicamente a su propia información.
+
+#### 9.1.3. Procedimientos frecuentes del personal
+
+A continuación se describen, paso a paso, las operaciones que el personal del gimnasio realiza con mayor frecuencia. Entre paréntesis se indican los roles que pueden realizar cada una. Las acciones que no se pueden deshacer con facilidad, como anular una venta o dar de baja un registro, solicitan una confirmación antes de ejecutarse.
+
+**Registrar un cliente nuevo** (ADMIN, ENTRENADOR o RECEPCIONISTA)
+
+1. Ingresar al módulo Clientes y elegir la opción de registrar un nuevo cliente.
+2. Completar los datos personales (DNI, nombres, apellidos, teléfono y correo) y la ficha deportiva: objetivo, nivel, datos corporales, restricciones médicas y restricciones alimentarias, si las hubiera (Figura 13).
+3. Guardar el registro. El sistema verifica que el DNI no esté registrado previamente; el cliente queda disponible para asignarle una membresía, registrar su asistencia y generar su rutina.
+
+La ficha deportiva debe completarse con cuidado: el objetivo, el nivel, los datos corporales, las restricciones médicas y las restricciones alimentarias son los datos que utiliza el motor de recomendación para generar la rutina y el plan nutricional del cliente.
+
+**Asignar una membresía y registrar su pago** (ADMIN o RECEPCIONISTA)
+
+1. En el módulo de asignación de membresías, seleccionar al cliente y el plan de membresía contratado.
+2. Indicar la fecha de inicio. El sistema calcula la fecha de fin según la duración del plan y conserva el precio vigente al momento de la asignación, de modo que un cambio posterior en el precio del plan no altera lo ya contratado.
+3. Verificar que la transferencia por Yape o Plin haya llegado, o recibir el pago en efectivo, y registrar el pago con el monto recibido, que debe ser mayor que cero.
+4. Si el cliente paga solo una parte, el sistema muestra el saldo pendiente de la membresía, que se completa con pagos posteriores.
+5. Confirmar el pago. El pago queda registrado y su recibo en PDF puede descargarse desde el sistema; el cliente también puede descargarlo desde su panel.
+
+**Registrar la asistencia de un cliente** (ADMIN, ENTRENADOR o RECEPCIONISTA)
+
+1. Ingresar al módulo Asistencias.
+2. Seleccionar al cliente en la lista desplegable, donde cada cliente aparece con su nombre, apellido y DNI.
+3. Registrar la asistencia. Queda guardada con la fecha y hora del momento y se refleja en los indicadores de asistencias del panel principal.
+
+**Generar la rutina y el plan nutricional de un cliente** (ADMIN o ENTRENADOR)
+
+1. Abrir la ficha del cliente y comprobar que su objetivo, nivel, datos corporales, restricciones médicas y restricciones alimentarias estén actualizados.
+2. Solicitar la generación de la rutina. El motor de recomendación arma la rutina por día de entrenamiento según el objetivo y el nivel del cliente, y excluye los grupos musculares incompatibles con las restricciones médicas registradas (Figura 14).
+3. Revisar la rutina propuesta en la página Revisión de IA, donde se aprueba o se rechaza; el sistema registra qué usuario la revisó. Si hace falta ajustar sus ejercicios, la rutina puede modificarse desde el módulo Rutinas antes de aprobarla; en ese caso, el sistema la registra como «aprobada con cambios».
+4. Solicitar la generación del plan nutricional. El motor calcula el requerimiento calórico diario con la fórmula de Mifflin-St Jeor y lo distribuye en comidas del catálogo, excluyendo las que no son compatibles con las restricciones alimentarias del cliente. Si alguna franja horaria se queda sin comidas disponibles tras ese filtro, el sistema muestra un aviso al entrenador, deja esa franja vacía y lo registra en el historial de auditoría, para que el entrenador la complete manualmente o amplíe el catálogo.
+5. Desde ese momento, el cliente puede consultar su rutina y su plan nutricional desde su propio panel.
+
+Los resultados del motor dependen de que los catálogos de ejercicios y comidas estén completos y actualizados: un ejercicio o una comida dados de baja dejan de considerarse en las rutinas y planes que se generen a partir de ese momento.
+
+**Registrar el progreso físico** (ADMIN o ENTRENADOR)
+
+1. Ingresar al módulo Progreso y seleccionar al cliente.
+2. Registrar las mediciones del día: peso y medidas corporales (brazos, piernas, pecho y cintura).
+3. Consultar el historial de mediciones para observar la evolución del cliente respecto de su objetivo. El cliente puede ver este historial desde su panel, en modo de solo consulta.
+
+**Registrar una venta de mostrador** (ADMIN o RECEPCIONISTA)
+
+1. Ingresar al módulo Ventas y elegir la opción de registrar una nueva venta.
+2. Agregar los productos escaneando su código de barras con el lector, o buscándolos por nombre, e indicar la cantidad de cada uno.
+3. El sistema verifica el stock disponible y no permite vender una cantidad mayor que la existente.
+4. Confirmar la venta después de recibir el pago. El stock se descuenta automáticamente, queda registrado el movimiento de salida del inventario y se genera el comprobante de venta en formato ticket de 80 mm, con RUC, razón social y desglose de IGV.
+5. Si una venta confirmada debe anularse, el sistema repone automáticamente el stock de los productos vendidos.
+
+**Atender una compra solicitada desde la tienda en línea** (ADMIN o RECEPCIONISTA)
+
+Cuando un cliente solicita una compra desde la tienda y paga con el código QR de Yape, la venta aparece en el módulo Ventas con estado pendiente. El personal verifica que la transferencia haya llegado y confirma la venta; recién en ese momento se descuenta el stock. Si el pago no llega, la venta se anula y el stock no se ve afectado.
+
+**Registrar una compra a proveedor** (ADMIN)
+
+1. Ingresar al módulo Compras, elegir la opción de registrar una nueva compra y seleccionar el proveedor.
+2. Agregar los productos (por código de barras o por nombre), con su cantidad y costo. El sistema calcula el IGV de 18%.
+3. La compra queda registrada como pendiente. Al recibir la mercadería, se confirma la compra y el stock de cada producto aumenta automáticamente; si el pedido no se concreta, la compra pendiente se anula.
+
+**Controlar el inventario** (ADMIN)
+
+El módulo Inventario muestra el stock actual de cada producto y permite registrar ajustes manuales (por ejemplo, por producto dañado o vencido) y conteos físicos de inventario. La diferencia entre lo contado físicamente y el stock del sistema permite medir la exactitud del inventario y detectar pérdidas.
+
+**Publicar avisos** (ADMIN)
+
+En el módulo Avisos se crean o editan los avisos que se muestran en la página pública del gimnasio (horarios, clases, comunicados) y se dan de baja los que ya no están vigentes.
+
+**Enviar avisos masivos por WhatsApp** (ADMIN o ENTRENADOR)
+
+1. En el módulo Reportes, elegir el tipo de aviso: cumpleaños, bienvenida a socios nuevos, inactividad o feriado.
+2. El sistema lista los clientes a quienes corresponde el aviso y prepara el mensaje para cada uno.
+3. Abrir el enlace de cada cliente, que lleva el mensaje a la aplicación de WhatsApp del gimnasio, y enviarlo desde allí. El sistema no envía los mensajes por sí solo: el envío lo realiza el personal.
+
+**Consultar reportes, exportar datos y revisar la auditoría** (ADMIN; los reportes también están disponibles para el ENTRENADOR)
+
+- El panel principal muestra gráficos de ingresos, asistencias, membresías por estado y productos más vendidos.
+- El reporte de clientes con saldo pendiente permite hacer seguimiento a las membresías pagadas en partes.
+- El reporte general del negocio y el reporte de apoyo a las fichas de campo del postest se exportan a Excel.
+- Los listados de Clientes, Pagos y Asistencias, así como los reportes, pueden exportarse a CSV para trabajarlos en una hoja de cálculo.
+- La vista de Auditoría, exclusiva del ADMIN, permite consultar, filtrando por entidad, quién realizó cada operación crítica y cuándo.
+
+#### 9.1.4. Uso del sistema por el cliente
+
+El cliente accede únicamente a su propia información desde su panel (Figura 12c), donde puede:
+
+- Consultar su rutina, organizada por día de entrenamiento, con las series, repeticiones y descanso de cada ejercicio.
+- Consultar su plan nutricional, con su requerimiento calórico diario y las comidas sugeridas.
+- Consultar el historial de sus mediciones de progreso, registradas por su entrenador, y revisar su evolución.
+- Registrar su asistencia al gimnasio.
+- Revisar el estado de su membresía, su fecha de vencimiento y su saldo pendiente, si lo hubiera.
+- Consultar sus pagos y descargar el recibo de cada uno en PDF.
+- Solicitar una compra en la tienda en línea y pagarla con el código QR de Yape; la compra queda pendiente hasta que el personal del gimnasio confirma el pago.
+- Actualizar sus datos personales y cambiar su contraseña.
+
+#### 9.1.5. Problemas frecuentes y recomendaciones de uso
+
+La Tabla 21 reúne las situaciones más comunes durante el uso del sistema, su causa y la acción recomendada:
+
+**Tabla 21**
+
+*Problemas frecuentes y solución*
+
+| Situación | Causa probable | Qué hacer |
+|---|---|---|
+| No se puede iniciar sesión | Correo o contraseña incorrectos | Revisar los datos ingresados o usar la recuperación de contraseña |
+| El sistema muestra «Demasiados intentos fallidos» | Cinco intentos fallidos en 15 minutos | Esperar unos minutos y volver a intentarlo con los datos correctos |
+| No llega el correo de verificación o de recuperación | Correo mal escrito o filtrado como no deseado | Revisar la carpeta de correo no deseado; si persiste, solicitar al ADMIN que verifique el correo registrado o restablezca la contraseña |
+| La primera carga del sistema tarda varios segundos | Reactivación del servidor tras un período sin uso (sección 7.2) | Esperar a que cargue; las operaciones siguientes responden con normalidad |
+| No se puede registrar una venta | La cantidad supera el stock disponible | Revisar el inventario o confirmar la compra pendiente del producto |
+| No se puede registrar un pago | El monto ingresado es cero o negativo | Ingresar un monto mayor que cero |
+| La rutina generada no incluye ejercicios de un grupo muscular | Restricción médica registrada o catálogo incompleto | Revisar las restricciones del cliente y el catálogo de ejercicios activos |
+| El plan nutricional deja una franja horaria vacía | Restricción alimentaria registrada o catálogo de comidas incompleto para esa franja | Revisar las restricciones del cliente y el catálogo de comidas activas, o completar esa franja manualmente |
+| Un usuario no ve un módulo en su menú | Su rol no tiene permiso para ese módulo | Solicitar al ADMIN el cambio de rol, si corresponde a sus funciones |
+
+*Nota.* Elaboración propia.
+
+Como recomendaciones generales de uso: confirmar un pago solo después de verificar la transferencia en la aplicación de Yape o Plin; mantener actualizada la ficha deportiva de cada cliente y los catálogos de ejercicios, comidas y productos; dar de baja los registros en lugar de crear duplicados; y cerrar la sesión al terminar, especialmente en equipos compartidos.
 
 ### 9.2. Manual de instalación y mantenimiento
 
