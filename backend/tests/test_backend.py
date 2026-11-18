@@ -831,9 +831,11 @@ class _FakeMessagesIA:
         self._resultados = resultados or []
         self._excepcion = excepcion
         self.llamadas = 0
+        self.ultima_llamada_kwargs = None
 
     def create(self, **kwargs):
         self.llamadas += 1
+        self.ultima_llamada_kwargs = kwargs
         if self._excepcion:
             raise self._excepcion
         indice = min(self.llamadas - 1, len(self._resultados) - 1)
@@ -933,6 +935,84 @@ def test_ia_nutricion_generacion_cae_a_reglas_si_claude_se_desvia_de_kcal(monkey
     response = client.post("/ia/nutricion/generar/1", headers=headers)
     assert response.status_code == 200
     assert response.json()["origen_ia"] == "reglas_respaldo"
+
+
+def test_ia_nutricion_restriccion_alimentaria_excluye_la_comida_sin_claude():
+    """Sin ANTHROPIC_API_KEY (motor de reglas puro): una comida marcada con
+    una restricción que el cliente tiene nunca debe terminar en su plan."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    db = TestingSessionLocal()
+    cliente = db.query(models.Cliente).first()
+    cliente.restricciones_alimentarias = "LACTOSA"
+    comida_desayuno = db.query(models.Comida).filter(models.Comida.id_comida_catalogo == 1).first()
+    comida_desayuno.restricciones = "LACTOSA"
+    db.commit()
+    db.close()
+
+    response = client.post("/ia/nutricion/generar/1", headers=headers)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["origen_ia"] == "reglas_respaldo"
+    # Desayuno era la única comida de esa franja en el catálogo de prueba, así
+    # que al excluirla la franja queda sin opciones -- y el sistema lo avisa
+    # en vez de saltarse el filtro.
+    assert "DESAYUNO" in res_data["avisos"]
+
+    db = TestingSessionLocal()
+    plan = db.query(models.PlanNutricional).filter(models.PlanNutricional.id_plan == res_data["id_plan"]).first()
+    ids_en_plan = {pc.id_comida_catalogo for pc in plan.comidas}
+    assert 1 not in ids_en_plan
+    db.close()
+
+
+def test_ia_nutricion_restriccion_alimentaria_excluye_la_comida_con_claude(monkeypatch):
+    """Con Claude activo: la comida restringida ni siquiera debe llegar como
+    candidata en la llamada al modelo -- Claude no puede elegir lo que nunca
+    se le ofrece."""
+    populate_db_for_coverage()
+    headers = get_auth_headers()
+
+    db = TestingSessionLocal()
+    cliente = db.query(models.Cliente).first()
+    cliente.restricciones_alimentarias = "LACTOSA"
+    comida_desayuno = db.query(models.Comida).filter(models.Comida.id_comida_catalogo == 1).first()
+    comida_desayuno.restricciones = "LACTOSA"
+    db.commit()
+    db.close()
+
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "sk-ant-test")
+    # Suma = 2728, exactamente el objetivo calórico de este cliente (dentro
+    # del +-5% que exige claude_client.py) -- sin la comida de Desayuno
+    # (restringida), ya que Claude nunca la recibe como candidata.
+    resultado_valido = {
+        "comidas": [
+            {"id_comida_catalogo": 2, "tipo_comida": "Media Mañana", "porcion": "1 porción", "calorias_estimadas": 300, "justificacion": "x"},
+            {"id_comida_catalogo": 3, "tipo_comida": "Almuerzo", "porcion": "1 plato", "calorias_estimadas": 1200, "justificacion": "x"},
+            {"id_comida_catalogo": 4, "tipo_comida": "Merienda", "porcion": "1 porción", "calorias_estimadas": 400, "justificacion": "x"},
+            {"id_comida_catalogo": 5, "tipo_comida": "Cena", "porcion": "1 plato", "calorias_estimadas": 828, "justificacion": "x"},
+        ],
+    }
+    fake_messages = _FakeMessagesIA(resultados=[resultado_valido])
+    _parchar_anthropic_ia(monkeypatch, fake_messages)
+
+    response = client.post("/ia/nutricion/generar/1", headers=headers)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["origen_ia"] == "claude"
+
+    # La comida restringida (id 1, "Desayuno Test") nunca estuvo en el
+    # prompt que recibió Claude.
+    prompt_enviado = str(fake_messages.ultima_llamada_kwargs["messages"])
+    assert "Desayuno Test" not in prompt_enviado
+    assert "'id_comida_catalogo': 1," not in prompt_enviado
+
+    db = TestingSessionLocal()
+    plan = db.query(models.PlanNutricional).filter(models.PlanNutricional.id_plan == res_data["id_plan"]).first()
+    ids_en_plan = {pc.id_comida_catalogo for pc in plan.comidas}
+    assert 1 not in ids_en_plan
+    db.close()
 
 
 def test_flujo_revision_rutina():

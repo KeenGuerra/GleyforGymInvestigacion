@@ -15,6 +15,7 @@ function Nutricion() {
   const [idClienteIA, setIdClienteIA] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState("");
+  const [avisoIA, setAvisoIA] = useState("");
   const [cargandoIA, setCargandoIA] = useState(false);
 
   const cargarDatos = async () => {
@@ -69,6 +70,7 @@ function Nutricion() {
 
   const generarIA = async () => {
     setError("");
+    setAvisoIA("");
 
     if (!idClienteIA) {
       setError("Seleccione un cliente");
@@ -77,7 +79,18 @@ function Nutricion() {
 
     try {
       setCargandoIA(true);
-      await api.post(`/ia/nutricion/generar/${idClienteIA}`);
+      const res = await api.post(`/ia/nutricion/generar/${idClienteIA}`);
+      // Franjas horarias que se quedaron sin ninguna comida candidata (por
+      // restricción alimentaria del cliente o catálogo insuficiente) -- el
+      // plan igual se genera con lo que haya, pero el entrenador debe
+      // enterarse para completar el catálogo o revisar las restricciones.
+      const avisos = res.data?.avisos || [];
+      if (avisos.length > 0) {
+        setAvisoIA(
+          `El plan se generó, pero no hubo ninguna comida disponible para: ${avisos.join(", ").toLowerCase()}. ` +
+          "Revisa las restricciones alimentarias del cliente o amplía el catálogo de comidas."
+        );
+      }
       await cargarDatos();
     } catch (error) {
       console.error(error);
@@ -136,6 +149,7 @@ function Nutricion() {
       </section>
 
       {error && <p className="error-message">{error}</p>}
+      {avisoIA && <p className="warning-message">{avisoIA}</p>}
 
       <section className="form-card">
         <div className="card-header">

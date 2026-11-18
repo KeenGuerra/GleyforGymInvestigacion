@@ -126,14 +126,20 @@ def _llamar_claude(system_prompt: str, user_prompt: str, nombre_tool: str, esque
             }],
             tool_choice={"type": "tool", "name": nombre_tool},
         )
-    except Exception:
-        logger.exception("Error llamando a Claude (%s)", nombre_tool)
+    except Exception as e:
+        # logger.exception() ya adjunta el traceback completo; se antepone
+        # el tipo de excepción en el propio mensaje (ej. NotFoundError,
+        # APITimeoutError, AuthenticationError) para poder distinguir de un
+        # vistazo modelo inválido / clave inválida / timeout sin tener que
+        # abrir el traceback cada vez.
+        logger.exception("Error llamando a Claude (%s): %s - %s", nombre_tool, type(e).__name__, e)
         return None
 
     for bloque in respuesta.content:
         if getattr(bloque, "type", None) == "tool_use":
             return bloque.input
 
+    logger.warning("Claude (%s) respondió sin usar la herramienta solicitada (tool_use ausente)", nombre_tool)
     return None
 
 
@@ -158,10 +164,12 @@ def elegir_rutina_con_claude(contexto_cliente: dict, candidatos_por_dia: dict) -
     reintentar (el llamador debe caer al motor de reglas en ese caso).
     """
     if not config.ANTHROPIC_API_KEY:
+        logger.info("Claude no participa en esta rutina: ANTHROPIC_API_KEY no está configurada; se usa el motor de reglas.")
         return None
 
     ids_permitidos = {e["id_ejercicio"] for lista in candidatos_por_dia.values() for e in lista}
     if not ids_permitidos:
+        logger.warning("Claude no participa en esta rutina: el motor de reglas no dejó ningún ejercicio candidato.")
         return None
 
     system_prompt = (
@@ -208,10 +216,12 @@ def elegir_comidas_con_claude(contexto_cliente: dict, comidas_candidatas: list, 
     Devuelve {"comidas": [...], "tiempo_respuesta_ms": int} o None.
     """
     if not config.ANTHROPIC_API_KEY:
+        logger.info("Claude no participa en este plan: ANTHROPIC_API_KEY no está configurada; se usa el motor de reglas.")
         return None
 
     ids_permitidos = {c["id_comida_catalogo"] for c in comidas_candidatas}
     if not ids_permitidos:
+        logger.warning("Claude no participa en este plan: el motor de reglas no dejó ninguna comida candidata.")
         return None
 
     system_prompt = (

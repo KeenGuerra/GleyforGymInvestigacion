@@ -116,6 +116,39 @@ describe("Nutricion Page Component", () => {
     });
   });
 
+  it("warns when the generated plan has meal slots with no candidate", async () => {
+    api.post.mockResolvedValue({ data: { id_plan: 11, avisos: ["MERIENDA", "CENA"] } });
+    renderNutricion();
+
+    await waitFor(() => expect(screen.getByText("Generar plan con IA")).toBeDefined());
+
+    const select = screen.getByLabelText("Cliente");
+    fireEvent.change(select, { target: { value: "1" } });
+    await waitFor(() => expect(select.value).toBe("1"));
+    fireEvent.click(screen.getByText("Generar plan con IA"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/no hubo ninguna comida disponible para: merienda, cena/i)).toBeDefined();
+    });
+  });
+
+  it("does not show a warning when the generated plan has no avisos", async () => {
+    api.post.mockResolvedValue({ data: { id_plan: 11, avisos: [] } });
+    renderNutricion();
+
+    await waitFor(() => expect(screen.getByText("Generar plan con IA")).toBeDefined());
+
+    const select = screen.getByLabelText("Cliente");
+    fireEvent.change(select, { target: { value: "1" } });
+    await waitFor(() => expect(select.value).toBe("1"));
+    fireEvent.click(screen.getByText("Generar plan con IA"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+    expect(screen.queryByText(/no hubo ninguna comida disponible/i)).toBeNull();
+  });
+
   it("shows an error when IA generation fails", async () => {
     api.post.mockRejectedValue({ response: { data: { detail: "Límite de tokens IA excedido" } } });
     renderNutricion();

@@ -102,9 +102,19 @@ def generar_nutricion_ia(
 
     db.commit()
 
+    avisos = plan_generado.get("avisos", [])
+    detalle_auditoria = f"cliente={id_cliente}, kcal={nuevo_plan.calorias_diarias}, fuente_peso={nuevo_plan.fuente_peso}"
+    if avisos:
+        # Franjas horarias que se quedaron sin ninguna comida candidata (por
+        # restricción alimentaria del cliente o catálogo insuficiente) -- se
+        # deja constancia en auditoría ademas de devolverlo en la respuesta,
+        # para que quede un registro permanente aunque el entrenador no vea
+        # el aviso en el momento.
+        detalle_auditoria += f", franjas_sin_opciones={','.join(avisos)}"
+
     registrar_auditoria(
         db, usuario_actual, "GENERAR_IA", "PlanNutricional", nuevo_plan.id_plan,
-        f"cliente={id_cliente}, kcal={nuevo_plan.calorias_diarias}, fuente_peso={nuevo_plan.fuente_peso}",
+        detalle_auditoria,
     )
 
     return {
