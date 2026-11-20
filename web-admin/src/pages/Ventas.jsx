@@ -368,58 +368,63 @@ function Ventas() {
         )}
 
         {filtradas.length === 0 ? <p className="empty-message">No hay ventas con ese filtro.</p> : (
-          <div className="ventas-cards">
-            {filtradas.map((v) => (
-              <div key={v.id_venta} className="card item-card">
-                <div className="item-card-top">
-                  <span className={badgeColor(v.estado)}>{v.estado}</span>
-                  <span className="badge">#{v.id_venta}</span>
-                </div>
-                <h3>{v.nombre_cliente || "Venta general"}</h3>
-                <div className="mini-stats-grid">
-                  <div><strong>S/ {v.total?.toFixed(2)}</strong><span>Total</span></div>
-                  <div><strong>{v.metodo_pago}</strong><span>Método</span></div>
-                  <div><strong>{v.detalles?.length || 0}</strong><span>Productos</span></div>
-                </div>
-                <p className="item-description">{new Date(v.fecha_venta).toLocaleString()}</p>
-                {v.detalles && v.detalles.length > 0 && (
-                  <div className="sale-details">
-                    {v.detalles.map((d) => (
-                      <p key={d.id_detalle_venta} className="item-description">
-                        {d.nombre_producto} x{d.cantidad} — S/ {d.subtotal?.toFixed(2)}
-                      </p>
-                    ))}
-                  </div>
-                )}
-                <div className="venta-actions">
-                  {v.estado === "PENDIENTE" && ["ADMIN", "ENTRENADOR", "RECEPCIONISTA"].includes(rol) && (
-                    <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => confirmar(v.id_venta)}>
-                      {procesando === v.id_venta ? "Confirmando..." : "Confirmar"}
-                    </button>
-                  )}
-                  {(v.estado === "CONFIRMADA" || v.estado === "ENTREGADA") && (
-                    <>
-                      {v.estado === "CONFIRMADA" && (
-                        <>
-                          <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => entregar(v.id_venta)}>
-                            {procesando === v.id_venta ? "Marcando..." : "Marcar como entregado"}
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cliente</th>
+                  <th>Total</th>
+                  <th>Método</th>
+                  <th>Productos</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtradas.map((v) => (
+                  <tr key={v.id_venta}>
+                    <td><span className="badge">#{v.id_venta}</span></td>
+                    <td>{v.nombre_cliente || "Venta general"}</td>
+                    <td>S/ {v.total?.toFixed(2)}</td>
+                    <td>{v.metodo_pago}</td>
+                    <td>{v.detalles?.length || 0}</td>
+                    <td>{new Date(v.fecha_venta).toLocaleString()}</td>
+                    <td><span className={badgeColor(v.estado)}>{v.estado}</span></td>
+                    <td>
+                      <div className="table-actions">
+                        {v.estado === "PENDIENTE" && ["ADMIN", "ENTRENADOR", "RECEPCIONISTA"].includes(rol) && (
+                          <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => confirmar(v.id_venta)}>
+                            {procesando === v.id_venta ? "Confirmando..." : "Confirmar"}
                           </button>
-                          <button className="btn-secondary" onClick={() => enviarConfirmacionWhatsApp(v)}>
-                            Avisar por WhatsApp
-                          </button>
-                        </>
-                      )}
-                      <button className="btn-secondary" onClick={() => descargarBoleta(v.id_venta)}>
-                        Descargar boleta
-                      </button>
-                      <button className="btn-danger" disabled={procesando === v.id_venta} onClick={() => anular(v.id_venta)}>
-                        {procesando === v.id_venta ? "Anulando..." : "Anular"}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
+                        )}
+                        {(v.estado === "CONFIRMADA" || v.estado === "ENTREGADA") && (
+                          <>
+                            {v.estado === "CONFIRMADA" && (
+                              <>
+                                <button className="btn-primary" disabled={procesando === v.id_venta} onClick={() => entregar(v.id_venta)}>
+                                  {procesando === v.id_venta ? "Marcando..." : "Marcar como entregado"}
+                                </button>
+                                <button className="btn-secondary" onClick={() => enviarConfirmacionWhatsApp(v)}>
+                                  Avisar por WhatsApp
+                                </button>
+                              </>
+                            )}
+                            <button className="btn-secondary" onClick={() => descargarBoleta(v.id_venta)}>
+                              Descargar boleta
+                            </button>
+                            <button className="btn-danger" disabled={procesando === v.id_venta} onClick={() => anular(v.id_venta)}>
+                              {procesando === v.id_venta ? "Anulando..." : "Anular"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 

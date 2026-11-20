@@ -2359,7 +2359,7 @@ def test_avisos_crud_y_visibilidad_publica():
 
     res_crear = client.post(
         "/avisos/",
-        json={"titulo": "Horario feriado", "contenido": "Cerramos a las 2pm", "tipo": "HORARIO"},
+        data={"titulo": "Horario feriado", "contenido": "Cerramos a las 2pm", "tipo": "HORARIO"},
         headers=headers_admin,
     )
     assert res_crear.status_code == 200
@@ -2387,7 +2387,7 @@ def test_avisos_crud_y_visibilidad_publica():
     # Un CLIENTE no puede crear/editar avisos
     headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
     assert client.post(
-        "/avisos/", json={"titulo": "x", "contenido": "y"}, headers=headers_cliente
+        "/avisos/", data={"titulo": "x", "contenido": "y"}, headers=headers_cliente
     ).status_code == 403
 
     # Eliminar (borrado lógico)
@@ -2407,13 +2407,13 @@ def test_avisos_evento_pasado_se_oculta_del_publico_pero_no_del_staff():
 
     id_pasado = client.post(
         "/avisos/",
-        json={"titulo": "Evento pasado", "contenido": "Ya ocurrió", "tipo": "EVENTO", "fecha_evento": ayer},
+        data={"titulo": "Evento pasado", "contenido": "Ya ocurrió", "tipo": "EVENTO", "fecha_evento": ayer},
         headers=headers_admin,
     ).json()["id_aviso"]
 
     id_futuro = client.post(
         "/avisos/",
-        json={"titulo": "Evento futuro", "contenido": "Próximamente", "tipo": "EVENTO", "fecha_evento": manana},
+        data={"titulo": "Evento futuro", "contenido": "Próximamente", "tipo": "EVENTO", "fecha_evento": manana},
         headers=headers_admin,
     ).json()["id_aviso"]
 
@@ -2433,6 +2433,65 @@ def test_avisos_evento_pasado_se_oculta_del_publico_pero_no_del_staff():
         "/avisos/9999", json={"titulo": "x"}, headers=headers_admin
     ).status_code == 404
     assert client.delete("/avisos/9999", headers=headers_admin).status_code == 404
+
+
+def test_reemplazar_media_aviso_requiere_archivo_y_valida_existencia():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+
+    id_aviso = client.post(
+        "/avisos/",
+        data={"titulo": "Con imagen", "contenido": "x", "tipo": "COMUNICADO"},
+        headers=headers_admin,
+    ).json()["id_aviso"]
+
+    assert client.put(f"/avisos/{id_aviso}/media", headers=headers_admin).status_code == 400
+    assert client.put("/avisos/9999/media", headers=headers_admin).status_code == 404
+
+
+def test_configuracion_sitio_publica_y_solo_admin_la_edita():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    # Pública: sin token responde igual (se crea la fila única si no existía).
+    res_publico = client.get("/configuracion/")
+    assert res_publico.status_code == 200
+
+    # Un CLIENTE no puede editarla.
+    assert client.put(
+        "/configuracion/", json={"telefono": "+51 999999999"}, headers=headers_cliente
+    ).status_code == 403
+
+    res_editar = client.put(
+        "/configuracion/",
+        json={
+            "telefono": "+51 999999999",
+            "email": "nuevo@gleyforgym.com",
+            "direccion": "Nueva dirección 123",
+        },
+        headers=headers_admin,
+    )
+    assert res_editar.status_code == 200
+    assert res_editar.json()["telefono"] == "+51 999999999"
+
+    # El cambio persiste y es visible públicamente.
+    res_publico_2 = client.get("/configuracion/")
+    assert res_publico_2.json()["telefono"] == "+51 999999999"
+    assert res_publico_2.json()["email"] == "nuevo@gleyforgym.com"
+
+    # Un campo no enviado no se borra (exclude_unset).
+    client.put("/configuracion/", json={"telefono": "+51 888888888"}, headers=headers_admin)
+    assert client.get("/configuracion/").json()["direccion"] == "Nueva dirección 123"
+
+
+def test_reemplazar_logo_requiere_archivo_y_solo_admin():
+    populate_db_for_coverage()
+    headers_admin = get_auth_headers(rol="ADMIN")
+    headers_cliente = get_auth_headers(rol="CLIENTE", id_usuario=2)
+
+    assert client.put("/configuracion/media", headers=headers_cliente).status_code == 403
+    assert client.put("/configuracion/media", headers=headers_admin).status_code == 400
 
 
 def test_membresias_publicas_solo_muestran_activas():

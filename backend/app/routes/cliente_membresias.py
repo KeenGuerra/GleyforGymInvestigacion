@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 # pyrefly: ignore [missing-import]
 from sqlalchemy.exc import IntegrityError
-from datetime import date, timedelta
+from datetime import timedelta
 from typing import Annotated
 
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.database import get_db
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
@@ -30,7 +30,7 @@ router = APIRouter(dependencies=[Depends(obtener_usuario_actual)])
 
 
 def actualizar_membresias_vencidas(db: Session):
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
 
     membresias_vencidas = db.query(models.ClienteMembresia).filter(
         models.ClienteMembresia.fecha_fin < hoy,
@@ -77,7 +77,7 @@ def asignar_membresia(
     if membresia.estado != ESTADO_ACTIVO:
         raise HTTPException(status_code=400, detail="La membresía no está activa")
 
-    fecha_inicio = data.fecha_inicio or date.today()
+    fecha_inicio = data.fecha_inicio or zona_horaria.hoy()
     fecha_fin = fecha_inicio + timedelta(days=membresia.duracion_dias)
 
     datos = data.model_dump()
@@ -149,7 +149,7 @@ def comprar_membresia(
     if existente:
         raise HTTPException(status_code=409, detail=MSG_MEMBRESIA_YA_ACTIVA)
 
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
 
     nueva_cm = models.ClienteMembresia(
         id_cliente=cliente.id_cliente,

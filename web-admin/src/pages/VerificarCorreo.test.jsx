@@ -8,6 +8,7 @@ import api from "../api/api";
 vi.mock("../api/api", () => ({
   default: {
     post: vi.fn(),
+    get: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
 
@@ -23,6 +24,7 @@ function renderConToken(token) {
 describe("VerificarCorreo Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    api.get.mockResolvedValue({ data: {} });
   });
 
   it("shows an error immediately when there is no token", async () => {

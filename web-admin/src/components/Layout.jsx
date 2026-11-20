@@ -94,6 +94,7 @@ export default function Layout() {
                 <NavLink to="/entrenadores">Entrenadores</NavLink>
                 <NavLink to="/auditoria">Auditoría</NavLink>
                 <NavLink to="/reportes">Reportes</NavLink>
+                <NavLink to="/configuracion">Configuración</NavLink>
 
                 <p className="menu-label">IA y contenido</p>
                 <NavLink to="/ejercicios">Ejercicios</NavLink>

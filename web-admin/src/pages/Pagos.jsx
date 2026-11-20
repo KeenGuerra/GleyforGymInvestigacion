@@ -3,7 +3,7 @@ import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
 import { descargarBlob } from "../utils/descargarArchivo";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
-import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { formatearFecha as formatearFechaBase, obtenerFechaLocalISO } from "../utils/formatearFecha";
 import { useConfirmacion } from "../hooks/useConfirmacion";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -21,7 +21,7 @@ function Pagos() {
   const [haySiguiente, setHaySiguiente] = useState(false);
   const [confirmandoId, setConfirmandoId] = useState(null);
 
-  const hoy = new Date().toISOString().split("T")[0];
+  const hoy = obtenerFechaLocalISO();
 
   const formInicial = {
     id_cliente: "",
@@ -70,6 +70,13 @@ function Pagos() {
     const cliente = clientes.find((c) => c.id_cliente === id_cliente);
     if (!cliente) return MSG_CLIENTE_NO_ENCONTRADO;
     return `${cliente.nombres || ""} ${cliente.apellidos || ""}`.trim();
+  };
+
+  const badgeColor = (estado) => {
+    if (estado === "PAGADO") return "badge badge-success";
+    if (estado === "PENDIENTE") return "badge badge-warning";
+    if (estado === "ANULADO") return "badge badge-danger";
+    return "badge";
   };
 
   const asignacionesCliente = asignaciones.filter(
@@ -388,7 +395,7 @@ function Pagos() {
                 <td>{p.metodo_pago}</td>
                 <td>{formatearFecha(p.fecha_pago)}</td>
                 <td>
-                  <span className="badge">{p.estado}</span>
+                  <span className={badgeColor(p.estado)}>{p.estado}</span>
                   {p.origen === "AUTOSERVICIO" && p.estado === "PENDIENTE" && (
                     <span className="badge" title="El cliente paga por su cuenta escaneando el QR de Yape — confirma aquí cuando veas que la transferencia llegó.">
                       En línea
@@ -396,9 +403,10 @@ function Pagos() {
                   )}
                 </td>
                 <td className="table-actions">
-                  <button onClick={() => editarPago(p)}>Editar</button>
+                  <button className="btn-secondary" onClick={() => editarPago(p)}>Editar</button>
                   {p.estado === "PENDIENTE" && (
                     <button
+                      className="btn-primary"
                       disabled={confirmandoId === p.id_pago}
                       onClick={() => confirmarPago(p.id_pago)}
                       title="Confirma este pago después de verificar en tu Yape que la transferencia llegó."
@@ -406,7 +414,7 @@ function Pagos() {
                       {confirmandoId === p.id_pago ? "Confirmando..." : "Confirmar pago"}
                     </button>
                   )}
-                  <button onClick={() => descargarRecibo(p.id_pago)}>Recibo</button>
+                  <button className="btn-secondary" onClick={() => descargarRecibo(p.id_pago)}>Recibo</button>
                   <button
                     className="btn-danger"
                     onClick={() => anularPago(p.id_pago)}

@@ -8,6 +8,7 @@ import api from "../api/api";
 vi.mock("../api/api", () => ({
   default: {
     post: vi.fn(),
+    get: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
 
@@ -31,6 +32,7 @@ function renderRegistro() {
 describe("Registro Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    api.get.mockResolvedValue({ data: {} });
   });
 
   it("renders the form fields", () => {

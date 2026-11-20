@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import Annotated
 
 from app.database import get_db
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.security import encriptar_password, obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.correo import enviar_verificacion_correo
 from app.auditoria import registrar as registrar_auditoria
@@ -35,7 +35,7 @@ def calcular_edad(fecha_nacimiento: date | datetime | None) -> int | None:
     if isinstance(fecha_nacimiento, datetime):
         fecha_nacimiento = fecha_nacimiento.date()
 
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
     edad = hoy.year - fecha_nacimiento.year
 
     if (hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day):
@@ -228,7 +228,7 @@ def crear_cliente(
         restricciones_otras=cliente.restricciones_otras,
         nivel_actividad=cliente.nivel_actividad,
         restricciones_alimentarias=cliente.restricciones_alimentarias,
-        peso_actualizado_en=datetime.now() if cliente.peso is not None else None,
+        peso_actualizado_en=zona_horaria.ahora() if cliente.peso is not None else None,
         estado=ESTADO_ACTIVO
     )
 
@@ -308,7 +308,7 @@ def hazte_socio(
         restricciones_otras=datos.restricciones_otras,
         nivel_actividad=datos.nivel_actividad,
         restricciones_alimentarias=datos.restricciones_alimentarias,
-        peso_actualizado_en=datetime.now() if datos.peso is not None else None,
+        peso_actualizado_en=zona_horaria.ahora() if datos.peso is not None else None,
         estado=ESTADO_ACTIVO,
     )
 
@@ -377,7 +377,7 @@ def actualizar_cliente(
         cliente_db.edad = calcular_edad(cliente_db.fecha_nacimiento)
 
     if "peso" in datos_actualizados:
-        cliente_db.peso_actualizado_en = datetime.now()
+        cliente_db.peso_actualizado_en = zona_horaria.ahora()
 
     # SINCRONIZAR ESTADO CLIENTE -> USUARIO
     usuario = None

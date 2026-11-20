@@ -5,10 +5,10 @@ from fastapi.responses import Response
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from typing import Annotated
-from datetime import date, timedelta
+from datetime import timedelta
 
 from app.database import get_db
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
 from app.recibos import generar_recibo_pago
@@ -92,7 +92,7 @@ def aplicar_confirmacion_pago(db: Session, pago: models.Pago) -> None:
     hay nada que activar."""
     cliente_membresia = pago.cliente_membresia
     if cliente_membresia and cliente_membresia.estado == ESTADO_PENDIENTE:
-        hoy = date.today()
+        hoy = zona_horaria.hoy()
         cliente_membresia.fecha_inicio = hoy
         cliente_membresia.fecha_fin = hoy + timedelta(days=cliente_membresia.membresia.duracion_dias)
         cliente_membresia.estado = ESTADO_ACTIVA

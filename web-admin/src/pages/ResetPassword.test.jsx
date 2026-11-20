@@ -8,6 +8,7 @@ import api from "../api/api";
 vi.mock("../api/api", () => ({
   default: {
     post: vi.fn(),
+    get: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
 
@@ -22,6 +23,7 @@ function renderConToken(token = "abc123") {
 describe("ResetPassword Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    api.get.mockResolvedValue({ data: {} });
   });
 
   it("rejects mismatched passwords without calling the API", () => {

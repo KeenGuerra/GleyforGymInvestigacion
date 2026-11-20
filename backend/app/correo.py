@@ -1,11 +1,11 @@
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 # pyrefly: ignore [missing-import]
 import httpx
 
-from app import config
+from app import config, zona_horaria
 
 logger = logging.getLogger("gleyforgym")
 
@@ -61,7 +61,7 @@ def enviar_verificacion_correo(usuario, db) -> None:
     de confirmación (P-01). Se llama al crear cualquier Usuario nuevo."""
     token = secrets.token_urlsafe(32)
     usuario.token_verificacion = token
-    usuario.token_verificacion_expira = datetime.now() + timedelta(
+    usuario.token_verificacion_expira = zona_horaria.ahora() + timedelta(
         minutes=TOKEN_VERIFICACION_EXPIRA_MINUTOS
     )
     db.commit()

@@ -1041,6 +1041,8 @@ class AvisoBase(BaseModel):
     tipo: TipoAviso = "COMUNICADO"
     fecha_evento: Optional[date] = None
     estado: EstadoGeneral = "ACTIVO"
+    imagen_url: Optional[str] = None
+    cloudinary_public_id: Optional[str] = None
 
 
 class AvisoCreate(AvisoBase):
@@ -1060,3 +1062,32 @@ class AvisoResponse(AvisoBase):
     fecha_creacion: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# =========================
+# CONFIGURACIÓN DEL SITIO
+# =========================
+
+class ConfiguracionSitioResponse(BaseModel):
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    direccion: Optional[str] = None
+    facebook_url: Optional[str] = None
+    instagram_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    whatsapp_numero: Optional[str] = None
+    mapa_embed_url: Optional[str] = None
+    logo_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConfiguracionSitioUpdate(BaseModel):
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    direccion: Optional[str] = None
+    facebook_url: Optional[str] = None
+    instagram_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    whatsapp_numero: Optional[str] = None
+    mapa_embed_url: Optional[str] = None

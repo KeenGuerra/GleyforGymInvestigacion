@@ -48,7 +48,8 @@ describe("GestionAvisos Page Component", () => {
     expect(within(filaEvento).getByText(new Date("2026-12-15T00:00:00").toLocaleDateString("es-PE"))).toBeDefined();
 
     const filaSinFecha = screen.getByText("Deyvi").closest("tr");
-    expect(within(filaSinFecha).getByText("—")).toBeDefined();
+    // Dos guiones en esta fila: sin imagen y sin fecha de evento.
+    expect(within(filaSinFecha).getAllByText("—").length).toBe(2);
   });
 
   it("marks a past EVENTO as 'Pasado' but not a future one", async () => {
@@ -83,11 +84,54 @@ describe("GestionAvisos Page Component", () => {
     fireEvent.click(screen.getByText("Guardar aviso"));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith("/avisos/", expect.objectContaining({
-        titulo: "Nuevo horario",
-        contenido: "9am - 6pm",
-      }));
+      expect(api.post).toHaveBeenCalled();
     });
+    const formData = api.post.mock.calls[0][1];
+    expect(formData.get("titulo")).toBe("Nuevo horario");
+    expect(formData.get("contenido")).toBe("9am - 6pm");
+  });
+
+  it("creates a new aviso with an image", async () => {
+    api.post.mockResolvedValue({ data: {} });
+    render(<GestionAvisos />);
+
+    fireEvent.click(screen.getByText("+ Nuevo aviso"));
+    await waitFor(() => expect(screen.getByLabelText("Título")).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Con foto" } });
+    fireEvent.change(screen.getByLabelText("Contenido"), { target: { value: "x" } });
+
+    const archivo = new File(["img"], "foto.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText("Imagen (opcional)"), { target: { files: [archivo] } });
+
+    fireEvent.click(screen.getByText("Guardar aviso"));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    const formData = api.post.mock.calls[0][1];
+    expect(formData.get("imagen")).toBe(archivo);
+  });
+
+  it("replaces the image when editing by calling the media endpoint", async () => {
+    api.put.mockResolvedValue({ data: {} });
+    render(<GestionAvisos />);
+
+    await waitFor(() => expect(screen.getByText("Editar")).toBeDefined());
+    fireEvent.click(screen.getByText("Editar"));
+    await waitFor(() => expect(screen.getByLabelText("Reemplazar imagen (opcional)")).toBeDefined());
+
+    const archivo = new File(["img"], "nueva.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText("Reemplazar imagen (opcional)"), { target: { files: [archivo] } });
+    fireEvent.click(screen.getByText("Actualizar aviso"));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        "/avisos/1/media",
+        expect.any(FormData),
+        expect.objectContaining({ headers: { "Content-Type": "multipart/form-data" } })
+      );
+    });
+    const mediaCall = api.put.mock.calls.find((call) => call[0] === "/avisos/1/media");
+    expect(mediaCall[1].get("imagen")).toBe(archivo);
   });
 
   it("shows validation error when title is missing", async () => {

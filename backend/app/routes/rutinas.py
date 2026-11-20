@@ -6,9 +6,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Annotated
 
-from datetime import datetime
-
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.database import get_db
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.recibos import generar_pdf_rutina
@@ -428,7 +426,7 @@ def aprobar_rutina(
     nuevo_estado = ESTADO_REVISION_APROBADA_CON_CAMBIOS if rutina.editado_antes_revision else ESTADO_REVISION_APROBADA
     rutina.estado_revision = nuevo_estado
     rutina.revisado_por = usuario_actual.get("id_usuario")
-    rutina.fecha_revision = datetime.now()
+    rutina.fecha_revision = zona_horaria.ahora()
 
     db.commit()
 
@@ -461,7 +459,7 @@ def rechazar_rutina(
 
     rutina.estado_revision = ESTADO_REVISION_RECHAZADA
     rutina.revisado_por = usuario_actual.get("id_usuario")
-    rutina.fecha_revision = datetime.now()
+    rutina.fecha_revision = zona_horaria.ahora()
     rutina.observaciones_revision = datos.motivo
 
     db.commit()

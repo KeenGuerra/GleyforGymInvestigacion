@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 # pyrefly: ignore [missing-import]
 from sqlalchemy import func
 from typing import Annotated, Optional
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 
 from app.database import get_db
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.security import obtener_usuario_actual, requerir_roles
 from app.constants import (
     MSG_INVENTARIO_NO_ENCONTRADO, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -116,7 +116,7 @@ def ajustar_inventario(
     if inventario:
         stock_anterior = inventario.stock_actual
         inventario.stock_actual += ajuste.cantidad
-        inventario.fecha_actualizacion = datetime.now()
+        inventario.fecha_actualizacion = zona_horaria.ahora()
     else:
         stock_anterior = 0
         inventario = models.Inventario(
@@ -202,7 +202,7 @@ def alertas_vencimiento(
     separa aquí, calculando los días restantes al vuelo en vez de depender
     de un proceso en segundo plano que mantenga Lote.estado al día (este
     proyecto no tiene ningún cron -- ver Pendientes.md)."""
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
     fecha_limite = hoy + timedelta(days=dias)
 
     lotes = db.query(models.Lote).filter(

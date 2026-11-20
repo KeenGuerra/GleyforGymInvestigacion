@@ -3,6 +3,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Navbar from "./Navbar";
+import api from "../api/api";
+
+vi.mock("../api/api", () => ({
+  default: {
+    get: vi.fn(),
+  },
+}));
 
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -24,6 +31,7 @@ function renderNavbar(props) {
 describe("Navbar Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    api.get.mockResolvedValue({ data: {} });
     localStorage.clear();
   });
 

@@ -1,10 +1,12 @@
 import React from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import logoGleyforGym from "../assets/logo-gleyforgym.png";
+import { useConfiguracionSitio } from "../hooks/useConfiguracionSitio";
 
 export default function Navbar({ cartCount = 0, onCartClick }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { configuracion } = useConfiguracionSitio();
   const token = localStorage.getItem("token");
   const rol = localStorage.getItem("rol");
   const isLoggedIn = !!token;
@@ -31,7 +33,7 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
         className="public-brand-logo"
         onClick={() => navigate("/")}
       >
-        <img src={logoGleyforGym} alt="Logo GleyforGym" />
+        <img src={configuracion.logo_url || logoGleyforGym} alt="Logo GleyforGym" />
       </button>
 
       <nav className="public-menu">

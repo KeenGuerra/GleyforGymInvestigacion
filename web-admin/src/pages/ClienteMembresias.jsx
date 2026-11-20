@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
-import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { formatearFecha as formatearFechaBase, obtenerFechaLocalISO } from "../utils/formatearFecha";
 import { useConfirmacion } from "../hooks/useConfirmacion";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -14,7 +14,7 @@ function ClienteMembresias() {
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
-  const hoy = new Date().toISOString().split("T")[0];
+  const hoy = obtenerFechaLocalISO();
 
   const formInicial = {
     id_cliente: "",
@@ -61,10 +61,16 @@ function ClienteMembresias() {
 
     if (!membresia || !fechaInicio) return "";
 
-    const fecha = new Date(fechaInicio);
+    // Se arma la fecha con el constructor numérico (año, mes, día) en vez de
+    // `new Date(fechaInicio)` -- ese parseo trata "YYYY-MM-DD" como
+    // medianoche UTC, y luego sumar/restar días con setDate() (hora local) y
+    // volver a convertir con toISOString() (UTC) puede desfasar el
+    // resultado un día en cualquier dirección según la hora del navegador.
+    const [anio, mes, dia] = fechaInicio.split("-").map(Number);
+    const fecha = new Date(anio, mes - 1, dia);
     fecha.setDate(fecha.getDate() + Number(membresia.duracion_dias || 0));
 
-    return fecha.toISOString().split("T")[0];
+    return obtenerFechaLocalISO(fecha);
   };
 
   const cambiar = (e) => {

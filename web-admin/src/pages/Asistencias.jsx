@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import { exportarCsv } from "../utils/exportarCsv";
-import { formatearFecha as formatearFechaBase } from "../utils/formatearFecha";
+import { formatearFecha as formatearFechaBase, obtenerFechaLocalISO } from "../utils/formatearFecha";
 import { MSG_CLIENTE_NO_ENCONTRADO } from "../api/constants";
 import { useConfirmacion } from "../hooks/useConfirmacion";
 import ConfirmModal from "../components/ConfirmModal";
@@ -15,7 +15,7 @@ function Asistencias() {
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
-  const hoy = new Date().toISOString().split("T")[0];
+  const hoy = obtenerFechaLocalISO();
 
   const formInicial = {
     id_cliente: "",

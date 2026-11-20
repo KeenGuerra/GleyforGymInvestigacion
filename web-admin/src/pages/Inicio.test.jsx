@@ -71,4 +71,40 @@ describe("Inicio Page Component", () => {
     fireEvent.click(accessBtn);
     expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
   });
+
+  it("renders the contact section from the editable site configuration, not hardcoded values", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/configuracion/") {
+        return Promise.resolve({
+          data: {
+            telefono: "+51 111222333",
+            email: "nuevo@gleyforgym.com",
+            direccion: "Nueva sede, Huancayo",
+            facebook_url: "https://facebook.com/nueva",
+            instagram_url: null,
+            tiktok_url: null,
+            whatsapp_numero: "51111222333",
+            mapa_embed_url: "https://maps.example.com/nuevo",
+            logo_url: null,
+          },
+        });
+      }
+      return Promise.resolve({ data: mockPlanes });
+    });
+
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Nueva sede, Huancayo")).toBeDefined();
+      expect(screen.getByText("+51 111222333")).toBeDefined();
+      expect(screen.getByText("nuevo@gleyforgym.com")).toBeDefined();
+    });
+    expect(screen.getByLabelText("Facebook").getAttribute("href")).toBe("https://facebook.com/nueva");
+    expect(screen.queryByLabelText("Instagram")).toBeNull();
+    expect(screen.getByTitle("Mapa gimnasio").getAttribute("src")).toBe("https://maps.example.com/nuevo");
+  });
 });

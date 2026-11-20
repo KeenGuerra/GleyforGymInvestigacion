@@ -93,6 +93,26 @@ describe("Avisos Page Component", () => {
     expect(titulos).toEqual(["Evento cercano", "Evento lejano"]);
   });
 
+  it("shows the aviso image when it has one, and no img when it doesn't", async () => {
+    api.get.mockResolvedValue({
+      data: [
+        { id_aviso: 1, titulo: "Con foto", contenido: "x", tipo: "COMUNICADO", estado: "ACTIVO", imagen_url: "https://example.com/foto.jpg" },
+        { id_aviso: 2, titulo: "Lunes a Sábado", contenido: "6am - 10pm", tipo: "HORARIO", estado: "ACTIVO" },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <Avisos />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByAltText("Con foto")).toBeDefined();
+    });
+    expect(screen.queryByAltText("Lunes a Sábado")).toBeNull();
+  });
+
   it("shows an empty message when there are no avisos", async () => {
     api.get.mockResolvedValue({ data: [] });
 

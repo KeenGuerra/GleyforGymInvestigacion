@@ -10,7 +10,7 @@ from typing import Annotated, Optional
 from datetime import datetime, date
 
 from app.database import get_db
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
 from app.recibos import generar_boleta_venta
@@ -115,7 +115,7 @@ def crear_venta(
         db.add(det)
 
         inventario.stock_actual -= detalle.cantidad
-        inventario.fecha_actualizacion = datetime.now()
+        inventario.fecha_actualizacion = zona_horaria.ahora()
 
         movimiento = models.MovimientoStock(
             id_producto=detalle.id_producto,
@@ -163,7 +163,7 @@ def listar_ventas(db: Annotated[Session, Depends(get_db)], skip: int = 0, limit:
     responses={401: {"description": "Token inválido o expirado"}}
 )
 def resumen_ventas(db: Annotated[Session, Depends(get_db)]):
-    hoy = datetime.now().date()
+    hoy = zona_horaria.hoy()
     primer_dia_mes = hoy.replace(day=1)
 
     ventas_hoy = db.query(func.count(models.Venta.id_venta)).filter(
@@ -371,7 +371,7 @@ def anular_venta(
 
             if inventario:
                 inventario.stock_actual += detalle.cantidad
-                inventario.fecha_actualizacion = datetime.now()
+                inventario.fecha_actualizacion = zona_horaria.ahora()
 
             movimiento = models.MovimientoStock(
                 id_producto=detalle.id_producto,
@@ -616,7 +616,7 @@ def aplicar_confirmacion_venta(db: Session, venta: models.Venta, id_usuario: int
                 inventario.stock_actual = 0
             else:
                 inventario.stock_actual -= detalle.cantidad
-            inventario.fecha_actualizacion = datetime.now()
+            inventario.fecha_actualizacion = zona_horaria.ahora()
 
         movimiento = models.MovimientoStock(
             id_producto=detalle.id_producto,

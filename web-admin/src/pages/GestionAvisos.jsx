@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import api from "../api/api";
-import { formatearFecha } from "../utils/formatearFecha";
+import { formatearFecha, obtenerFechaLocalISO } from "../utils/formatearFecha";
 import { useConfirmacion } from "../hooks/useConfirmacion";
 import ConfirmModal from "../components/ConfirmModal";
 
 const TIPOS = ["HORARIO", "COACHES", "BAILE", "COMUNICADO", "EVENTO"];
-const hoy = new Date().toISOString().slice(0, 10);
+const hoy = obtenerFechaLocalISO();
 
 function GestionAvisos() {
   const { pregunta, confirmarAccion, responderConfirmacion } = useConfirmacion();
@@ -14,6 +14,9 @@ function GestionAvisos() {
   const [error, setError] = useState("");
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
+  const [imagen, setImagen] = useState(null);
+  const [imagenActualUrl, setImagenActualUrl] = useState(null);
+  const fileRef = useRef(null);
 
   const formInicial = {
     titulo: "",
@@ -47,8 +50,11 @@ function GestionAvisos() {
   const limpiar = () => {
     setForm(formInicial);
     setEditandoId(null);
+    setImagen(null);
+    setImagenActualUrl(null);
     setError("");
     setMostrarFormulario(false);
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const validar = () => {
@@ -67,19 +73,35 @@ function GestionAvisos() {
       return;
     }
 
-    const data = {
-      titulo: form.titulo,
-      contenido: form.contenido,
-      tipo: form.tipo,
-      fecha_evento: form.fecha_evento || null,
-      estado: form.estado,
-    };
-
     try {
       if (editandoId) {
-        await api.put(`/avisos/${editandoId}`, data);
+        await api.put(`/avisos/${editandoId}`, {
+          titulo: form.titulo,
+          contenido: form.contenido,
+          tipo: form.tipo,
+          fecha_evento: form.fecha_evento || null,
+          estado: form.estado,
+        });
+
+        if (imagen) {
+          const mediaData = new FormData();
+          mediaData.append("imagen", imagen);
+          await api.put(`/avisos/${editandoId}/media`, mediaData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
       } else {
-        await api.post("/avisos/", data);
+        const data = new FormData();
+        data.append("titulo", form.titulo);
+        data.append("contenido", form.contenido);
+        data.append("tipo", form.tipo);
+        if (form.fecha_evento) data.append("fecha_evento", form.fecha_evento);
+        data.append("estado", form.estado);
+        if (imagen) data.append("imagen", imagen);
+
+        await api.post("/avisos/", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
       limpiar();
       await cargarAvisos();
@@ -92,6 +114,8 @@ function GestionAvisos() {
   const editar = (aviso) => {
     setEditandoId(aviso.id_aviso);
     setMostrarFormulario(true);
+    setImagen(null);
+    setImagenActualUrl(aviso.imagen_url || null);
     setForm({
       titulo: aviso.titulo || "",
       contenido: aviso.contenido || "",
@@ -218,6 +242,29 @@ function GestionAvisos() {
                 onChange={cambiar}
               />
             </div>
+
+            <div className="form-field field-large">
+              <label htmlFor="imagen">
+                {editandoId ? "Reemplazar imagen (opcional)" : "Imagen (opcional)"}
+              </label>
+              <input
+                id="imagen"
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImagen(e.target.files[0] || null)}
+              />
+              {editandoId && imagenActualUrl && !imagen && (
+                <div className="image-preview">
+                  <img src={imagenActualUrl} alt="Imagen actual del aviso" />
+                </div>
+              )}
+              {editandoId && (
+                <p className="muted-text" style={{ margin: 0 }}>
+                  Déjalo vacío para conservar la imagen actual.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="form-actions">
@@ -255,6 +302,7 @@ function GestionAvisos() {
             <table>
               <thead>
                 <tr>
+                  <th>Imagen</th>
                   <th>Título</th>
                   <th>Tipo</th>
                   <th>Contenido</th>
@@ -266,6 +314,17 @@ function GestionAvisos() {
               <tbody>
                 {avisosFiltrados.map((a) => (
                   <tr key={a.id_aviso}>
+                    <td>
+                      {a.imagen_url ? (
+                        <img
+                          src={a.imagen_url}
+                          alt={a.titulo}
+                          style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8 }}
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td>{a.titulo}</td>
                     <td><span className="badge">{a.tipo}</span></td>
                     <td>{a.contenido}</td>

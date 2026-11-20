@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import Annotated
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from app import config, models, schemas
+from app import config, models, schemas, zona_horaria
 from app.database import get_db
 from app.security import encriptar_password, verificar_password, crear_token, obtener_usuario_actual, requerir_roles
 from app.rate_limit import excedio_intentos, registrar_intento_fallido, limpiar_intentos
@@ -301,7 +301,7 @@ def solicitar_reset_password(
     if usuario:
         token = secrets.token_urlsafe(32)
         usuario.reset_token = token
-        usuario.reset_token_expira = datetime.now() + timedelta(minutes=RESET_TOKEN_EXPIRA_MINUTOS)
+        usuario.reset_token_expira = zona_horaria.ahora() + timedelta(minutes=RESET_TOKEN_EXPIRA_MINUTOS)
         db.commit()
 
         enlace = f"{config.FRONTEND_URL}/reset-password?token={token}"
@@ -326,7 +326,7 @@ def reset_password(
         models.Usuario.reset_token == datos.token
     ).first()
 
-    if not usuario or not usuario.reset_token_expira or usuario.reset_token_expira < datetime.now():
+    if not usuario or not usuario.reset_token_expira or usuario.reset_token_expira < zona_horaria.ahora():
         raise HTTPException(status_code=400, detail="El enlace de recuperación es inválido o expiró")
 
     usuario.password_hash = encriptar_password(datos.password_nueva)
@@ -351,7 +351,7 @@ def verificar_correo(
     if (
         not usuario
         or not usuario.token_verificacion_expira
-        or usuario.token_verificacion_expira < datetime.now()
+        or usuario.token_verificacion_expira < zona_horaria.ahora()
     ):
         raise HTTPException(status_code=400, detail="El enlace de verificación es inválido o expiró")
 

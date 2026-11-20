@@ -8,6 +8,7 @@ import api from "../api/api";
 vi.mock("../api/api", () => ({
   default: {
     post: vi.fn(),
+    get: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
 
@@ -23,6 +24,7 @@ vi.mock("react-router-dom", async () => {
 describe("Login Page Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    api.get.mockResolvedValue({ data: {} });
     localStorage.clear();
   });
 

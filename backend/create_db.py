@@ -108,6 +108,9 @@ def initialize_tables():
         # Código de barras para escanear el producto en Ventas/Compras (ver
         # Producto.codigo_barras en models.py).
         ("productos", "codigo_barras", "VARCHAR(50)"),
+        # Imagen opcional por aviso (ver Aviso.imagen_url en models.py).
+        ("avisos", "imagen_url", "TEXT"),
+        ("avisos", "cloudinary_public_id", "VARCHAR(255)"),
     ]
     existing_tables = inspector.get_table_names()
     for table, column, col_type in migrations:
@@ -321,6 +324,46 @@ def seed_avisos_iniciales():
         db.close()
 
 
+def seed_configuracion_sitio():
+    """
+    Los datos de contacto/redes sociales/mapa que antes estaban escritos a
+    mano en web-admin/src/pages/Inicio.jsx. Se siembra la fila única (id=1)
+    con esos mismos valores para que, al pasar a leerse de la base de datos,
+    la landing se vea exactamente igual hasta que un ADMIN decida editarla
+    desde el nuevo panel de Configuración.
+    """
+    print("Checking if configuracion_sitio exists...")
+    from app.database import SessionLocal
+    from app.models import ConfiguracionSitio
+
+    db = SessionLocal()
+    try:
+        if db.query(ConfiguracionSitio).filter(ConfiguracionSitio.id == 1).first():
+            print("configuracion_sitio already exists, skipping seed.")
+            return
+
+        print("Seeding configuracion_sitio...")
+        db.add(ConfiguracionSitio(
+            id=1,
+            telefono="+51 902321009",
+            email="gleyfor3@gmail.com",
+            direccion="Chupaca, Perú",
+            facebook_url="https://www.facebook.com/p/Gleyfor-GYM-61579024964992/",
+            instagram_url="https://www.instagram.com/gleyforgym/",
+            tiktok_url="https://www.tiktok.com/@gleyforgym",
+            whatsapp_numero="51902321009",
+            mapa_embed_url=(
+                "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d243.85664196895084"
+                "!2d-75.28908014431451!3d-12.06371950223546!2m3!1f0!2f0!3f0!3m2!1i1024!2i768"
+                "!4f13.1!5e0!3m2!1ses!2spe!4v1777926809952!5m2!1ses!2spe"
+            ),
+        ))
+        db.commit()
+        print("configuracion_sitio sembrada correctamente.")
+    finally:
+        db.close()
+
+
 def seed_ejercicios_iniciales():
     """
     El catálogo de Ejercicios en producción tenía muy pocos registros por
@@ -424,6 +467,7 @@ if __name__ == "__main__":
         migrar_estado_revision_existentes()
         seed_admin_user()
         seed_avisos_iniciales()
+        seed_configuracion_sitio()
         seed_ejercicios_iniciales()
         print("Database setup completed successfully.")
     except Exception as e:

@@ -218,6 +218,36 @@ def test_confirmar_pago_membresia_activa_cliente_membresia():
     assert client.post(f"/pagos/{id_pago}/confirmar", headers=headers_admin).status_code == 409
 
 
+def test_confirmar_pago_usa_la_fecha_de_peru_no_la_del_reloj_del_servidor(monkeypatch):
+    """Regresión del bug real: Render corre en UTC, así que entre ~19:00 y
+    medianoche hora de Perú el reloj del servidor ya está en el día
+    siguiente. Si `aplicar_confirmacion_pago` (app/routes/pagos.py) usara
+    `date.today()` en vez de `zona_horaria.hoy()`, la membresía activada acá
+    quedaría con fecha_inicio de mañana en vez de hoy."""
+    from app import zona_horaria
+
+    populate()
+    headers_admin = get_auth_headers()
+    id_membresia = crear_plan(headers_admin, precio=150.0, duracion_dias=30)
+    headers_cliente = crear_cliente(id_usuario=2, id_cliente=1, headers_admin=headers_admin)
+
+    fecha_peru_fija = date(2026, 11, 19)
+    monkeypatch.setattr(zona_horaria, "hoy", lambda: fecha_peru_fija)
+
+    pago = client.post(
+        "/cliente-membresias/comprar", json={"id_membresia": id_membresia}, headers=headers_cliente
+    ).json()
+
+    client.post(f"/pagos/{pago['id_pago']}/confirmar", headers=headers_admin)
+
+    db = TestingSessionLocal()
+    cm = db.query(models.ClienteMembresia).filter(
+        models.ClienteMembresia.id_cliente_membresia == pago["id_cliente_membresia"]
+    ).first()
+    assert cm.fecha_inicio == fecha_peru_fija
+    db.close()
+
+
 def test_anular_pago_membresia_pendiente_cancela_cliente_membresia():
     """Si el socio nunca llega a pagar (o paga mal), el staff anula el pago
     pendiente en vez de confirmarlo -- la ClienteMembresia asociada se

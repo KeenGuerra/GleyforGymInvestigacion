@@ -6,9 +6,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Annotated
 
-from datetime import datetime
-
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.database import get_db
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.recibos import generar_pdf_plan_nutricional
@@ -349,7 +347,7 @@ def aprobar_plan(
     nuevo_estado = ESTADO_REVISION_APROBADA_CON_CAMBIOS if plan.editado_antes_revision else ESTADO_REVISION_APROBADA
     plan.estado_revision = nuevo_estado
     plan.revisado_por = usuario_actual.get("id_usuario")
-    plan.fecha_revision = datetime.now()
+    plan.fecha_revision = zona_horaria.ahora()
 
     db.commit()
 
@@ -382,7 +380,7 @@ def rechazar_plan(
 
     plan.estado_revision = ESTADO_REVISION_RECHAZADA
     plan.revisado_por = usuario_actual.get("id_usuario")
-    plan.fecha_revision = datetime.now()
+    plan.fecha_revision = zona_horaria.ahora()
     plan.observaciones_revision = datos.motivo
 
     db.commit()

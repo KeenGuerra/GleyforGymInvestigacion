@@ -5,10 +5,9 @@ from sqlalchemy.orm import Session
 # pyrefly: ignore [missing-import]
 from sqlalchemy import func
 from typing import Annotated
-from datetime import datetime
 
 from app.database import get_db
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
 from app.constants import (
@@ -168,7 +167,7 @@ def confirmar_compra(
         if inventario:
             inventario.stock_actual += detalle.cantidad
             inventario.ultimo_costo = detalle.precio_unitario
-            inventario.fecha_actualizacion = datetime.now()
+            inventario.fecha_actualizacion = zona_horaria.ahora()
         else:
             inventario = models.Inventario(
                 id_producto=detalle.id_producto,
@@ -247,7 +246,7 @@ def anular_compra(
 
             if inventario:
                 inventario.stock_actual = max(0, inventario.stock_actual - detalle.cantidad)
-                inventario.fecha_actualizacion = datetime.now()
+                inventario.fecha_actualizacion = zona_horaria.ahora()
 
             movimiento = models.MovimientoStock(
                 id_producto=detalle.id_producto,

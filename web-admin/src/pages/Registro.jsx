@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import logo from "../assets/logo-gleyforgym.png";
+import { useConfiguracionSitio } from "../hooks/useConfiguracionSitio";
 
 function Registro() {
   const navigate = useNavigate();
+  const { configuracion } = useConfiguracionSitio();
 
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
@@ -49,7 +51,7 @@ function Registro() {
         <div className="auth-left card">
           <div className="auth-brand">
             <div className="auth-logo">
-              <img src={logo} alt="Logo GLEYFORGYM" />
+              <img src={configuracion.logo_url || logo} alt="Logo GLEYFORGYM" />
             </div>
 
             <h1>GleyforGym</h1>

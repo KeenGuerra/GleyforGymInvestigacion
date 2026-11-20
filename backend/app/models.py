@@ -635,3 +635,26 @@ class Aviso(Base):
     fecha_evento = Column(Date, nullable=True)  # solo aplica si tipo=EVENTO
     estado = Column(String, default="ACTIVO")
     fecha_creacion = Column(DateTime, default=datetime.now)
+    imagen_url = Column(Text, nullable=True)
+    cloudinary_public_id = Column(String(255), nullable=True)
+
+
+class ConfiguracionSitio(Base):
+    """Fila única (id=1) con los datos de contacto/redes sociales/logo que
+    se muestran en la página pública -- antes estaban escritos a mano en
+    Inicio.jsx y cambiarlos exigía tocar código y volver a desplegar. No
+    confundir con RUC_EMPRESA/RAZON_SOCIAL (backend/app/config.py): esos son
+    datos legales del comprobante de pago, no de la landing pública."""
+    __tablename__ = "configuracion_sitio"
+
+    id = Column(Integer, primary_key=True)
+    telefono = Column(String(30), nullable=True)
+    email = Column(String(100), nullable=True)
+    direccion = Column(String(200), nullable=True)
+    facebook_url = Column(Text, nullable=True)
+    instagram_url = Column(Text, nullable=True)
+    tiktok_url = Column(Text, nullable=True)
+    whatsapp_numero = Column(String(30), nullable=True)
+    mapa_embed_url = Column(Text, nullable=True)
+    logo_url = Column(Text, nullable=True)
+    cloudinary_public_id_logo = Column(String(255), nullable=True)

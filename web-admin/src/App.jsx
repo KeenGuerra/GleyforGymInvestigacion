@@ -44,6 +44,7 @@ import GestionAvisos from "./pages/GestionAvisos";
 import Entrenadores from "./pages/Entrenadores";
 import Auditoria from "./pages/Auditoria";
 import Reportes from "./pages/Reportes";
+import Configuracion from "./pages/Configuracion";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -111,6 +112,15 @@ export default function App() {
             element={
               <ProtectedRoute rolesPermitidos={["ADMIN"]}>
                 <Auditoria />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/configuracion"
+            element={
+              <ProtectedRoute rolesPermitidos={["ADMIN"]}>
+                <Configuracion />
               </ProtectedRoute>
             }
           />

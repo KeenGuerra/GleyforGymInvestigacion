@@ -86,6 +86,13 @@ function Avisos() {
                   <div className="aviso-items">
                     {items.map((aviso) => (
                       <div key={aviso.id_aviso}>
+                        {aviso.imagen_url && (
+                          <img
+                            className="aviso-item-imagen"
+                            src={aviso.imagen_url}
+                            alt={aviso.titulo}
+                          />
+                        )}
                         <strong>{aviso.titulo}</strong>
                         <p className="item-description">{aviso.contenido}</p>
                         {aviso.tipo === "EVENTO" && aviso.fecha_evento && (

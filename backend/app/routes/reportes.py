@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 from typing import Annotated, Optional
 
 from app.database import get_db
-from app import models, schemas
+from app import models, schemas, zona_horaria
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
 from app.constants import ESTADO_REVISION_PENDIENTE
@@ -31,7 +31,7 @@ def obtener_kpis(db: Annotated[Session, Depends(get_db)]):
     los registros de los últimos 30 días (no a una diferencia pareada por
     cliente, que requeriría cruzar cada registro con su medición anterior).
     """
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
     inicio_mes = hoy.replace(day=1)
     hace_30_dias = hoy - timedelta(days=30)
 
@@ -590,7 +590,7 @@ def reporte_membresias_por_vencer(db: Annotated[Session, Depends(get_db)], dias:
     WhatsApp -- a diferencia de los exports de la tesis, esta lista NO
     anonimiza al cliente: es operativa, el staff necesita el nombre y el
     teléfono reales para poder contactarlo."""
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
     limite = hoy + timedelta(days=dias)
 
     asignaciones = (
@@ -950,8 +950,8 @@ def listar_enviados_hoy(db: Annotated[Session, Depends(get_db)], tipo: schemas.T
     """IDs de cliente que ya recibieron este tipo de aviso HOY -- no "para
     siempre": un feriado es puntual, el próximo no debe quedar bloqueado por
     el envío de hoy."""
-    inicio_dia = datetime.combine(date.today(), datetime.min.time())
-    fin_dia = datetime.combine(date.today(), datetime.max.time())
+    inicio_dia = datetime.combine(zona_horaria.hoy(), datetime.min.time())
+    fin_dia = datetime.combine(zona_horaria.hoy(), datetime.max.time())
 
     filas = (
         db.query(models.EnvioWhatsApp.id_cliente)
@@ -970,7 +970,7 @@ def listar_enviados_hoy(db: Annotated[Session, Depends(get_db)], tipo: schemas.T
 def reporte_cumpleanos_hoy(db: Annotated[Session, Depends(get_db)]):
     """Clientes ACTIVO cuyo mes y día de nacimiento coinciden con hoy
     (sin importar el año)."""
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
     clientes = (
         db.query(models.Cliente)
         .filter(
@@ -995,7 +995,7 @@ def reporte_cumpleanos_hoy(db: Annotated[Session, Depends(get_db)]):
 def reporte_socios_nuevos(db: Annotated[Session, Depends(get_db)], dias: int = 7):
     """Clientes ACTIVO registrados en los últimos `dias` días -- base de la
     sección "Bienvenida a socio nuevo" en Reportes.jsx."""
-    limite = datetime.now() - timedelta(days=dias)
+    limite = zona_horaria.ahora() - timedelta(days=dias)
     clientes = (
         db.query(models.Cliente)
         .filter(
@@ -1020,7 +1020,7 @@ def reporte_socios_nuevos(db: Annotated[Session, Depends(get_db)], dias: int = 7
 def reporte_clientes_inactivos(db: Annotated[Session, Depends(get_db)], dias: int = 15):
     """Clientes ACTIVO cuya última asistencia (o ninguna) es anterior a
     `dias` días."""
-    limite = date.today() - timedelta(days=dias)
+    limite = zona_horaria.hoy() - timedelta(days=dias)
     clientes_activos = db.query(models.Cliente).filter(models.Cliente.estado == "ACTIVO").all()
 
     resultado = []

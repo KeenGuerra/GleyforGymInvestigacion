@@ -2,12 +2,14 @@ import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
+import { useConfiguracionSitio } from "../hooks/useConfiguracionSitio";
 
 import gymHero from "../assets/gym-hero.jpeg";
 import { FaFacebookF, FaInstagram, FaWhatsapp, FaTiktok} from "react-icons/fa";
 
 function Inicio() {
   const navigate = useNavigate();
+  const { configuracion } = useConfiguracionSitio();
 
   const token = localStorage.getItem("token");
 
@@ -177,52 +179,66 @@ function Inicio() {
             <span className="badge">Contacto</span>
             <h2>¿Listo para entrenar mejor?</h2>
 
-            <p>
-              <strong>Dirección:</strong> Chupaca, Perú
-            </p>
-            <p>
-              <strong>Teléfono:</strong> +51 902321009
-            </p>
-            <p>
-              <strong>Email:</strong> gleyfor3@gmail.com
-            </p>
+            {configuracion.direccion && (
+              <p>
+                <strong>Dirección:</strong> {configuracion.direccion}
+              </p>
+            )}
+            {configuracion.telefono && (
+              <p>
+                <strong>Teléfono:</strong> {configuracion.telefono}
+              </p>
+            )}
+            {configuracion.email && (
+              <p>
+                <strong>Email:</strong> {configuracion.email}
+              </p>
+            )}
 
             <div className="social-links">
-              <a
-                href="https://www.facebook.com/p/Gleyfor-GYM-61579024964992/"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook"
-              >
-                <FaFacebookF />
-              </a>
+              {configuracion.facebook_url && (
+                <a
+                  href={configuracion.facebook_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                >
+                  <FaFacebookF />
+                </a>
+              )}
 
-              <a
-                href="https://www.instagram.com/gleyforgym/"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-              >
-                <FaInstagram />
-              </a>
+              {configuracion.instagram_url && (
+                <a
+                  href={configuracion.instagram_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                >
+                  <FaInstagram />
+                </a>
+              )}
 
-              <a
-                href="https://www.tiktok.com/@gleyforgym"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="TikTok"
-              >
-                <FaTiktok />
-              </a>
+              {configuracion.tiktok_url && (
+                <a
+                  href={configuracion.tiktok_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="TikTok"
+                >
+                  <FaTiktok />
+                </a>
+              )}
 
-              <a
-                href="https://wa.me/51902321009"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp"
-              >
-                <FaWhatsapp />
-              </a>
+              {configuracion.whatsapp_numero && (
+                <a
+                  href={`https://wa.me/${configuracion.whatsapp_numero}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="WhatsApp"
+                >
+                  <FaWhatsapp />
+                </a>
+              )}
             </div>
 
             <button className="btn-primary" onClick={irAcceso}>
@@ -230,15 +246,17 @@ function Inicio() {
             </button>
           </div>
 
-          <div className="card map-card">
-            <iframe
-              title="Mapa gimnasio"
-              src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d243.85664196895084!2d-75.28908014431451!3d-12.06371950223546!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1ses!2spe!4v1777926809952!5m2!1ses!2spe"
-              width="100%"
-              height="350"
-              style={{ border: 0 }}
-            ></iframe>
-          </div>
+          {configuracion.mapa_embed_url && (
+            <div className="card map-card">
+              <iframe
+                title="Mapa gimnasio"
+                src={configuracion.mapa_embed_url}
+                width="100%"
+                height="350"
+                style={{ border: 0 }}
+              ></iframe>
+            </div>
+          )}
         </div>
       </section>
 
