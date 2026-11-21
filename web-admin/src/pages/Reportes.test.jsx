@@ -886,4 +886,47 @@ describe("Reportes Page Component", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("loads pending electronic receipts and retries one", async () => {
+    const mockPendientes = [
+      {
+        id_comprobante: 1, tipo_operacion: "VENTA", id_venta: 5, id_pago: null,
+        serie: "B001", correlativo: 3, estado: "RECHAZADO",
+        mensaje_sunat: "El emisor no esta en el padron", fecha_emision: "2026-11-21T10:00:00",
+      },
+    ];
+    api.get.mockImplementation((url) => {
+      if (url === "/facturacion-electronica/pendientes") return Promise.resolve({ data: mockPendientes });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Facturación electrónica"));
+
+    await waitFor(() => {
+      expect(screen.getByText("B001-00000003")).toBeDefined();
+      expect(screen.getByText("Venta #5")).toBeDefined();
+      expect(screen.getByText("El emisor no esta en el padron")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Reintentar"));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/facturacion-electronica/reintentar/1");
+    });
+  });
+
+  it("shows an error when loading pending electronic receipts fails", async () => {
+    api.get.mockImplementation((url) => {
+      if (url === "/facturacion-electronica/pendientes") return Promise.reject(new Error("fail"));
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Reportes />);
+    fireEvent.click(screen.getByText("Facturación electrónica"));
+
+    await waitFor(() => {
+      expect(screen.getByText("No se pudieron cargar los comprobantes electrónicos pendientes")).toBeDefined();
+    });
+  });
 });

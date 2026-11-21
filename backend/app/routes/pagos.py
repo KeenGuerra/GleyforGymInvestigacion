@@ -12,6 +12,7 @@ from app import models, schemas, zona_horaria
 from app.security import obtener_usuario_actual, requerir_roles, verificar_propiedad_cliente
 from app.auditoria import registrar as registrar_auditoria
 from app.recibos import generar_recibo_pago
+from app.facturacion_electronica.servicio import declarar_pago
 from app.constants import (
     MSG_PAGO_NO_ENCONTRADO,
     MSG_CLIENTE_NO_ENCONTRADO,
@@ -82,6 +83,9 @@ def crear_pago(
         f"cliente={nuevo_pago.id_cliente}, monto={nuevo_pago.monto}, metodo={nuevo_pago.metodo_pago}",
     )
 
+    if nuevo_pago.estado == ESTADO_PAGADO:
+        declarar_pago(nuevo_pago, db)
+
     return nuevo_pago
 
 
@@ -97,6 +101,8 @@ def aplicar_confirmacion_pago(db: Session, pago: models.Pago) -> None:
         cliente_membresia.fecha_fin = hoy + timedelta(days=cliente_membresia.membresia.duracion_dias)
         cliente_membresia.estado = ESTADO_ACTIVA
     db.commit()
+
+    declarar_pago(pago, db)
 
 
 @router.post(
@@ -294,3 +300,32 @@ def descargar_recibo_pago(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=recibo-pago-{pago_db.id_pago}.pdf"},
     )
+
+
+@router.get(
+    "/{id_pago}/comprobante-electronico",
+    response_model=schemas.ComprobanteElectronicoResponse,
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Pago no encontrado, o sin comprobante electrónico declarado"},
+    },
+)
+def obtener_comprobante_electronico_pago(
+    id_pago: int,
+    db: Annotated[Session, Depends(get_db)],
+    usuario_actual: Annotated[dict, Depends(obtener_usuario_actual)],
+):
+    pago_db = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+    if not pago_db:
+        raise HTTPException(status_code=404, detail=MSG_PAGO_NO_ENCONTRADO)
+
+    verificar_propiedad_cliente(usuario_actual, pago_db.id_cliente, db, roles_adicionales=("RECEPCIONISTA",))
+
+    comprobante = db.query(models.ComprobanteElectronico).filter(
+        models.ComprobanteElectronico.id_pago == id_pago
+    ).order_by(models.ComprobanteElectronico.id_comprobante.desc()).first()
+
+    if not comprobante:
+        raise HTTPException(status_code=404, detail="Este pago no tiene un comprobante electrónico declarado")
+
+    return comprobante

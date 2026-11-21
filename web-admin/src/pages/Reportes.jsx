@@ -68,6 +68,10 @@ function Reportes() {
     "Cualquier consulta, escríbenos.\n\n*GLEYFORGYM* 🏋️"
   );
 
+  const [comprobantesPendientes, setComprobantesPendientes] = useState(null);
+  const [cargandoComprobantes, setCargandoComprobantes] = useState(false);
+  const [reintentandoId, setReintentandoId] = useState(null);
+
   const [corteTiempos, setCorteTiempos] = useState(() => {
     const fecha = new Date();
     fecha.setDate(fecha.getDate() - 30);
@@ -354,6 +358,34 @@ function Reportes() {
       setError("No se pudo limpiar los registros de tiempo de respuesta");
     } finally {
       setLimpiandoTiempos(false);
+    }
+  };
+
+  const cargarComprobantesPendientes = async () => {
+    try {
+      setCargandoComprobantes(true);
+      setError("");
+      const res = await api.get("/facturacion-electronica/pendientes");
+      setComprobantesPendientes(res.data);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudieron cargar los comprobantes electrónicos pendientes");
+    } finally {
+      setCargandoComprobantes(false);
+    }
+  };
+
+  const reintentarComprobante = async (idComprobante) => {
+    try {
+      setReintentandoId(idComprobante);
+      setError("");
+      await api.post(`/facturacion-electronica/reintentar/${idComprobante}`);
+      await cargarComprobantesPendientes();
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "No se pudo reintentar el comprobante");
+    } finally {
+      setReintentandoId(null);
     }
   };
 
@@ -770,6 +802,13 @@ function Reportes() {
         </button>
         <button type="button" className={tabActivo === "mantenimiento" ? "active" : ""} onClick={() => setTabActivo("mantenimiento")}>
           Mantenimiento
+        </button>
+        <button
+          type="button"
+          className={tabActivo === "facturacion" ? "active" : ""}
+          onClick={() => { setTabActivo("facturacion"); cargarComprobantesPendientes(); }}
+        >
+          Facturación electrónica
         </button>
       </nav>
 
@@ -1497,6 +1536,72 @@ function Reportes() {
         </div>
 
         {resultadoLimpieza && <p className="empty-message">{resultadoLimpieza}</p>}
+      </section>
+
+      </div>
+
+      <div className={panelClass("facturacion")}>
+
+      <section className="table-card">
+        <div className="card-header">
+          <div>
+            <h2>Boletas electrónicas pendientes o rechazadas</h2>
+            <p>
+              Cada venta de mostrador/tienda y cada pago de membresía confirmado intenta
+              declararse como Boleta electrónica ante SUNAT en el momento. Si SUNAT no
+              respondió a tiempo o la rechazó, queda listada aquí para reintentar a mano
+              -- el sistema no tiene todavía un reintento automático (ver Pendientes.md, P-25).
+            </p>
+          </div>
+          <button className="btn-secondary" disabled={cargandoComprobantes} onClick={cargarComprobantesPendientes}>
+            {cargandoComprobantes ? "Cargando..." : "Actualizar lista"}
+          </button>
+        </div>
+
+        {comprobantesPendientes === null ? (
+          <p className="empty-message">Pulsa "Actualizar lista" para cargar los comprobantes pendientes.</p>
+        ) : comprobantesPendientes.length === 0 ? (
+          <p className="empty-message">No hay comprobantes pendientes ni rechazados.</p>
+        ) : (
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Comprobante</th>
+                  <th>Operación</th>
+                  <th>Estado</th>
+                  <th>Mensaje de SUNAT</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comprobantesPendientes.map((c) => (
+                  <tr key={c.id_comprobante}>
+                    <td>{c.serie}-{String(c.correlativo).padStart(8, "0")}</td>
+                    <td>
+                      {c.tipo_operacion === "VENTA" ? `Venta #${c.id_venta}` : `Pago #${c.id_pago}`}
+                    </td>
+                    <td>
+                      <span className={c.estado === "RECHAZADO" ? "badge badge-danger" : "badge badge-warning"}>
+                        {c.estado}
+                      </span>
+                    </td>
+                    <td>{c.mensaje_sunat || "—"}</td>
+                    <td>
+                      <button
+                        className="btn-primary"
+                        disabled={reintentandoId === c.id_comprobante}
+                        onClick={() => reintentarComprobante(c.id_comprobante)}
+                      >
+                        {reintentandoId === c.id_comprobante ? "Reintentando..." : "Reintentar"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       </div>

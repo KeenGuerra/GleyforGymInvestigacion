@@ -658,3 +658,49 @@ class ConfiguracionSitio(Base):
     mapa_embed_url = Column(Text, nullable=True)
     logo_url = Column(Text, nullable=True)
     cloudinary_public_id_logo = Column(String(255), nullable=True)
+
+
+class SerieComprobante(Base):
+    """Correlativo vigente de una serie de comprobante electronico (ej.
+    "B001" para Boleta). Fila por serie, incrementada atomicamente por
+    `app/facturacion_electronica/numeracion.py` (UPDATE ... RETURNING, no
+    leer-luego-escribir) para evitar que dos ventas casi simultaneas reciban
+    el mismo correlativo -- mismo problema que ya resolvio el indice unico
+    de ClienteMembresia, aqui resuelto a nivel de fila en vez de constraint."""
+    __tablename__ = "series_comprobante"
+
+    serie = Column(String(10), primary_key=True)
+    correlativo_actual = Column(Integer, nullable=False, default=0)
+
+
+class ComprobanteElectronico(Base):
+    """Una fila por intento de declarar una Boleta de venta electronica
+    ante SUNAT, a partir de una Venta o un Pago ya confirmados (ver
+    docs/07_Gestion_Proyecto/Pendientes.md P-24). No reemplaza el PDF
+    interno que ya genera `recibos.py` -- convive con el, como respaldo
+    visual."""
+    __tablename__ = "comprobantes_electronicos"
+    __table_args__ = (
+        Index("ix_comprobantes_serie_correlativo", "serie", "correlativo", unique=True),
+    )
+
+    id_comprobante = Column(Integer, primary_key=True, index=True)
+    tipo_operacion = Column(String(10), nullable=False)  # VENTA, PAGO
+    id_venta = Column(Integer, ForeignKey("ventas.id_venta"), nullable=True)
+    id_pago = Column(Integer, ForeignKey("pagos.id_pago"), nullable=True)
+
+    serie = Column(String(10), nullable=False)
+    correlativo = Column(Integer, nullable=False)
+
+    tipo_documento_cliente = Column(String(10), nullable=True)  # "1" = DNI (catalogo 06 SUNAT), None = sin documento
+    numero_documento_cliente = Column(String(20), nullable=True)
+
+    estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, ACEPTADO, RECHAZADO, ANULADO
+    codigo_respuesta_sunat = Column(String(10), nullable=True)
+    mensaje_sunat = Column(Text, nullable=True)
+
+    fecha_emision = Column(DateTime, default=zona_horaria.ahora)
+    fecha_envio = Column(DateTime, nullable=True)
+
+    venta = relationship("Venta")
+    pago = relationship("Pago")

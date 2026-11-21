@@ -22,11 +22,28 @@ function Ventas() {
   const [resumen, setResumen] = useState({});
   const [pagina, setPagina] = useState(0);
   const [haySiguiente, setHaySiguiente] = useState(false);
+  const [comprobantesPorVenta, setComprobantesPorVenta] = useState({});
 
   const formInicial = { id_cliente: "", metodo_pago: "EFECTIVO", descuento: 0, observaciones: "" };
   const [form, setForm] = useState(formInicial);
   const [codigoEscaneado, setCodigoEscaneado] = useState("");
   const [escaneando, setEscaneando] = useState(false);
+
+  // Solo las ventas ya cobradas (CONFIRMADA/ENTREGADA) pueden tener un
+  // comprobante declarado -- ver app/facturacion_electronica/servicio.py.
+  // Un 404 es normal (SUNAT no configurado todavía, o venta aún no
+  // declarada) y no se trata como error.
+  const cargarComprobantes = async (listaVentas) => {
+    const relevantes = listaVentas.filter((v) => v.estado === "CONFIRMADA" || v.estado === "ENTREGADA");
+    const resultados = await Promise.all(
+      relevantes.map((v) =>
+        api.get(`/ventas/${v.id_venta}/comprobante-electronico`)
+          .then((res) => [v.id_venta, res.data])
+          .catch(() => [v.id_venta, null])
+      )
+    );
+    setComprobantesPorVenta(Object.fromEntries(resultados));
+  };
 
   const cargar = useCallback(async (paginaActual = pagina) => {
     try {
@@ -37,6 +54,7 @@ function Ventas() {
       ]);
       setVentas(r1.data); setHaySiguiente(r1.data.length === VENTAS_POR_PAGINA);
       setProductos(r2.data); setClientes(r3.data); setResumen(r4.data);
+      cargarComprobantes(r1.data);
     } catch { setError("Error al cargar datos"); }
   }, [pagina]);
 
@@ -221,6 +239,17 @@ function Ventas() {
     return "badge";
   };
 
+  // Comprobante electrónico (Boleta SUNAT, ver app/facturacion_electronica):
+  // "—" significa que todavía no hay ninguno declarado para esta venta
+  // (normal mientras SUNAT no esté configurado, o para ventas PENDIENTE/
+  // ANULADA, que nunca llegan a declararse).
+  const badgeComprobante = (comprobante) => {
+    if (!comprobante) return <span className="badge">—</span>;
+    if (comprobante.estado === "ACEPTADO") return <span className="badge badge-success">Aceptado</span>;
+    if (comprobante.estado === "RECHAZADO") return <span className="badge badge-danger">Rechazado</span>;
+    return <span className="badge badge-warning">Pendiente</span>;
+  };
+
   return (
     <div className="page-container">
       <section className="page-header-pro">
@@ -379,6 +408,7 @@ function Ventas() {
                   <th>Productos</th>
                   <th>Fecha</th>
                   <th>Estado</th>
+                  <th>Comprobante electrónico</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -392,6 +422,9 @@ function Ventas() {
                     <td>{v.detalles?.length || 0}</td>
                     <td>{new Date(v.fecha_venta).toLocaleString()}</td>
                     <td><span className={badgeColor(v.estado)}>{v.estado}</span></td>
+                    <td title={comprobantesPorVenta[v.id_venta]?.mensaje_sunat || ""}>
+                      {badgeComprobante(comprobantesPorVenta[v.id_venta])}
+                    </td>
                     <td>
                       <div className="table-actions">
                         {v.estado === "PENDIENTE" && ["ADMIN", "ENTRENADOR", "RECEPCIONISTA"].includes(rol) && (

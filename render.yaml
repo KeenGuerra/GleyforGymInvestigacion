@@ -32,6 +32,22 @@ services:
         sync: false # Set manually in Render dashboard (integracion hibrida de IA, ver app/ia/claude_client.py)
       - key: CLAUDE_MODEL_IA
         value: claude-haiku-5-5 # Mismo default que app/config.py; cambiar aqui para usar otro modelo sin tocar codigo
+      - key: SUNAT_RUC
+        sync: false # Facturacion electronica (Boleta), ver Pendientes.md P-24 -- vacio = deshabilitado
+      - key: SUNAT_USUARIO_SOL
+        sync: false
+      - key: SUNAT_CLAVE_SOL
+        sync: false
+      - key: SUNAT_AMBIENTE
+        value: beta # Cambiar a "produccion" solo tras confirmar el RUC como emisor electronico (ver el plan de implementacion)
+      - key: SUNAT_WSDL_PRODUCCION
+        sync: false
+      - key: SUNAT_CERTIFICADO_PEM
+        sync: false
+      - key: SUNAT_LLAVE_PRIVADA_PEM
+        sync: false
+      - key: SUNAT_SERIE_BOLETA
+        value: B001
 
   # Frontend: React Static Site
   - type: web

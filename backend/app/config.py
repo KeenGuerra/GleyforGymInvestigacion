@@ -54,3 +54,24 @@ CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 # razón social sin tener que tocar código.
 RUC_EMPRESA = os.getenv("RUC_EMPRESA", "20610357629")
 RAZON_SOCIAL = os.getenv("RAZON_SOCIAL", "Ingeniería e Inversiones Mosquera A L E.I.R.L.")
+
+# Facturación electrónica (Boleta de venta) ante SUNAT -- ver
+# docs/07_Gestion_Proyecto/Pendientes.md P-24. Sin SUNAT_RUC configurado, el
+# sistema no intenta declarar nada (igual que Brevo/Cloudinary/Claude): la
+# venta/pago se confirma igual, solo que sin comprobante electrónico. Para
+# probar contra el ambiente de pruebas de SUNAT (sin tocar el RUC real del
+# gimnasio), configurar SUNAT_RUC=20000000001, SUNAT_USUARIO_SOL=MODDATOS,
+# SUNAT_CLAVE_SOL=MODDATOS, SUNAT_AMBIENTE=beta y un certificado autofirmado
+# (ver backend/app/facturacion_electronica/README.md).
+SUNAT_RUC = os.getenv("SUNAT_RUC", "")
+SUNAT_USUARIO_SOL = os.getenv("SUNAT_USUARIO_SOL", "")
+SUNAT_CLAVE_SOL = os.getenv("SUNAT_CLAVE_SOL", "")
+SUNAT_AMBIENTE = os.getenv("SUNAT_AMBIENTE", "beta")  # "beta" o "produccion"
+SUNAT_WSDL_BETA = "https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService?wsdl"
+SUNAT_WSDL_PRODUCCION = os.getenv("SUNAT_WSDL_PRODUCCION", "")
+# Certificado y llave privada en PEM (contenido completo, no una ruta --
+# mismo criterio que CLOUDINARY_URL: un solo valor pegado en la
+# configuración del entorno, sin archivos sueltos que sincronizar).
+SUNAT_CERTIFICADO_PEM = os.getenv("SUNAT_CERTIFICADO_PEM", "")
+SUNAT_LLAVE_PRIVADA_PEM = os.getenv("SUNAT_LLAVE_PRIVADA_PEM", "")
+SUNAT_SERIE_BOLETA = os.getenv("SUNAT_SERIE_BOLETA", "B001")

@@ -45,6 +45,7 @@ describe("Pagos Page Component", () => {
     api.get.mockImplementation((url) => {
       if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
       if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
+      if (url.includes("/comprobante-electronico")) return Promise.reject({ response: { status: 404 } });
       return Promise.resolve({ data: mockPagos });
     });
   });
@@ -55,6 +56,29 @@ describe("Pagos Page Component", () => {
     expect(screen.getByText("Lista de pagos")).toBeDefined();
     await waitFor(() => {
       expect(screen.getAllByText("Juan Perez").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows a dash when a payment has no electronic receipt declared yet", async () => {
+    render(<Pagos />);
+    await waitFor(() => expect(screen.getAllByText("Juan Perez").length).toBeGreaterThan(0));
+    expect(screen.getByText("—")).toBeDefined();
+  });
+
+  it("shows the electronic receipt status for a paid payment", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("/clientes/")) return Promise.resolve({ data: mockClientes });
+      if (url.includes("/cliente-membresias/")) return Promise.resolve({ data: mockAsignaciones });
+      if (url.includes("/comprobante-electronico")) {
+        return Promise.resolve({ data: { id_comprobante: 1, estado: "RECHAZADO", mensaje_sunat: "Error" } });
+      }
+      return Promise.resolve({ data: mockPagos });
+    });
+
+    render(<Pagos />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Rechazado")).toBeDefined();
     });
   });
 

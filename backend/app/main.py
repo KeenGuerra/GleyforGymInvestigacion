@@ -32,6 +32,7 @@ from app.routes import (
     auditoria,
     avisos,
     configuracion,
+    facturacion_electronica,
 )
 
 from app.routes.ia import ia_rutina, ia_nutricion
@@ -182,6 +183,7 @@ app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])
 app.include_router(auditoria.router, prefix="/auditoria", tags=["Auditoría"])
 app.include_router(avisos.router, prefix="/avisos", tags=["Avisos"])
 app.include_router(configuracion.router, prefix="/configuracion", tags=["Configuración"])
+app.include_router(facturacion_electronica.router, prefix="/facturacion-electronica", tags=["Facturación electrónica"])
 
 
 @app.get("/")

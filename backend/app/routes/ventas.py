@@ -14,6 +14,7 @@ from app import models, schemas, zona_horaria
 from app.security import obtener_usuario_actual, requerir_roles
 from app.auditoria import registrar as registrar_auditoria
 from app.recibos import generar_boleta_venta
+from app.facturacion_electronica.servicio import declarar_venta
 from app.constants import (
     MSG_VENTA_NO_ENCONTRADA, MSG_VENTA_YA_CONFIRMADA,
     MSG_VENTA_NO_PENDIENTE, MSG_PRODUCTO_NO_ENCONTRADO,
@@ -139,6 +140,8 @@ def crear_venta(
     nueva_venta.estado = "ENTREGADA"
     db.commit()
     db.refresh(nueva_venta)
+
+    declarar_venta(nueva_venta, db)
 
     return _venta_con_detalles(db, nueva_venta)
 
@@ -333,6 +336,29 @@ def descargar_boleta_venta(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=boleta-venta-{venta.id_venta}.pdf"},
     )
+
+
+@router.get(
+    "/{id_venta}/comprobante-electronico",
+    response_model=schemas.ComprobanteElectronicoResponse,
+    dependencies=[Depends(requerir_roles("ADMIN", "ENTRENADOR", "RECEPCIONISTA"))],
+    responses={
+        401: {"description": "Token inválido o expirado"},
+        404: {"description": "Venta no encontrada, o sin comprobante electrónico declarado"},
+    },
+)
+def obtener_comprobante_electronico_venta(
+    id_venta: int,
+    db: Annotated[Session, Depends(get_db)],
+):
+    comprobante = db.query(models.ComprobanteElectronico).filter(
+        models.ComprobanteElectronico.id_venta == id_venta
+    ).order_by(models.ComprobanteElectronico.id_comprobante.desc()).first()
+
+    if not comprobante:
+        raise HTTPException(status_code=404, detail="Esta venta no tiene un comprobante electrónico declarado")
+
+    return comprobante
 
 
 @router.post(
@@ -633,6 +659,8 @@ def aplicar_confirmacion_venta(db: Session, venta: models.Venta, id_usuario: int
 
     venta.estado = "CONFIRMADA"
     db.commit()
+
+    declarar_venta(venta, db)
 
 
 def _venta_con_detalles(db: Session, venta: models.Venta) -> schemas.VentaResponse:

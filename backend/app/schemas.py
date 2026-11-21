@@ -967,6 +967,26 @@ class VentaResponse(BaseModel):
 
 
 # =========================
+# FACTURACION ELECTRONICA
+# =========================
+
+class ComprobanteElectronicoResponse(BaseModel):
+    id_comprobante: int
+    tipo_operacion: str
+    id_venta: Optional[int] = None
+    id_pago: Optional[int] = None
+    serie: str
+    correlativo: int
+    estado: str
+    codigo_respuesta_sunat: Optional[str] = None
+    mensaje_sunat: Optional[str] = None
+    fecha_emision: datetime
+    fecha_envio: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =========================
 # REPORTE VENTAS
 # =========================
 

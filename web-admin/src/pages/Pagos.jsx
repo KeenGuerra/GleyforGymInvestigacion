@@ -20,6 +20,7 @@ function Pagos() {
   const [pagina, setPagina] = useState(0);
   const [haySiguiente, setHaySiguiente] = useState(false);
   const [confirmandoId, setConfirmandoId] = useState(null);
+  const [comprobantesPorPago, setComprobantesPorPago] = useState({});
 
   const hoy = obtenerFechaLocalISO();
 
@@ -34,6 +35,21 @@ function Pagos() {
   };
 
   const [form, setForm] = useState(formInicial);
+
+  // Solo los pagos PAGADO pueden tener un comprobante declarado (ver
+  // app/facturacion_electronica/servicio.py). Un 404 es normal (SUNAT no
+  // configurado todavía, o pago aún no declarado) y no se trata como error.
+  const cargarComprobantes = async (listaPagos) => {
+    const relevantes = listaPagos.filter((p) => p.estado === "PAGADO");
+    const resultados = await Promise.all(
+      relevantes.map((p) =>
+        api.get(`/pagos/${p.id_pago}/comprobante-electronico`)
+          .then((res) => [p.id_pago, res.data])
+          .catch(() => [p.id_pago, null])
+      )
+    );
+    setComprobantesPorPago(Object.fromEntries(resultados));
+  };
 
   const cargarDatos = useCallback(async (paginaActual = pagina) => {
     try {
@@ -51,6 +67,7 @@ function Pagos() {
       setHaySiguiente(resPagos.data.length === PAGOS_POR_PAGINA);
       setClientes(resClientes.data.filter((c) => c.estado === "ACTIVO"));
       setAsignaciones(resAsignaciones.data);
+      cargarComprobantes(resPagos.data);
     } catch (error) {
       console.error(error);
       setError("Error al cargar los datos de pagos");
@@ -77,6 +94,17 @@ function Pagos() {
     if (estado === "PENDIENTE") return "badge badge-warning";
     if (estado === "ANULADO") return "badge badge-danger";
     return "badge";
+  };
+
+  // Comprobante electrónico (Boleta SUNAT, ver app/facturacion_electronica):
+  // "—" significa que todavía no hay ninguno declarado para este pago
+  // (normal mientras SUNAT no esté configurado, o para pagos PENDIENTE/
+  // ANULADO, que nunca llegan a declararse).
+  const badgeComprobante = (comprobante) => {
+    if (!comprobante) return <span className="badge">—</span>;
+    if (comprobante.estado === "ACEPTADO") return <span className="badge badge-success">Aceptado</span>;
+    if (comprobante.estado === "RECHAZADO") return <span className="badge badge-danger">Rechazado</span>;
+    return <span className="badge badge-warning">Pendiente</span>;
   };
 
   const asignacionesCliente = asignaciones.filter(
@@ -382,6 +410,7 @@ function Pagos() {
               <th>Método</th>
               <th>Fecha</th>
               <th>Estado</th>
+              <th>Comprobante electrónico</th>
               <th></th>
             </tr>
           </thead>
@@ -401,6 +430,9 @@ function Pagos() {
                       En línea
                     </span>
                   )}
+                </td>
+                <td title={comprobantesPorPago[p.id_pago]?.mensaje_sunat || ""}>
+                  {badgeComprobante(comprobantesPorPago[p.id_pago])}
                 </td>
                 <td className="table-actions">
                   <button className="btn-secondary" onClick={() => editarPago(p)}>Editar</button>

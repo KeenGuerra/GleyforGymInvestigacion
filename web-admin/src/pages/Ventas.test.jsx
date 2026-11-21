@@ -44,6 +44,9 @@ function mockApiGet(ventas = [mockVentaPendiente]) {
     if (url === "/productos/por-codigo/0000000000000") {
       return Promise.reject({ response: { status: 404 } });
     }
+    if (String(url).includes("/comprobante-electronico")) {
+      return Promise.reject({ response: { status: 404 } });
+    }
     return Promise.resolve({ data: [] });
   });
 }
@@ -407,6 +410,35 @@ describe("Ventas Page Component", () => {
       expect(screen.getByText("Ana López")).toBeDefined();
       expect(screen.getByText("Carlos Ruiz")).toBeDefined();
     });
+  });
+
+  it("shows the electronic receipt status for a delivered sale", async () => {
+    mockApiGet([{ ...mockVentaPendiente, estado: "ENTREGADA" }]);
+    api.get.mockImplementation((url) => {
+      if (url === "/ventas/") return Promise.resolve({ data: [{ ...mockVentaPendiente, estado: "ENTREGADA" }] });
+      if (url === "/productos/disponibles") return Promise.resolve({ data: mockProductosDisponibles });
+      if (url === "/clientes/") return Promise.resolve({ data: mockClientes });
+      if (url === "/ventas/resumen") return Promise.resolve({ data: mockResumen });
+      if (url === "/ventas/1/comprobante-electronico") {
+        return Promise.resolve({ data: { id_comprobante: 1, estado: "ACEPTADO", mensaje_sunat: "Aceptada" } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<Ventas />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Aceptado")).toBeDefined();
+    });
+  });
+
+  it("shows a dash for a sale with no electronic receipt declared yet", async () => {
+    mockApiGet([{ ...mockVentaPendiente, estado: "ENTREGADA" }]);
+
+    render(<Ventas />);
+
+    await waitFor(() => expect(screen.getByText("Ana López")).toBeDefined());
+    expect(screen.getByText("—")).toBeDefined();
   });
 
   it("shows an error message when registering a sale fails", async () => {
