@@ -68,7 +68,7 @@ COMIDAS
 
 # 4. Tablas del Sistema
 
-> **Actualizado 2026-09** tras verificar contra `backend/app/models.py`. La versión anterior de este documento listaba solo 13 tablas; el sistema real ya tiene 26.
+> **Actualizado 2026-11** tras verificar contra `backend/app/models.py`. La versión anterior de este documento listaba solo 27 tablas; el sistema real ya tiene 31 (le faltaban `conteos_inventario`, `detalle_conteos_inventario`, `envios_whatsapp` y `registro_tiempos_sistema`, ya documentadas más abajo y en el diagrama ER de `Intervencion_Metodologica.md`, pero no en esta lista plana).
 
 Actualmente el sistema posee:
 
@@ -97,15 +97,19 @@ Actualmente el sistema posee:
 22. movimientos_stock
 23. ventas
 24. detalle_ventas
-25. registros_auditoria
-26. avisos
-27. configuracion_sitio
+25. conteos_inventario
+26. detalle_conteos_inventario
+27. registros_auditoria
+28. avisos
+29. configuracion_sitio
+30. envios_whatsapp
+31. registro_tiempos_sistema
 ```
 
 Total:
 
 ```text
-27 tablas principales
+31 tablas principales
 ```
 
 ---
@@ -243,12 +247,17 @@ Registrar pagos realizados.
 | Campo | Tipo |
 |---------|---------|
 | id_pago | SERIAL PK |
-| id_cliente_membresia | INTEGER FK |
+| id_cliente | INTEGER FK |
+| id_cliente_membresia | INTEGER FK, nullable |
 | monto | DOUBLE PRECISION |
-| metodo_pago | VARCHAR |
-| fecha_pago | TIMESTAMP |
-| estado | VARCHAR |
-| observacion | TEXT |
+| metodo_pago | VARCHAR(50) — EFECTIVO, YAPE, PLIN, TRANSFERENCIA |
+| fecha_pago | DATE |
+| estado | VARCHAR(30) — PAGADO, PENDIENTE, ANULADO |
+| observacion | TEXT, nullable |
+| id_transaccion_externa | VARCHAR(100), nullable — vestigio de la pasarela de pago eliminada (ver `Pendientes.md`, P-02); ninguna ruta lo asigna hoy |
+| origen | VARCHAR(20), nullable — STAFF (`POST /pagos/`) o AUTOSERVICIO (`POST /cliente-membresias/comprar`) |
+
+`id_cliente` se guarda junto a `id_cliente_membresia` aunque sea derivable por `cliente_membresias.id_cliente` — decisión deliberada de rendimiento, ver `Intervencion_Metodologica.md` sección 4.2 ("Modelo físico (3FN) y excepciones intencionales").
 
 ---
 
@@ -573,8 +582,8 @@ Ficha propia del entrenador (mismo patrón que usuarios↔clientes).
 | fecha_venta | TIMESTAMP |
 | subtotal / descuento / total | DOUBLE PRECISION |
 | metodo_pago | VARCHAR(50) |
-| estado | VARCHAR(20) — PENDIENTE, CONFIRMADA, ANULADA, FALLIDA |
-| id_transaccion_externa | VARCHAR(100) |
+| estado | VARCHAR(20) — PENDIENTE, CONFIRMADA, ENTREGADA, ANULADA |
+| id_transaccion_externa | VARCHAR(100), nullable — vestigio de la pasarela de pago eliminada (ver `Pendientes.md`, P-02); ninguna ruta lo asigna hoy |
 | created_at / updated_at | TIMESTAMP |
 
 ## Detalle_Ventas
@@ -587,6 +596,28 @@ Ficha propia del entrenador (mismo patrón que usuarios↔clientes).
 | id_lote | INTEGER FK (nullable) |
 | cantidad | DOUBLE PRECISION |
 | precio_unitario / descuento / subtotal | DOUBLE PRECISION |
+
+## Conteos_Inventario
+
+Conteo físico de inventario (soporta la ficha F-16, indicador I16 de exactitud del inventario): cada conteo guarda, por producto, el stock que tenía el sistema en ese momento y el stock que el staff contó físicamente.
+
+| Campo | Tipo |
+|---------|---------|
+| id_conteo | SERIAL PK |
+| id_usuario | INTEGER FK (nullable) |
+| fecha | TIMESTAMP |
+| observaciones | TEXT |
+
+## Detalle_Conteos_Inventario
+
+| Campo | Tipo |
+|---------|---------|
+| id_detalle_conteo | SERIAL PK |
+| id_conteo | INTEGER FK |
+| id_producto | INTEGER FK |
+| stock_sistema | DOUBLE PRECISION |
+| stock_fisico | DOUBLE PRECISION |
+| diferencia | DOUBLE PRECISION — `stock_sistema - stock_fisico` |
 
 ---
 
@@ -654,6 +685,44 @@ Fila única (`id=1`) con los datos de contacto, redes sociales, mapa y logo del 
 | mapa_embed_url | TEXT, nullable |
 | logo_url | TEXT, nullable — Cloudinary |
 | cloudinary_public_id_logo | VARCHAR(255), nullable |
+
+---
+
+# 17.6. Tabla Envios_WhatsApp
+
+## Propósito
+
+Registro de qué aviso por WhatsApp (tipo libre: VENCIMIENTO, SALDO_PENDIENTE, FERIADO, CUMPLEANOS, BIENVENIDA, INACTIVIDAD) se le mandó a qué cliente y cuándo. El envío real sigue siendo manual (un enlace `wa.me` por persona armado en `Reportes.jsx`); esta tabla solo evita que el staff le mande el mismo aviso dos veces el mismo día sin darse cuenta al recorrer una lista larga (ver RF-185 y `Pendientes.md`, P-05).
+
+## Campos
+
+| Campo | Tipo |
+|---------|---------|
+| id_envio | SERIAL PK |
+| id_cliente | INTEGER FK |
+| tipo | VARCHAR(30) |
+| fecha_envio | TIMESTAMP |
+
+---
+
+# 17.7. Tabla Registro_Tiempos_Sistema
+
+## Propósito
+
+Instrumentación del indicador I4 (comportamiento en el tiempo, ficha F-04) del Plan de Tesis: guarda la duración de cada request de negocio, medida por un middleware en `app/main.py` (excluye `/docs` y `/reportes`). No mide tiempo de proceso humano — esos indicadores (I10/I11/I13/I14/I17/I18) se cronometran a mano en el postest para ser comparables con el pretest manual.
+
+Es la única tabla del sistema sin valor histórico de negocio una vez medido el indicador del postest; por eso tiene un endpoint de purga manual (`DELETE /reportes/sistema/tiempos-respuesta?antes_de=...`, solo ADMIN — ver `Pendientes.md`, P-25).
+
+## Campos
+
+| Campo | Tipo |
+|---------|---------|
+| id_registro | SERIAL PK |
+| metodo | VARCHAR(10) |
+| ruta | VARCHAR(200) |
+| modulo | VARCHAR(50) |
+| duracion_ms | DOUBLE PRECISION |
+| fecha | TIMESTAMP |
 
 ---
 
@@ -762,23 +831,24 @@ El stock nunca se edita directamente (RN-045): solo cambia por movimientos gener
 
 ✅ PostgreSQL
 ✅ SQLAlchemy
-✅ 26 tablas (verificado 2026-09 contra `backend/app/models.py`)
+✅ 31 tablas (verificado 2026-11 contra `backend/app/models.py`)
 ✅ Relaciones definidas
 ✅ Precio congelado
 ✅ Estados de membresía
 ✅ Históricos
 ✅ IA Rutinas
 ✅ IA Nutrición
-✅ Auditoría (tabla `registros_auditoria`, ya implementada — corrige la versión anterior de este documento que la listaba como "futuro")
-✅ Módulo Comercio completo (categorías, productos, proveedores, compras, inventario con lotes/movimientos, ventas)
-✅ Avisos editables desde el panel
+✅ Auditoría (tabla `registros_auditoria`, ya implementada)
+✅ Módulo Comercio completo (categorías, productos, proveedores, compras, inventario con lotes/movimientos/conteos físicos, ventas)
+✅ Avisos editables desde el panel, con imagen opcional
+✅ Configuración del sitio editable desde el panel (contacto, redes sociales, mapa, logo)
 ✅ Ficha propia de Entrenadores (tabla `entrenadores`)
+✅ Página propia en `web-admin` para Entrenadores y para Auditoría (`Entrenadores.jsx`, `Auditoria.jsx`, solo ADMIN)
 
 ## Futuro
 
 - Multi gimnasio (SaaS)
 - Particionado
 - Replicación
-- Página propia en `web-admin` para Entrenadores y para Auditoría (hoy solo existen como API, ver `Roles_Permisos.md`)
 
 ---
