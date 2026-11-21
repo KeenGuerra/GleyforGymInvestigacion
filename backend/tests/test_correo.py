@@ -1,7 +1,7 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from app.correo import enviar_correo, enviar_verificacion_correo, BREVO_API_URL
+from app.correo import construir_html_correo, enviar_correo, enviar_verificacion_correo, BREVO_API_URL
 
 
 def test_enviar_correo_sin_credenciales_solo_loguea(monkeypatch):
@@ -60,6 +60,7 @@ def test_enviar_verificacion_correo_genera_token_y_arma_el_enlace(monkeypatch):
     usuario.token_verificacion = None
     usuario.token_verificacion_expira = None
     db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = None
 
     with patch("app.correo.enviar_correo") as mock_enviar:
         enviar_verificacion_correo(usuario, db)
@@ -73,3 +74,44 @@ def test_enviar_verificacion_correo_genera_token_y_arma_el_enlace(monkeypatch):
     assert destinatario == "cliente@example.com"
     assert "Confirma" in asunto
     assert f"/verificar-correo?token={usuario.token_verificacion}" in cuerpo
+
+
+def test_construir_html_correo_sin_configuracion_usa_nombre_como_logo():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = None
+
+    html_correo = construir_html_correo(
+        db, encabezado="Hola", parrafos=["Un párrafo."], texto_boton="Ir", enlace_boton="https://x.test/y"
+    )
+
+    assert "GLEYFORGYM" in html_correo
+    assert "<img" not in html_correo
+    assert "https://x.test/y" in html_correo
+
+
+def test_construir_html_correo_usa_logo_y_contacto_de_configuracion_sitio():
+    config_sitio = MagicMock(logo_url="https://cdn.test/logo.png", telefono="999999999", email="gym@test.com")
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = config_sitio
+
+    html_correo = construir_html_correo(
+        db, encabezado="Hola", parrafos=["Un párrafo."], texto_boton="Ir", enlace_boton="https://x.test/y"
+    )
+
+    assert '<img src="https://cdn.test/logo.png"' in html_correo
+    assert "GLEYFORGYM" not in html_correo
+    assert "999999999" in html_correo
+    assert "gym@test.com" in html_correo
+
+
+def test_construir_html_correo_escapa_html_de_los_datos_de_configuracion():
+    config_sitio = MagicMock(logo_url=None, telefono='<script>alert(1)</script>', email=None)
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = config_sitio
+
+    html_correo = construir_html_correo(
+        db, encabezado="Hola", parrafos=["Un párrafo."], texto_boton="Ir", enlace_boton="https://x.test/y"
+    )
+
+    assert "<script>" not in html_correo
+    assert "&lt;script&gt;" in html_correo

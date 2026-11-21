@@ -13,7 +13,7 @@ from app.rate_limit import excedio_intentos, registrar_intento_fallido, limpiar_
 
 MAX_REGISTROS_POR_IP = 15
 from app.auditoria import registrar as registrar_auditoria
-from app.correo import enviar_correo, enviar_verificacion_correo
+from app.correo import construir_html_correo, enviar_correo, enviar_verificacion_correo
 from app.constants import (
     ESTADO_ACTIVO,
     ESTADO_INACTIVO,
@@ -308,10 +308,17 @@ def solicitar_reset_password(
         enviar_correo(
             usuario.correo,
             "Recupera tu contraseña — GleyforGym",
-            f"<p>Recibimos una solicitud para restablecer tu contraseña.</p>"
-            f'<p><a href="{enlace}">Haz clic aquí para crear una nueva contraseña</a></p>'
-            f"<p>Este enlace expira en {RESET_TOKEN_EXPIRA_MINUTOS} minutos. "
-            f"Si no solicitaste esto, ignora este correo.</p>",
+            construir_html_correo(
+                db,
+                encabezado="Recupera tu contraseña",
+                parrafos=[
+                    "Recibimos una solicitud para restablecer tu contraseña.",
+                    f"Este enlace expira en {RESET_TOKEN_EXPIRA_MINUTOS} minutos. "
+                    "Si no solicitaste esto, ignora este correo.",
+                ],
+                texto_boton="Crear nueva contraseña",
+                enlace_boton=enlace,
+            ),
         )
 
     return {"mensaje": "Si el correo está registrado, se enviaron instrucciones para restablecer la contraseña."}
