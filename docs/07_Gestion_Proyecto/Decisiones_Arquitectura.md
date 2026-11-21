@@ -421,6 +421,8 @@ Se detectó que el backend calculaba "hoy"/"ahora" con `date.today()`/`datetime.
 
 Se usa un offset fijo (`timezone(timedelta(hours=-5))`) en vez de `zoneinfo.ZoneInfo("America/Lima")`, a propósito: Perú no tiene horario de verano, así que el offset nunca cambia, y esto evita depender de que el sistema operativo tenga instalada la base de datos de husos horarios IANA (en Windows no viene por defecto y rompe `ZoneInfo` con `ZoneInfoNotFoundError` si falta el paquete `tzdata`).
 
+El primer reemplazo cubrió `date.today()`/`datetime.now()` dentro de las funciones de `app/routes/`, pero no los *defaults* de columna de `app/models.py` (`Column(DateTime, default=datetime.now)`, 21 columnas, entre ellas `Venta.fecha_venta`): esa llamada se ejecuta al insertar, con el reloj del servidor, sin pasar por ninguna función de ruta. El hueco no se notó en pruebas locales (la hora de la máquina coincide con la de Perú lo bastante seguido) y recién se manifestó en GitHub Actions (UTC) como una corrida de CI fallida entre las ~19:00 y medianoche hora de Perú; se corrigió reemplazando esos `default`/`onupdate` por `zona_horaria.ahora`, y se agregaron las pruebas correspondientes en `test_backend.py`/`test_comercio.py` (que antes construían sus propias fechas de referencia con `date.today()`/`datetime.now()`, con el mismo problema).
+
 ---
 
 ### Justificación

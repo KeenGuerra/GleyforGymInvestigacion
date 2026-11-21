@@ -27,6 +27,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
 from app.security import crear_token, encriptar_password
+from app import zona_horaria
 import app.models as models
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_comercio.db"
@@ -849,7 +850,7 @@ def test_reporte_productos_mas_vendidos_y_ventas_por_metodo_pago():
         headers=headers,
     )
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res_productos = client.get(
         f"/reportes/productos-mas-vendidos?desde={hoy}&hasta={hoy}", headers=headers
     )
@@ -884,7 +885,7 @@ def test_reporte_compras():
     ).json()["id_compra"]
     client.post(f"/compras/{id_compra}/confirmar", headers=headers)
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res = client.get(f"/reportes/compras?desde={hoy}&hasta={hoy}", headers=headers)
     assert res.status_code == 200
     data = res.json()
@@ -935,7 +936,7 @@ def test_reporte_resumen_general():
         headers=headers,
     )
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res = client.get(f"/reportes/resumen-general?desde={hoy}&hasta={hoy}", headers=headers)
     assert res.status_code == 200
     data = res.json()
@@ -986,7 +987,7 @@ def test_reporte_general_completo_excel_tiene_todas_las_hojas():
         headers=headers,
     )
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res = client.get(f"/reportes/general-completo/excel?desde={hoy}&hasta={hoy}", headers=headers)
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1030,7 +1031,7 @@ def test_reporte_postest_excel_tiene_una_hoja_por_ficha():
     populate_comercio()
     headers = get_auth_headers()
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res = client.get(f"/reportes/postest/excel?desde={hoy}&hasta={hoy}", headers=headers)
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1118,7 +1119,7 @@ def test_alertas_vencimiento_separa_vencidos_de_por_vencer():
     headers = get_auth_headers()
     id_producto = crear_producto_con_categoria(headers)
 
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
     res_vencido = client.post(
         "/inventario/lotes",
         json={
@@ -1160,7 +1161,7 @@ def test_resumen_ventas_productos_por_vencer_excluye_los_ya_vencidos():
     headers = get_auth_headers()
     id_producto = crear_producto_con_categoria(headers)
 
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
     client.post(
         "/inventario/lotes",
         json={
@@ -1192,7 +1193,7 @@ def test_reporte_tiempos_respuesta_registra_llamadas_reales():
     # Cualquier llamada normal (no /reportes, no /docs) debe quedar registrada.
     client.get("/productos/disponibles", headers=headers)
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res = client.get(f"/reportes/sistema/tiempos-respuesta?desde={hoy}&hasta={hoy}", headers=headers)
     assert res.status_code == 200
     filas = res.json()
@@ -1216,7 +1217,7 @@ def test_reporte_tiempos_respuesta_detalle_clasifica_la_operacion():
 
     client.get("/productos/disponibles", headers=headers)
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res = client.get(
         f"/reportes/sistema/tiempos-respuesta/detalle?desde={hoy}&hasta={hoy}", headers=headers
     )
@@ -1243,17 +1244,17 @@ def test_limpiar_tiempos_respuesta_elimina_solo_lo_anterior_al_corte():
     db.add_all([
         models.RegistroTiempoSistema(
             metodo="GET", ruta="/productos/", modulo="productos", duracion_ms=5.0,
-            fecha=datetime.now() - timedelta(days=40),
+            fecha=zona_horaria.ahora() - timedelta(days=40),
         ),
         models.RegistroTiempoSistema(
             metodo="GET", ruta="/productos/", modulo="productos", duracion_ms=5.0,
-            fecha=datetime.now() - timedelta(days=1),
+            fecha=zona_horaria.ahora() - timedelta(days=1),
         ),
     ])
     db.commit()
     db.close()
 
-    corte = (date.today() - timedelta(days=10)).isoformat()
+    corte = (zona_horaria.hoy() - timedelta(days=10)).isoformat()
 
     res_entrenador = client.delete(
         f"/reportes/sistema/tiempos-respuesta?antes_de={corte}", headers=headers_entrenador
@@ -1270,4 +1271,4 @@ def test_limpiar_tiempos_respuesta_elimina_solo_lo_anterior_al_corte():
     restantes = db.query(models.RegistroTiempoSistema).all()
     db.close()
     assert len(restantes) == 1
-    assert restantes[0].fecha.date() == (datetime.now() - timedelta(days=1)).date()
+    assert restantes[0].fecha.date() == (zona_horaria.ahora() - timedelta(days=1)).date()

@@ -310,6 +310,8 @@ De paso, se implementaron tres pedidos más del mismo usuario en la misma iterac
 - **Configuración del sitio** (DA-015): los datos de contacto, redes sociales, mapa y logo que se mostraban fijos en el código de `Inicio.jsx`/`Navbar.jsx`/pantallas de autenticación pasan a una tabla editable desde el panel (`/configuracion`, solo ADMIN).
 - **Ventas como lista**: se reemplazó el layout de tarjetas (agregado en la iteración anterior) por una tabla, igual que "Rutinas generadas"; `Pagos.jsx` (ya era tabla) recibió los mismos badges de estado y clases de botón para verse consistente.
 
+**Hueco encontrado después de subir el fix**: el primer reemplazo no cubrió los *defaults* de columna de `app/models.py` (`default=datetime.now`, 21 columnas, entre ellas `Venta.fecha_venta`), que corren con el reloj del servidor al insertar un registro. Pasó inadvertido en local y se manifestó como una corrida de CI fallida (GitHub Actions, en UTC) entre las ~19:00 y medianoche hora de Perú; se corrigió reemplazando esos `default`/`onupdate` por `zona_horaria.ahora` (ver DA-014), y de paso se migraron a `zona_horaria.hoy()`/`ahora()` las propias pruebas de `test_backend.py`/`test_comercio.py` que todavía construían sus fechas de referencia con `date.today()`/`datetime.now()`.
+
 Backend 193→200 pruebas, frontend 397→410 pruebas (ver `Intervencion_Metodologica.md`, Tabla 12).
 
 ---

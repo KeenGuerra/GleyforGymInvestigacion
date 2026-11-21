@@ -3,7 +3,7 @@ from .database import Base
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Boolean, Time, Text, Index, text
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from . import zona_horaria
 
 # Constantes de llaves foráneas para evitar duplicaciones en SonarQube
 FK_CLIENTES_ID_CLIENTE = "clientes.id_cliente"
@@ -17,7 +17,7 @@ class Usuario(Base):
     password_hash = Column(String, nullable=False)
     rol = Column(String, nullable=False)  # ADMIN, ENTRENADOR, CLIENTE
     estado = Column(String, default="ACTIVO")
-    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_creacion = Column(DateTime, default=zona_horaria.ahora)
     reset_token = Column(String(100), nullable=True)  # token de un solo uso para "olvidé mi contraseña"
     reset_token_expira = Column(DateTime, nullable=True)
     correo_verificado = Column(Boolean, default=False)
@@ -53,7 +53,7 @@ class Cliente(Base):
     restricciones_alimentarias = Column(String, nullable=True)  # códigos separados por coma, ver app.constants.RESTRICCIONES_ALIMENTARIAS
     peso_actualizado_en = Column(DateTime, nullable=True)  # se actualiza cada vez que cambia `peso`, para comparar contra Progreso
 
-    fecha_registro = Column(DateTime, default=datetime.now)
+    fecha_registro = Column(DateTime, default=zona_horaria.ahora)
     estado = Column(String, default="ACTIVO")
 
     usuario = relationship("Usuario", back_populates="cliente")
@@ -207,7 +207,7 @@ class Rutina(Base):
     descripcion = Column(String, nullable=True)
     dias_semana = Column(Integer, nullable=True)
     generada_por_ia = Column(Boolean, default=False)
-    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_creacion = Column(DateTime, default=zona_horaria.ahora)
     estado = Column(String, default="ACTIVA")  # ACTIVA, INACTIVA
 
     # Revisión del entrenador (ver app.constants.ESTADOS_REVISION). Sin default
@@ -267,7 +267,7 @@ class PlanNutricional(Base):
     grasas_reales = Column(Integer, nullable=True)
     restricciones = Column(String, nullable=True)
     generada_por_ia = Column(Boolean, default=False)
-    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_creacion = Column(DateTime, default=zona_horaria.ahora)
     estado = Column(String, default="ACTIVO")
 
     # Revisión del entrenador (mismo mecanismo que Rutina, ver ahí el comentario).
@@ -361,7 +361,7 @@ class Categoria(Base):
     nombre = Column(String(100), unique=True, nullable=False)
     descripcion = Column(Text, nullable=True)
     estado = Column(String(20), default="ACTIVO")
-    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_creacion = Column(DateTime, default=zona_horaria.ahora)
 
     productos = relationship("Producto", back_populates="categoria")
 
@@ -392,7 +392,7 @@ class Producto(Base):
     # GET /productos/disponibles cuando lo consulta alguien que no es staff.
     visible_tienda = Column(Boolean, default=True, nullable=False)
     estado = Column(String(20), default="ACTIVO")
-    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_creacion = Column(DateTime, default=zona_horaria.ahora)
 
     categoria = relationship("Categoria", back_populates="productos")
     inventario = relationship("Inventario", back_populates="producto", uselist=False)
@@ -413,7 +413,7 @@ class Proveedor(Base):
     direccion = Column(String(200), nullable=True)
     contacto = Column(String(100), nullable=True)
     estado = Column(String(20), default="ACTIVO")
-    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_creacion = Column(DateTime, default=zona_horaria.ahora)
 
     compras = relationship("Compra", back_populates="proveedor")
 
@@ -424,14 +424,14 @@ class Compra(Base):
     id_compra = Column(Integer, primary_key=True, index=True)
     id_proveedor = Column(Integer, ForeignKey("proveedores.id_proveedor"), nullable=False)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=False)
-    fecha_compra = Column(DateTime, default=datetime.now)
+    fecha_compra = Column(DateTime, default=zona_horaria.ahora)
     subtotal = Column(Float, nullable=False, default=0)
     igv = Column(Float, nullable=False, default=0)
     total = Column(Float, nullable=False, default=0)
     estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ANULADA
     observaciones = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=zona_horaria.ahora)
+    updated_at = Column(DateTime, default=zona_horaria.ahora, onupdate=zona_horaria.ahora)
 
     proveedor = relationship("Proveedor", back_populates="compras")
     usuario = relationship("Usuario")
@@ -460,7 +460,7 @@ class Inventario(Base):
     stock_actual = Column(Float, nullable=False, default=0)
     stock_minimo = Column(Float, nullable=False, default=0)
     ultimo_costo = Column(Float, nullable=True)
-    fecha_actualizacion = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    fecha_actualizacion = Column(DateTime, default=zona_horaria.ahora, onupdate=zona_horaria.ahora)
 
     producto = relationship("Producto", back_populates="inventario")
 
@@ -473,7 +473,7 @@ class Lote(Base):
     numero_lote = Column(String(50), nullable=False)
     cantidad = Column(Float, nullable=False, default=0)
     fecha_vencimiento = Column(Date, nullable=True)
-    fecha_ingreso = Column(DateTime, default=datetime.now)
+    fecha_ingreso = Column(DateTime, default=zona_horaria.ahora)
     estado = Column(String(20), default="ACTIVO")  # ACTIVO, VENCIDO, AGOTADO
 
     producto = relationship("Producto", back_populates="lotes")
@@ -493,7 +493,7 @@ class MovimientoStock(Base):
     costo_unitario = Column(Float, nullable=True)
     descripcion = Column(Text, nullable=True)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
-    fecha_movimiento = Column(DateTime, default=datetime.now)
+    fecha_movimiento = Column(DateTime, default=zona_horaria.ahora)
 
     producto = relationship("Producto", back_populates="movimientos")
     lote = relationship("Lote", back_populates="movimientos")
@@ -506,7 +506,7 @@ class Venta(Base):
     id_venta = Column(Integer, primary_key=True, index=True)
     id_cliente = Column(Integer, ForeignKey(FK_CLIENTES_ID_CLIENTE), nullable=True)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=False)
-    fecha_venta = Column(DateTime, default=datetime.now)
+    fecha_venta = Column(DateTime, default=zona_horaria.ahora)
     subtotal = Column(Float, nullable=False, default=0)
     descuento = Column(Float, nullable=False, default=0)
     total = Column(Float, nullable=False, default=0)
@@ -519,8 +519,8 @@ class Venta(Base):
     estado = Column(String(20), default="PENDIENTE")  # PENDIENTE, CONFIRMADA, ENTREGADA, ANULADA
     observaciones = Column(Text, nullable=True)
     id_transaccion_externa = Column(String(100), nullable=True)  # vestigio de la pasarela de pago eliminada; ninguna ruta lo asigna hoy
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=zona_horaria.ahora)
+    updated_at = Column(DateTime, default=zona_horaria.ahora, onupdate=zona_horaria.ahora)
 
     cliente = relationship("Cliente")
     usuario = relationship("Usuario")
@@ -555,7 +555,7 @@ class RegistroAuditoria(Base):
     entidad = Column(String(50), nullable=False)  # "Usuario", "Pago", "ClienteMembresia", "Venta", "Compra"...
     id_entidad = Column(Integer, nullable=True)
     detalle = Column(String, nullable=True)
-    fecha = Column(DateTime, default=datetime.now)
+    fecha = Column(DateTime, default=zona_horaria.ahora)
 
     usuario = relationship("Usuario")
 
@@ -573,7 +573,7 @@ class RegistroTiempoSistema(Base):
     ruta = Column(String(200), nullable=False)
     modulo = Column(String(50), nullable=False)
     duracion_ms = Column(Float, nullable=False)
-    fecha = Column(DateTime, default=datetime.now)
+    fecha = Column(DateTime, default=zona_horaria.ahora)
 
 
 class EnvioWhatsApp(Base):
@@ -588,7 +588,7 @@ class EnvioWhatsApp(Base):
     id_envio = Column(Integer, primary_key=True, index=True)
     id_cliente = Column(Integer, ForeignKey("clientes.id_cliente"), nullable=False)
     tipo = Column(String(30), nullable=False)
-    fecha_envio = Column(DateTime, default=datetime.now)
+    fecha_envio = Column(DateTime, default=zona_horaria.ahora)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
 
 
@@ -600,7 +600,7 @@ class ConteoInventario(Base):
 
     id_conteo = Column(Integer, primary_key=True, index=True)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
-    fecha = Column(DateTime, default=datetime.now)
+    fecha = Column(DateTime, default=zona_horaria.ahora)
     observaciones = Column(Text, nullable=True)
 
     usuario = relationship("Usuario")
@@ -634,7 +634,7 @@ class Aviso(Base):
     tipo = Column(String(30), default="COMUNICADO")  # HORARIO, COACHES, BAILE, COMUNICADO, EVENTO
     fecha_evento = Column(Date, nullable=True)  # solo aplica si tipo=EVENTO
     estado = Column(String, default="ACTIVO")
-    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_creacion = Column(DateTime, default=zona_horaria.ahora)
     imagen_url = Column(Text, nullable=True)
     cloudinary_public_id = Column(String(255), nullable=True)
 

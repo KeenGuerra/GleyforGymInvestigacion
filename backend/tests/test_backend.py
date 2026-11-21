@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
 from app.security import crear_token, encriptar_password
-from app import config, rate_limit
+from app import config, rate_limit, zona_horaria
 from app.routes import usuarios
 from app.ia import claude_client
 import app.models as models
@@ -1352,8 +1352,8 @@ def test_cliente_membresias_extra_coverage():
         id_cliente_membresia=100,
         id_cliente=1,
         id_membresia=1,
-        fecha_inicio=date.today() - timedelta(days=40),
-        fecha_fin=date.today() - timedelta(days=10),
+        fecha_inicio=zona_horaria.hoy() - timedelta(days=40),
+        fecha_fin=zona_horaria.hoy() - timedelta(days=10),
         precio_asignado=100.0,
         estado="ACTIVA"
     )
@@ -1378,7 +1378,7 @@ def test_cliente_membresias_extra_coverage():
     db.close()
     res = client.post(
         "/cliente-membresias/",
-        json={"id_cliente": 1, "id_membresia": 1, "fecha_inicio": str(date.today())},
+        json={"id_cliente": 1, "id_membresia": 1, "fecha_inicio": str(zona_horaria.hoy())},
         headers=headers
     )
     assert res.status_code == 400
@@ -1394,7 +1394,7 @@ def test_cliente_membresias_extra_coverage():
     # 3. Assign inactive membership
     res = client.post(
         "/cliente-membresias/",
-        json={"id_cliente": 1, "id_membresia": 2, "fecha_inicio": str(date.today())},
+        json={"id_cliente": 1, "id_membresia": 2, "fecha_inicio": str(zona_horaria.hoy())},
         headers=headers
     )
     assert res.status_code == 400
@@ -1407,7 +1407,7 @@ def test_cliente_membresias_extra_coverage():
     # Create active assignment
     res_cm = client.post(
         "/cliente-membresias/",
-        json={"id_cliente": 1, "id_membresia": 1, "fecha_inicio": str(date.today())},
+        json={"id_cliente": 1, "id_membresia": 1, "fecha_inicio": str(zona_horaria.hoy())},
         headers=headers
     )
     assert res_cm.status_code == 200
@@ -1416,20 +1416,20 @@ def test_cliente_membresias_extra_coverage():
     # Update changing id_membresia and fecha_inicio
     res_put = client.put(
         f"/cliente-membresias/{id_cm}",
-        json={"id_membresia": 1, "fecha_inicio": str(date.today() + timedelta(days=2))},
+        json={"id_membresia": 1, "fecha_inicio": str(zona_horaria.hoy() + timedelta(days=2))},
         headers=headers
     )
     assert res_put.status_code == 200
-    assert res_put.json()["fecha_inicio"] == str(date.today() + timedelta(days=2))
+    assert res_put.json()["fecha_inicio"] == str(zona_horaria.hoy() + timedelta(days=2))
 
     # Update changing only fecha_inicio
     res_put2 = client.put(
         f"/cliente-membresias/{id_cm}",
-        json={"fecha_inicio": str(date.today() + timedelta(days=5))},
+        json={"fecha_inicio": str(zona_horaria.hoy() + timedelta(days=5))},
         headers=headers
     )
     assert res_put2.status_code == 200
-    assert res_put2.json()["fecha_inicio"] == str(date.today() + timedelta(days=5))
+    assert res_put2.json()["fecha_inicio"] == str(zona_horaria.hoy() + timedelta(days=5))
 
 
 def test_kpis_dashboard():
@@ -1680,7 +1680,7 @@ def test_reporte_registros_recientes():
         headers=headers_admin,
     )
 
-    hoy = str(date.today())
+    hoy = str(zona_horaria.hoy())
     res = client.get(
         f"/reportes/sistema/registros-recientes?desde=2020-01-01&hasta={hoy}", headers=headers_admin
     )
@@ -1769,7 +1769,7 @@ def test_reporte_muestra_registros():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")
 
-    hoy = date.today().isoformat()
+    hoy = zona_horaria.hoy().isoformat()
     res_membresia = client.post(
         "/cliente-membresias/", json={"id_cliente": 1, "id_membresia": 1}, headers=headers_admin
     )
@@ -1816,7 +1816,7 @@ def test_reporte_membresias_por_vencer():
     cm = db.query(models.ClienteMembresia).filter(
         models.ClienteMembresia.id_cliente_membresia == id_cm
     ).first()
-    cm.fecha_fin = date.today() + timedelta(days=3)
+    cm.fecha_fin = zona_horaria.hoy() + timedelta(days=3)
     db.commit()
     db.close()
 
@@ -1939,7 +1939,7 @@ def test_registrar_y_consultar_envio_whatsapp_no_repite_el_mismo_dia():
 def test_reporte_cumpleanos_hoy():
     populate_db_for_coverage()
     headers = get_auth_headers()
-    hoy = date.today()
+    hoy = zona_horaria.hoy()
 
     db = TestingSessionLocal()
     cliente = db.query(models.Cliente).first()
@@ -1969,7 +1969,7 @@ def test_reporte_socios_nuevos():
 
     db = TestingSessionLocal()
     cliente = db.query(models.Cliente).first()
-    cliente.fecha_registro = datetime.now() - timedelta(days=2)
+    cliente.fecha_registro = zona_horaria.ahora() - timedelta(days=2)
     db.commit()
     db.close()
 
@@ -1998,7 +1998,7 @@ def test_reporte_clientes_inactivos():
     # Con una asistencia reciente, ya no aparece.
     client.post(
         "/asistencias/",
-        json={"id_cliente": 1, "fecha": str(date.today()), "hora_entrada": "08:00:00"},
+        json={"id_cliente": 1, "fecha": str(zona_horaria.hoy()), "hora_entrada": "08:00:00"},
         headers=headers,
     )
     assert client.get("/reportes/clientes-inactivos?dias=15", headers=headers).json() == []
@@ -2249,7 +2249,7 @@ def test_clientes_extra_coverage():
         headers=headers
     )
     assert res_age.status_code == 200
-    expected_age = date.today().year - 1990 - 1
+    expected_age = zona_horaria.hoy().year - 1990 - 1
     assert res_age.json()["edad"] == expected_age
 
     # 5. Update client state to INACTIVO (triggers user inactivation)
@@ -2288,8 +2288,8 @@ def test_clientes_membresia_actual_prioriza_la_activa_sobre_la_mas_reciente():
         id_cliente_membresia=101,
         id_cliente=1,
         id_membresia=1,
-        fecha_inicio=date.today() - timedelta(days=5),
-        fecha_fin=date.today() + timedelta(days=60),
+        fecha_inicio=zona_horaria.hoy() - timedelta(days=5),
+        fecha_fin=zona_horaria.hoy() + timedelta(days=60),
         precio_asignado=100.0,
         estado="CANCELADA",
     )
@@ -2297,8 +2297,8 @@ def test_clientes_membresia_actual_prioriza_la_activa_sobre_la_mas_reciente():
         id_cliente_membresia=102,
         id_cliente=1,
         id_membresia=1,
-        fecha_inicio=date.today() - timedelta(days=90),
-        fecha_fin=date.today() + timedelta(days=10),
+        fecha_inicio=zona_horaria.hoy() - timedelta(days=90),
+        fecha_fin=zona_horaria.hoy() + timedelta(days=10),
         precio_asignado=100.0,
         estado="ACTIVA",
     )
@@ -2331,8 +2331,8 @@ def test_clientes_membresia_actual_cae_a_la_mas_reciente_si_ninguna_esta_activa(
         id_cliente_membresia=103,
         id_cliente=1,
         id_membresia=1,
-        fecha_inicio=date.today() - timedelta(days=90),
-        fecha_fin=date.today() - timedelta(days=30),
+        fecha_inicio=zona_horaria.hoy() - timedelta(days=90),
+        fecha_fin=zona_horaria.hoy() - timedelta(days=30),
         precio_asignado=100.0,
         estado="TERMINADA",
     )
@@ -2402,8 +2402,8 @@ def test_avisos_evento_pasado_se_oculta_del_publico_pero_no_del_staff():
     populate_db_for_coverage()
     headers_admin = get_auth_headers(rol="ADMIN")
 
-    ayer = (date.today() - timedelta(days=1)).isoformat()
-    manana = (date.today() + timedelta(days=1)).isoformat()
+    ayer = (zona_horaria.hoy() - timedelta(days=1)).isoformat()
+    manana = (zona_horaria.hoy() + timedelta(days=1)).isoformat()
 
     id_pasado = client.post(
         "/avisos/",
