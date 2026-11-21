@@ -44,7 +44,8 @@ web-admin
 │   │   └── icono.png
 │   │
 │   ├── hooks
-│   │   └── useClienteActual.js   # resuelve id_cliente del CLIENTE logueado, usado en 6 páginas "Mi*"
+│   │   ├── useClienteActual.js        # resuelve id_cliente del CLIENTE logueado, usado en 6 páginas "Mi*"
+│   │   └── useConfiguracionSitio.js   # datos de contacto/redes/logo, con respaldo hardcodeado si el backend aún no responde
 │   │
 │   ├── constants
 │   │
@@ -86,6 +87,7 @@ web-admin
 │   │   ├── Compras.jsx
 │   │   ├── Inventario.jsx
 │   │   ├── Ventas.jsx
+│   │   ├── Configuracion.jsx     # datos de contacto, redes sociales y logo (ADMIN)
 │   │   ├── MiPerfil.jsx
 │   │   ├── MiRutina.jsx
 │   │   ├── MiNutricion.jsx
@@ -282,6 +284,14 @@ Accesibles únicamente mediante JWT válido.
 
 ---
 
+### Ruta Configuración del Sitio (solo ADMIN)
+
+```text
+/configuracion
+```
+
+---
+
 ## 5. Componentes Globales
 
 ### Layout.jsx
@@ -358,6 +368,7 @@ Acceso a:
 - Nutricion
 - GestionAvisos
 - Categorias, Productos, Proveedores, Compras, Inventario, Ventas
+- Configuracion
 
 ---
 
@@ -501,10 +512,11 @@ api.delete("/membresias/1");
 ✅ Integración IA
 ✅ Cloudinary
 ✅ Módulo Comercio (Categorías, Productos, Proveedores, Compras, Inventario, Ventas, Tienda pública)
-✅ Avisos (público + gestión ADMIN)
+✅ Avisos, con imagen opcional (público + gestión ADMIN)
+✅ Configuración del sitio editable (contacto, redes sociales, logo)
 ✅ Autogestión de contraseña (ResetPassword.jsx)
-✅ Hook compartido `useClienteActual`
-✅ 31 archivos `*.test.jsx` (Vitest + @testing-library/react)
+✅ Hooks compartidos `useClienteActual` y `useConfiguracionSitio`
+✅ 56 archivos de prueba (52 `*.test.jsx` + 4 `*.test.js`, Vitest + @testing-library/react)
 
 ### Futuro
 

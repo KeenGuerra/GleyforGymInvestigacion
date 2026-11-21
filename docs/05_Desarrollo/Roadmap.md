@@ -37,7 +37,8 @@ Automatizar los procesos administrativos y deportivos del gimnasio GLEYFORGYM me
 | IA Nutrición | ✅ Completo |
 | Cloudinary | ✅ Completo |
 | Landing Pública | ✅ Completo |
-| Avisos (horarios/coaches/eventos) | ✅ Completo (editable desde el panel, antes era estático) |
+| Avisos (horarios/coaches/eventos) | ✅ Completo (editable desde el panel, con imagen opcional) |
+| Configuración del sitio (contacto, redes sociales, logo) | ✅ Completo (editable desde el panel, antes fijo en el código) |
 | Módulo de Comercio (productos/categorías/proveedores/compras/inventario/ventas) | ✅ Completo funcionalmente — ⚠️ sin cobertura de tests, ver Pendientes.md |
 | Auditoría y trazabilidad | ✅ Completo |
 | Dashboard Admin | ✅ Completo (KPIs incluyendo asistencias del día/mes) |

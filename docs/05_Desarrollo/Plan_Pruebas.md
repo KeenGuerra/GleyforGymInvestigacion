@@ -161,7 +161,7 @@ PostgreSQL
 
 # 6. Módulos a Validar
 
-> Ampliado 2026-09: la tabla anterior no incluía Comercio, Avisos, Auditoría ni Entrenadores, que ya están en producción sin pruebas automatizadas (ver `Pendientes.md` P-04).
+> Actualizado 2026-11: Comercio, Avisos, Auditoría y Entrenadores, que en 2026-09 estaban en producción sin pruebas automatizadas, ya cuentan con pruebas dedicadas (ver `Intervencion_Metodologica.md`, Tabla 13).
 
 | Módulo | Prioridad | Cobertura automatizada actual |
 |----------|----------|----------|
@@ -178,10 +178,12 @@ PostgreSQL
 | Nutrición IA | Alta | Sí |
 | Cloudinary | Media | Parcial |
 | Flutter | Media | — (fuera de alcance de esta revisión) |
-| Entrenadores | Media | No |
-| Avisos | Media | No |
-| Auditoría | Alta | No |
-| Comercio (Categorías/Productos/Proveedores/Compras/Inventario/Ventas) | Alta (maneja dinero y stock) | **No — 0%** |
+| Entrenadores | Media | Sí |
+| Avisos (incluida la imagen opcional) | Media | Sí |
+| Configuración del sitio | Media | Sí |
+| Auditoría | Alta | Sí |
+| Comercio (Categorías/Productos/Proveedores/Compras/Inventario/Ventas) | Alta (maneja dinero y stock) | Sí |
+| Zona horaria (`zona_horaria.py`) | Alta | Sí |
 
 ---
 

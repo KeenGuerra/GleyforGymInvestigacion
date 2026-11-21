@@ -250,6 +250,15 @@ Su acceso está limitado exclusivamente a la consulta de su propia información.
 
 ---
 
+## Gestión de Configuración del Sitio
+
+| Acción    | ADMIN | ENTRENADOR | CLIENTE / Público |
+| --------- | ----- | ---------- | ------------------ |
+| Editar (datos de contacto, redes sociales, logo) | Sí | No | No |
+| Consultar | Sí | Sí | Sí, sin autenticación |
+
+---
+
 ## Gestión de Entrenadores y Auditoría
 
 | Acción    | ADMIN | ENTRENADOR | CLIENTE |
@@ -330,6 +339,7 @@ Acceso permitido:
 * Compras
 * Inventario
 * Ventas
+* Configuracion
 
 > No existen páginas `Entrenadores.jsx` ni `Auditoria.jsx` — la gestión de entrenadores se hace vía `Usuarios.jsx` (creación de usuario con rol ENTRENADOR) y la auditoría solo es consultable por API, sin vista en el panel (verificado 2026-09).
 

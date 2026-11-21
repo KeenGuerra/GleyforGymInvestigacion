@@ -99,12 +99,13 @@ Actualmente el sistema posee:
 24. detalle_ventas
 25. registros_auditoria
 26. avisos
+27. configuracion_sitio
 ```
 
 Total:
 
 ```text
-26 tablas principales
+27 tablas principales
 ```
 
 ---
@@ -627,6 +628,32 @@ Comunicados públicos editables desde el panel (RN-042). Antes era contenido est
 | fecha_evento | DATE (solo si tipo=EVENTO) |
 | estado | VARCHAR |
 | fecha_creacion | TIMESTAMP |
+| imagen_url | TEXT, nullable — imagen opcional del aviso (Cloudinary) |
+| cloudinary_public_id | VARCHAR(255), nullable |
+
+---
+
+# 17.5. Tabla Configuracion_Sitio
+
+## Propósito
+
+Fila única (`id=1`) con los datos de contacto, redes sociales, mapa y logo del gimnasio que se muestran en la página pública y en las pantallas de autenticación (RN-049). Antes estos datos estaban escritos directamente en el código del frontend.
+
+## Campos
+
+| Campo | Tipo |
+|---------|---------|
+| id | INTEGER PK (siempre 1) |
+| telefono | VARCHAR(30), nullable |
+| email | VARCHAR(100), nullable |
+| direccion | VARCHAR(200), nullable |
+| facebook_url | TEXT, nullable |
+| instagram_url | TEXT, nullable |
+| tiktok_url | TEXT, nullable |
+| whatsapp_numero | VARCHAR(30), nullable |
+| mapa_embed_url | TEXT, nullable |
+| logo_url | TEXT, nullable — Cloudinary |
+| cloudinary_public_id_logo | VARCHAR(255), nullable |
 
 ---
 

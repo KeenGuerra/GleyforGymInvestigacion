@@ -407,11 +407,53 @@ Mayor precisión en seguimiento físico.
 
 ---
 
+# DA-014
+
+## Zona Horaria Fija en vez de `zoneinfo`
+
+### Fecha
+
+2026-11 (sexta iteración de consolidación)
+
+### Decisión
+
+Se detectó que el backend calculaba "hoy"/"ahora" con `date.today()`/`datetime.now()` sin zona horaria (hora del servidor, UTC en Render) y el frontend con `new Date().toISOString()` (siempre UTC), lo que adelantaba un día cualquier fecha calculada en la noche de Perú. Se centralizó el cálculo en un módulo nuevo, `backend/app/zona_horaria.py` (`hoy()`/`ahora()`), y en una función nueva del frontend, `obtenerFechaLocalISO()`.
+
+Se usa un offset fijo (`timezone(timedelta(hours=-5))`) en vez de `zoneinfo.ZoneInfo("America/Lima")`, a propósito: Perú no tiene horario de verano, así que el offset nunca cambia, y esto evita depender de que el sistema operativo tenga instalada la base de datos de husos horarios IANA (en Windows no viene por defecto y rompe `ZoneInfo` con `ZoneInfoNotFoundError` si falta el paquete `tzdata`).
+
+---
+
+### Justificación
+
+Un offset fijo es correcto para Perú específicamente y no introduce una dependencia nueva (`tzdata`) ni un comportamiento distinto entre el entorno de desarrollo (Windows) y producción (Render, Linux).
+
+---
+
+# DA-015
+
+## Configuración del Sitio como Fila Única
+
+### Fecha
+
+2026-11 (sexta iteración de consolidación)
+
+### Decisión
+
+Los datos de contacto, redes sociales, mapa y logo del gimnasio, antes escritos directamente en el código del frontend, pasan a una tabla propia (`configuracion_sitio`) con una única fila (`id=1`), siguiendo el mismo patrón "obtener o crear" ya usado para los avisos sembrados (`seed_avisos_iniciales`).
+
+---
+
+### Justificación
+
+El gimnasio es una sola entidad de negocio: no hay necesidad de modelar varias configuraciones, y una fila única simplifica tanto el backend (`GET`/`PUT /configuracion/` sin identificador en la URL) como el frontend (un solo formulario, sin selector).
+
+---
+
 # Estado
 
 ## Vigentes
 
-✅ DA-001 a DA-013
+✅ DA-001 a DA-015
 
 ---
 

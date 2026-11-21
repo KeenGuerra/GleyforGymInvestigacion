@@ -383,6 +383,20 @@ Un cliente autenticado puede generar una venta en estado PENDIENTE desde la Tien
 
 ---
 
+# RN-049 Configuración del sitio editable
+
+Los datos de contacto (teléfono, correo, dirección), los enlaces de redes sociales, el número de WhatsApp, el mapa y el logo que se muestran en la página pública del gimnasio deberán gestionarse desde una tabla propia (`configuracion_sitio`), no como texto o archivo fijo en el código del frontend.
+
+Solo el rol ADMIN podrá editar esta configuración. Cualquier visitante podrá consultarla sin autenticación, igual que los avisos (RN-042).
+
+---
+
+# RN-050 Imagen de avisos
+
+Un aviso puede incluir opcionalmente una imagen, almacenada en Cloudinary. La base de datos únicamente almacenará `imagen_url` y `cloudinary_public_id`, siguiendo el mismo patrón que el video de ejercicios (RN-029).
+
+---
+
 # Resumen de Reglas Críticas
 
 Las reglas más importantes del sistema son:

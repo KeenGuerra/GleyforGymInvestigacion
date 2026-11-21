@@ -300,6 +300,20 @@ El recibo/boleta en PDF (`backend/app/recibos.py`) es un comprobante interno, no
 
 ---
 
+## P-27 Bug de zona horaria, avisos con imagen, configuración del sitio y Ventas/Pagos como lista
+
+~~Resuelto (2026-11, sexta iteración de consolidación)~~: el usuario reportó que algunos registros quedaban con un día de más. La causa fueron dos focos distintos de mezclar hora UTC con hora de Perú (UTC-5, sin horario de verano): en el backend, 15+ sitios usaban `date.today()`/`datetime.now()` sin zona horaria (el servidor de Render corre en UTC); en el frontend, 5 pantallas calculaban "hoy" con `new Date().toISOString()` (siempre UTC) para prellenar un formulario. Se centralizó el cálculo en `backend/app/zona_horaria.py` (`hoy()`/`ahora()`, offset fijo, ver DA-014) y `obtenerFechaLocalISO()` en el frontend, con pruebas de regresión dedicadas que fijan la fecha/hora para probar el caso límite (servidor ya en el día siguiente).
+
+De paso, se implementaron tres pedidos más del mismo usuario en la misma iteración:
+
+- **Avisos con imagen**: campo opcional, mismo patrón Cloudinary que Ejercicios/Productos (ver `Arquitectura_Cloudinary.md`).
+- **Configuración del sitio** (DA-015): los datos de contacto, redes sociales, mapa y logo que se mostraban fijos en el código de `Inicio.jsx`/`Navbar.jsx`/pantallas de autenticación pasan a una tabla editable desde el panel (`/configuracion`, solo ADMIN).
+- **Ventas como lista**: se reemplazó el layout de tarjetas (agregado en la iteración anterior) por una tabla, igual que "Rutinas generadas"; `Pagos.jsx` (ya era tabla) recibió los mismos badges de estado y clases de botón para verse consistente.
+
+Backend 193→200 pruebas, frontend 397→410 pruebas (ver `Intervencion_Metodologica.md`, Tabla 12).
+
+---
+
 # Fuera de este documento
 
 No se repiten aquí las brechas ya resueltas en las tres rondas de revisión anteriores: RBAC completo, motor de IA real (restricciones médicas + fórmula Mifflin-St Jeor), auditoría y trazabilidad, autogestión de contraseñas + reset por admin, Avisos editables desde el panel, KPI de asistencias en el dashboard, y paginación en los listados de mayor volumen.

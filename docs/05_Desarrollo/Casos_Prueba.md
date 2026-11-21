@@ -941,12 +941,67 @@ No hay pasarela de pago ni webhook: todo pago se cobra directamente por Yape, Pl
 
 ---
 
+# MÓDULO: AVISOS CON IMAGEN Y CONFIGURACIÓN DEL SITIO
+
+## CP-074 Crear y Reemplazar Imagen de un Aviso
+
+### Objetivo
+Validar que `POST /avisos/` acepte una imagen opcional como `multipart/form-data` y que `PUT /avisos/{id_aviso}/media` la reemplace en un aviso ya creado, exigiendo un archivo y validando que el aviso exista.
+
+### Resultado Esperado
+```text
+Aviso creado con imagen_url/cloudinary_public_id cuando se adjunta un archivo.
+PUT /media sin archivo devuelve 400; sobre un id_aviso inexistente devuelve 404.
+Solo ADMIN puede llamar a ambos endpoints.
+```
+
+---
+
+## CP-075 Consultar Configuración del Sitio sin Autenticación
+
+### Objetivo
+Validar que `GET /configuracion/` responda sin requerir JWT, devolviendo los datos de contacto, redes sociales, mapa y logo vigentes.
+
+### Resultado Esperado
+```text
+HTTP 200 para cualquier visitante, autenticado o no.
+```
+
+---
+
+## CP-076 Editar Configuración del Sitio Solo ADMIN
+
+### Objetivo
+Validar que `PUT /configuracion/` actualice los datos de contacto y redes sociales, y que ENTRENADOR/CLIENTE reciban 403 al intentarlo.
+
+### Resultado Esperado
+```text
+HTTP 403 para ENTRENADOR/CLIENTE. HTTP 200 para ADMIN, con los campos
+enviados reflejados de inmediato en una siguiente llamada a GET /configuracion/.
+```
+
+---
+
+## CP-077 Reemplazar el Logo del Gimnasio Solo ADMIN
+
+### Objetivo
+Validar que `PUT /configuracion/media` reemplace el logo (Cloudinary), exigiendo un archivo, y que solo ADMIN pueda llamarlo.
+
+### Resultado Esperado
+```text
+HTTP 400 sin archivo adjunto. HTTP 403 para ENTRENADOR/CLIENTE.
+HTTP 200 para ADMIN, con logo_url actualizado y el logo anterior
+descartado de Cloudinary.
+```
+
+---
+
 # Resumen
 
 ## Total de Casos de Prueba
 
 ```text
-73
+77
 ```
 
 ## Cobertura
@@ -967,7 +1022,8 @@ Seguridad
 Dashboards
 Nuevos Parches v2.6
 Entrenadores
-Avisos
+Avisos (incluida la imagen opcional)
+Configuración del sitio
 Auditoría
 Comercio (Categorías, Productos, Proveedores, Compras, Inventario, Ventas)
 Confirmación Manual de Pagos por Yape
@@ -978,6 +1034,9 @@ Confirmación Manual de Pagos por Yape
 ```text
 CP-001 a CP-055: pruebas ejecutadas y aprobadas en entorno local v2.6.
 CP-056 a CP-073: casos de prueba redactados 2026-09 a partir del código real; sin automatización todavía.
+CP-074 a CP-077: casos de prueba redactados 2026-11 (avisos con imagen y
+configuración del sitio), ya cubiertos por pruebas automatizadas en
+backend/tests/test_backend.py.
 
 Cobertura real medida 2026-09 (pytest --cov, no repetir cifras de memoria):
 - Cobertura total del backend: 81% (55 tests, 3113 statements).

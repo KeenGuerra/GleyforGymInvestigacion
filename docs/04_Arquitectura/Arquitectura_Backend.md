@@ -28,7 +28,7 @@ Su responsabilidad principal es centralizar la lógica de negocio, gestionar la 
 
 ## 3. Estructura del Backend
 
-> **Actualizado 2026-09**: la versión anterior de este documento solo listaba 10 routers. El backend real tiene 21 routers + submódulo `ia/`, más módulos de soporte (`pagos_gateway/`, `rate_limit.py`, `recibos.py`, `auditoria.py`) que no estaban documentados.
+> **Actualizado 2026-11**: el backend real tiene 22 routers + submódulo `ia/`, más módulos de soporte (`zona_horaria.py`, `rate_limit.py`, `recibos.py`, `auditoria.py`). No incluye `pagos_gateway/` ni `routes/webhooks.py`: ambos se eliminaron por completo al descartarse la integración con Culqi (ver `Pendientes.md` P-02); todo pago se confirma manualmente por el staff.
 
 ```text
 backend
@@ -45,11 +45,7 @@ backend
 │   ├── auditoria.py          # helper para registrar auditoría (RN-039/RN-043)
 │   ├── rate_limit.py         # limitador de intentos de login en memoria
 │   ├── recibos.py            # generación de PDF de comprobantes (reportlab)
-│   │
-│   ├── pagos_gateway
-│   │   ├── base.py           # interfaz GatewayPago (ABC)
-│   │   ├── mock.py           # MockGateway (simulación en memoria)
-│   │   └── __init__.py       # singleton `gateway`, único punto de cambio a un proveedor real
+│   ├── zona_horaria.py       # hoy()/ahora() en hora de Perú (UTC-5 fijo), no la del servidor
 │   │
 │   ├── routes
 │   │   ├── usuarios.py
@@ -73,7 +69,7 @@ backend
 │   │   ├── inventario.py
 │   │   ├── ventas.py
 │   │   ├── reportes.py
-│   │   ├── webhooks.py
+│   │   ├── configuracion.py
 │   │   │
 │   │   └── ia
 │   │       ├── ia_rutina.py
@@ -401,15 +397,30 @@ DELETE /entrenadores/{id_entrenador}
 
 ### Avisos
 
-Responsable de: comunicados públicos editables (RN-042). Reemplaza el contenido antes hardcodeado en `Avisos.jsx`.
+Responsable de: comunicados públicos editables (RN-042), con una imagen opcional (RN-050). Reemplaza el contenido antes hardcodeado en `Avisos.jsx`.
 
 Endpoints:
 
 ```text
-GET /avisos/            (público, sin JWT)
-POST /avisos/           (ADMIN)
-PUT /avisos/{id_aviso}  (ADMIN)
-DELETE /avisos/{id_aviso} (ADMIN)
+GET /avisos/                     (público, sin JWT)
+POST /avisos/                    (ADMIN, multipart/form-data, imagen opcional)
+PUT /avisos/{id_aviso}           (ADMIN, JSON)
+PUT /avisos/{id_aviso}/media     (ADMIN, multipart/form-data, reemplaza la imagen)
+DELETE /avisos/{id_aviso}        (ADMIN)
+```
+
+---
+
+### Configuración del Sitio
+
+Responsable de: datos de contacto, redes sociales, mapa y logo del gimnasio mostrados en la página pública y en las pantallas de autenticación (RN-049). Fila única (`id=1`), sembrada en `create_db.py` con los valores que antes estaban hardcodeados en `Inicio.jsx`.
+
+Endpoints:
+
+```text
+GET /configuracion/        (público, sin JWT)
+PUT /configuracion/        (ADMIN, JSON — datos de contacto y redes)
+PUT /configuracion/media   (ADMIN, multipart/form-data — reemplaza el logo)
 ```
 
 ---
@@ -480,12 +491,15 @@ GET /ventas/
 GET /ventas/resumen
 GET /ventas/reporte
 GET /ventas/mis-pedidos            # CLIENTE, solo lo propio
-POST /ventas/solicitar             # CLIENTE, crea venta PENDIENTE desde /tienda
-POST /ventas/{id_venta}/checkout   # inicia pago con la pasarela configurada
 GET /ventas/{id_venta}
+GET /ventas/{id_venta}/boleta      # comprobante en PDF (RUC, razón social, desglose de IGV)
+POST /ventas/solicitar             # CLIENTE, crea venta PENDIENTE desde /tienda (pago por QR de Yape, confirmado a mano)
 POST /ventas/{id_venta}/anular     # revierte el stock si estaba confirmada
 POST /ventas/{id_venta}/confirmar
+POST /ventas/{id_venta}/entregar
 ```
+
+Nota: no existe pasarela de pago ni webhook — se evaluó Culqi y se descartó por completo (ver `Pendientes.md` P-02); todo pago (membresía o venta) se confirma manualmente por el staff tras verificar la transferencia por Yape, Plin o efectivo.
 
 ---
 
@@ -496,18 +510,6 @@ Endpoint:
 ```text
 GET /reportes/kpis   # consolida clientes activos, recaudación, rutinas IA, progreso promedio
 ```
-
----
-
-### Webhooks
-
-Endpoint:
-
-```text
-POST /webhooks/pagos   # notificación asíncrona de la pasarela de pagos
-```
-
-Nota: hoy sin validación de firma/origen para un proveedor real (ver `Pendientes.md` P-02); solo lo dispara `MockGateway`.
 
 ---
 

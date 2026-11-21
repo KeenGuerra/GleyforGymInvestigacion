@@ -40,10 +40,11 @@ El negocio del gimnasio no está sujeto a ninguna normativa ISO obligatoria por 
 | P10 | Avisos y comunicados públicos | Administrador | Implementado |
 | P11 | Auditoría y trazabilidad de operaciones críticas | Administrador (panel web) | Implementado |
 | P12 | Gestión de entrenadores como entidad de negocio | Administrador (panel web) | Implementado |
+| P13 | Configuración de datos de contacto, redes sociales y logo del gimnasio | Administrador (panel web) | Implementado |
 
 *Nota.* Elaboración propia, a partir de las rutas del backend del sistema (`backend/app/routes/`).
 
-Los procesos P09 a P12 (gestión comercial, avisos, auditoría y gestión de entrenadores) completan el alcance funcional del sistema definido en el Plan de Tesis, junto a la gestión administrativa y deportiva; sus requerimientos funcionales se detallan en la sección 3.1.
+Los procesos P09 a P13 (gestión comercial, avisos, auditoría, gestión de entrenadores y configuración del sitio) completan el alcance funcional del sistema definido en el Plan de Tesis, junto a la gestión administrativa y deportiva; sus requerimientos funcionales se detallan en la sección 3.1.
 
 #### 1.1.2. Diagrama de procesos
 
@@ -146,7 +147,7 @@ stop
 
 *Nota.* Elaboración propia, a partir de `backend/app/routes/compras.py` y `backend/app/routes/ventas.py`.
 
-Los procesos P10 a P12 son operaciones de registro, consulta, actualización y baja (CRUD) de menor complejidad, protegidas por rol, por lo que no requieren un diagrama de flujo propio.
+Los procesos P10 a P13 son operaciones de registro, consulta, actualización y baja (CRUD) de menor complejidad, protegidas por rol, por lo que no requieren un diagrama de flujo propio.
 
 Diagrama de proceso con carriles (BPMN) para el flujo de asignación de membresía y registro de pago (P02–P03), el de mayor relevancia de negocio:
 
@@ -227,6 +228,7 @@ stop
 | Avisos y comunicados (P10) | R | I | I | — |
 | Auditoría y trazabilidad (P11) | R | I | I | — |
 | Gestión de entrenadores (P12) | R | I | I | — |
+| Configuración del sitio (P13) | R | I | I | — |
 
 *Nota.* Elaboración propia, a partir de los permisos por rol definidos en el sistema. La "C" de RECEPCIONISTA en Gestión comercial (P09) corresponde únicamente a la venta de mostrador, no al resto del proceso (categorías, productos, proveedores, compras, inventario), al que no tiene acceso.
 
@@ -319,6 +321,10 @@ gantt
     Confirmación manual de todos los pagos :2026-11-14, 1d
     Reportes Excel (general completo y fichas del postest) :2026-11-15, 1d
     Corrección de defectos detectados en pruebas :2026-11-15, 1d
+    section Iteración 6 de consolidación
+    Correccion de fecha y hora a zona horaria de Peru :2026-11-20, 1d
+    Avisos con imagen, configuracion editable del sitio :2026-11-20, 1d
+    Ventas rediseñada como tabla :2026-11-20, 1d
 ```
 
 *Nota.* Elaboración propia, reconstruido a partir del historial de control de versiones del repositorio Git y los hitos de versión documentados del proyecto.
@@ -437,6 +443,8 @@ Los requerimientos funcionales y no funcionales completos se documentan en la es
 | Comercio (categorías, productos, proveedores, compras, inventario, ventas) | RF-191 a RF-224 | Media-Alta |
 | Confirmación manual de pagos de autoservicio | RF-225 | Alta |
 | Reportes consolidados | RF-226 | Media |
+| Avisos con imagen | RF-227 | Baja |
+| Configuración del sitio (contacto, redes sociales, logo) | RF-228 a RF-230 | Media-Baja |
 
 *Nota.* Elaboración propia, a partir de la especificación de requerimientos funcionales del proyecto.
 
@@ -481,7 +489,7 @@ La priorización se realizó mediante la técnica **MoSCoW**, aplicada sobre los
 |---|---|
 | **Must have** (imprescindible) | Autenticación y roles (RF-001 a RF-015, Alta), gestión de clientes (RF-016 a RF-035, Alta), membresías y asignación (RF-036 a RF-065, Alta), pagos (RF-066 a RF-080, Alta), asistencias (RF-081 a RF-090, Alta), motor de recomendación de rutinas y nutrición (RF-136 a RF-155, Alta — es el componente que distingue al sistema del resto de software administrativo de gimnasios) |
 | **Should have** (debería tener) | Seguimiento de progreso físico (RF-091 a RF-110, Media-Alta), catálogos de ejercicios y comidas (RF-111 a RF-135, Alta), dashboard de KPIs (RF-166 a RF-175, Media), módulo de Comercio (RF-191 a RF-224, Media-Alta — ya implementado y desplegado, pero no forma parte del núcleo original de gestión deportiva), confirmación manual de pagos de autoservicio y reportes consolidados (RF-225 y RF-226) |
-| **Could have** (podría tener) | Avisos editables desde el panel (RF-176 a RF-190, Media-Alta), exportación CSV/PDF, paginación de listados |
+| **Could have** (podría tener) | Avisos editables desde el panel (RF-176 a RF-190, Media-Alta), exportación CSV/PDF, paginación de listados, avisos con imagen y configuración editable de los datos de contacto y el logo del gimnasio (RF-227 a RF-230, Media-Baja) |
 | **Won't have** (esta versión) | Pasarela de pago en línea (los pagos por Yape, Plin o efectivo se confirman manualmente por el personal), modelo predictivo de no renovación de membresías |
 
 *Nota.* Elaboración propia.
@@ -503,6 +511,7 @@ El backlog, reconstruido en orden real de implementación:
 9. Documentación técnica de requisitos, casos de prueba y arquitectura de los módulos de Comercio, Avisos, Auditoría y Entrenadores.
 10. Cuarta iteración de consolidación: pago de la tienda en línea mediante código QR de Yape confirmado por el personal; incorporación del rol RECEPCIONISTA; saldo pendiente para membresías pagadas en partes; motor de rutinas con más ejercicios por día y la división "Piernas" separada en subgrupos (Cuádriceps, Gemelos, Glúteos, Femorales); comprobantes de venta con RUC, razón social y desglose de IGV, en formato ticket de 80 mm para impresora térmica; avisos masivos por WhatsApp (cumpleaños, bienvenida, inactividad, feriados); dashboard con gráficos de ingresos, asistencias, membresías por estado y productos más vendidos; reporte de clientes con saldo pendiente.
 11. Quinta iteración de consolidación: unificación del diseño visual y modal de confirmación propio; lector de código de barras en Productos, Ventas y Compras; confirmación manual por el personal de todos los pagos (Yape, Plin o efectivo); reporte general del negocio y reporte de apoyo a las fichas de campo del postest, exportables a Excel; corrección de defectos detectados en las pruebas.
+12. Sexta iteración de consolidación: corrección del cálculo de fecha y hora para que use siempre la hora de Perú en vez de la hora UTC del servidor; avisos con imagen; configuración editable desde el panel de los datos de contacto, redes sociales, mapa y logo del gimnasio que antes estaban fijos en el código de la página pública; rediseño de Ventas como listado tipo tabla, con el mismo patrón visual que Rutinas generadas.
 
 ---
 
@@ -572,6 +581,7 @@ package "Gestión comercial" {
 package "Soporte transversal" {
   entity REGISTRO_AUDITORIA
   entity AVISO
+  entity CONFIGURACION_SITIO
   entity ENVIO_WHATSAPP
   entity REGISTRO_TIEMPO_SISTEMA
 }
@@ -617,11 +627,11 @@ LOTE ||--o{ DETALLE_VENTA : "se vende de"
 @enduml
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py`. El diagrama muestra las 30 entidades del esquema físico, agrupadas en gestión deportiva, gestión comercial y soporte transversal (auditoría, avisos, envíos por WhatsApp e instrumentación del postest); los atributos de cada tabla se detallan en las Figuras 6a y 6b.
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. El diagrama muestra las 31 entidades del esquema físico, agrupadas en gestión deportiva, gestión comercial y soporte transversal (auditoría, avisos, configuración del sitio, envíos por WhatsApp e instrumentación del postest); los atributos de cada tabla se detallan en las Figuras 6a y 6b.
 
 **Primera forma normal (1FN).** Se eliminaron los grupos repetitivos: las medidas corporales del progreso físico se almacenan en columnas atómicas independientes (brazo izquierdo, brazo derecho, pierna izquierda, pierna derecha, pecho, cintura) en lugar de una lista o campo compuesto.
 
-**Modelo lógico.** El esquema físico implementado comprende 30 tablas en PostgreSQL, con sus tipos de datos y restricciones definidos mediante SQLAlchemy. El monto pagado y el saldo pendiente de una membresía se calculan a partir de los pagos registrados, sin columnas adicionales; el RUC, la razón social y el desglose de IGV del comprobante se obtienen de la configuración del gimnasio, sin tablas nuevas; y el rol RECEPCIONISTA tampoco agrega una tabla, ya que es un valor más del campo `rol` de Usuario. Los dos diagramas siguientes muestran el modelo lógico completo de las 30 tablas, con su cardinalidad, divididos en bloque deportivo (Figura 6a) y bloque comercial y de soporte transversal (Figura 6b):
+**Modelo lógico.** El esquema físico implementado comprende 31 tablas en PostgreSQL, con sus tipos de datos y restricciones definidos mediante SQLAlchemy. El monto pagado y el saldo pendiente de una membresía se calculan a partir de los pagos registrados, sin columnas adicionales; el RUC, la razón social y el desglose de IGV del comprobante se obtienen de variables de entorno del servidor, sin tabla propia, por ser datos fiscales de ciclo de cambio distinto al resto; el rol RECEPCIONISTA tampoco agrega una tabla, ya que es un valor más del campo `rol` de Usuario; y los datos de contacto, redes sociales, mapa y logo que se muestran en la página pública sí tienen una tabla propia (`ConfiguracionSitio`, fila única), por ser datos operativos que el administrador cambia desde el panel sin necesitar un nuevo despliegue. Los dos diagramas siguientes muestran el modelo lógico completo de las 31 tablas, con su cardinalidad, divididos en bloque deportivo (Figura 6a) y bloque comercial y de soporte transversal (Figura 6b):
 
 **Figura 6a**
 
@@ -1062,6 +1072,22 @@ entity "Aviso" as AVISO {
   fecha_evento : date
   estado : varchar
   fecha_creacion : datetime
+  imagen_url : text
+  cloudinary_public_id : varchar(255)
+}
+entity "ConfiguracionSitio" as CONFIGURACION_SITIO {
+  * id : int <<PK>>
+  --
+  telefono : varchar(30)
+  email : varchar(100)
+  direccion : varchar(200)
+  facebook_url : text
+  instagram_url : text
+  tiktok_url : text
+  whatsapp_numero : varchar(30)
+  mapa_embed_url : text
+  logo_url : text
+  cloudinary_public_id_logo : varchar(255)
 }
 entity "EnvioWhatsApp" as ENVIO_WHATSAPP {
   * id_envio : int <<PK>>
@@ -1159,6 +1185,7 @@ rectangle "Sistema GleyforGym" {
   usecase "UC14 Gestionar clientes\ny asistencias" as UC14
   usecase "UC15 Asignar membresía\ny confirmar pago" as UC15
   usecase "UC16 Registrar venta\nde mostrador" as UC16
+  usecase "UC17 Configurar datos de\ncontacto, redes y logo" as UC17
 }
 
 Publico --> UC1
@@ -1182,10 +1209,11 @@ UC13 <-- Admin
 UC14 <-- Admin
 UC15 <-- Admin
 UC16 <-- Admin
+UC17 <-- Admin
 @enduml
 ```
 
-*Nota.* Elaboración propia, a partir de las rutas y permisos por rol verificados en `backend/app/routes/`. RECEPCIONISTA no tiene acceso a UC9, UC11 (fuera de la venta de mostrador, ya cubierta en UC16), UC12 ni UC13.
+*Nota.* Elaboración propia, a partir de las rutas y permisos por rol verificados en `backend/app/routes/`. RECEPCIONISTA no tiene acceso a UC9, UC11 (fuera de la venta de mostrador, ya cubierta en UC16), UC12, UC13 ni UC17.
 
 #### 4.3.2. Diagrama de clases (modelo de datos)
 
@@ -1287,6 +1315,7 @@ package "Gestión comercial" {
 package "Soporte transversal" {
   class RegistroAuditoria
   class Aviso
+  class ConfiguracionSitio
   class EnvioWhatsApp
   class RegistroTiempoSistema
 }
@@ -1335,7 +1364,7 @@ Pago -[hidden]down- ConteoInventario
 @enduml
 ```
 
-*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Incluye las 30 clases del modelo de datos con sus multiplicidades; se detallan los atributos de las clases centrales del bloque deportivo, y el detalle de columnas de todas las tablas está en las Figuras 6a y 6b. `monto_pagado()` y `saldo_pendiente()` se muestran como métodos, no como atributos, porque son propiedades calculadas a partir de los pagos asociados y no columnas almacenadas.
+*Nota.* Elaboración propia, a partir de `backend/app/models.py`. Incluye las 31 clases del modelo de datos con sus multiplicidades; se detallan los atributos de las clases centrales del bloque deportivo, y el detalle de columnas de todas las tablas está en las Figuras 6a y 6b. `monto_pagado()` y `saldo_pendiente()` se muestran como métodos, no como atributos, porque son propiedades calculadas a partir de los pagos asociados y no columnas almacenadas.
 
 #### 4.3.3. Diagrama de secuencia — inicio de sesión
 
@@ -1484,6 +1513,7 @@ La implementación siguió el backlog retrospectivo descrito en la sección 3.4,
 | 11 — Consolidación 4 | 9–12 Nov 2026 | Pago por QR de Yape en la tienda en línea, rol RECEPCIONISTA, saldo pendiente, motor de rutinas con más ejercicios por día y piernas en subgrupos, comprobantes con RUC/IGV en formato ticket de 80 mm, avisos masivos por WhatsApp, dashboard con nuevos gráficos y reportes | Tienda, dashboard y comprobantes mejorados |
 | 12 — Consolidación 5 | 14–15 Nov 2026 | Diseño unificado y modal de confirmación propio, lector de código de barras, confirmación manual de todos los pagos, reporte Excel general del negocio y de apoyo a las fichas del postest (F-04 a F-18), corrección de defectos | Pagos sin dependencia de terceros y reportes listos para el postest |
 | 13 — Documentación final | Nov 2026 | Redacción de la intervención metodológica del sistema | Documentación de tesis consistente con el sistema |
+| 14 — Consolidación 6 | 20 Nov 2026 | Corrección de fecha y hora a la zona horaria de Perú, avisos con imagen, configuración editable de contacto/redes/logo del gimnasio, Ventas rediseñada como tabla | Fecha de negocio correcta y datos de contacto editables sin desplegar |
 
 *Nota.* Elaboración propia, a partir del historial de control de versiones del repositorio Git.
 
@@ -1501,7 +1531,7 @@ El proyecto sigue convenciones de codificación definidas por el equipo: nomencl
 
 ### 6.1. Diseño de casos de prueba
 
-El backend cuenta con 193 funciones de prueba que cubren el núcleo de la API, el módulo de Comercio, el motor de rutinas, la recomendación nutricional (incluido el filtro por restricciones alimentarias), los comprobantes, la integración con el asistente de IA, la compra de membresías, las operaciones CRUD, el registro de nuevos socios y el envío de correo; se ejecutan sobre un cliente de pruebas de FastAPI con base de datos SQLite aislada. El frontend cuenta con 397 pruebas basadas en Vitest y Testing Library, organizadas en un archivo por cada página, componente o utilidad con lógica propia, que simulan las llamadas a la API y verifican el comportamiento de la interfaz. La trazabilidad entre requerimientos y pruebas se documenta en 73 casos de prueba (CP-001 a CP-073).
+El backend cuenta con 200 funciones de prueba que cubren el núcleo de la API, el módulo de Comercio, el motor de rutinas, la recomendación nutricional (incluido el filtro por restricciones alimentarias), los comprobantes, la integración con el asistente de IA, la compra de membresías, las operaciones CRUD, el registro de nuevos socios, el envío de correo y el cálculo de fecha/hora en zona horaria de Perú; se ejecutan sobre un cliente de pruebas de FastAPI con base de datos SQLite aislada. El frontend cuenta con 410 pruebas basadas en Vitest y Testing Library, organizadas en un archivo por cada página, componente o utilidad con lógica propia, que simulan las llamadas a la API y verifican el comportamiento de la interfaz. La trazabilidad entre requerimientos y pruebas se documenta en 77 casos de prueba (CP-001 a CP-077).
 
 #### 6.1.1. Casos de prueba de verificación (análisis estático)
 
@@ -1546,10 +1576,10 @@ La validación del software en ejecución se realizó mediante las suites de pru
 
 | Suite | Resultado |
 |---|---|
-| Backend (`pytest`) | 193 pruebas aprobadas, 0 fallidas (verificado el 18/11/2026) |
-| Frontend (`vitest run`) | 397 pruebas aprobadas, 0 fallidas (verificado el 18/11/2026) |
+| Backend (`pytest`) | 200 pruebas aprobadas, 0 fallidas (verificado el 20/11/2026) |
+| Frontend (`vitest run`) | 410 pruebas aprobadas, 0 fallidas (verificado el 20/11/2026) |
 
-*Nota.* Elaboración propia. Conteos de pruebas verificados el 18/11/2026, confirmados por el pipeline de integración continua; las cifras de cobertura por línea de la Tabla 13 corresponden a la medición de septiembre de 2026.
+*Nota.* Elaboración propia. Conteos de pruebas verificados el 20/11/2026, confirmados por el pipeline de integración continua; las cifras de cobertura por línea de la Tabla 13 corresponden a la medición de septiembre de 2026. El incremento respecto a la medición anterior (193/397) corresponde a las pruebas de la sexta iteración de consolidación (zona horaria, avisos con imagen y configuración del sitio).
 
 **Desglose de pruebas de backend por módulo** (medición de septiembre de 2026):
 
@@ -1579,7 +1609,7 @@ El módulo de Comercio cuenta con 10 pruebas propias que ejercitan su lógica de
 
 **Correspondencia con los indicadores de la variable independiente del Plan de Tesis (Anexo 02, Matriz de Operacionalización de Variables).** Según el Plan de Tesis, estos indicadores describen el sistema ya construido: no tienen pretest y su resultado se compara con el valor objetivo definido para cada uno, sin contraste de hipótesis.
 
-- *I6 — Cumplimiento de la eficiencia* (`Cumplimiento = Funciones correctas / Total de funciones evaluadas × 100`, ficha F-06): sobre las 193 pruebas de backend y 397 de frontend ejecutadas al 18/11/2026, el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (590 de 590 pruebas aprobadas, 0 fallidas, 0 observadas). Este porcentaje describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema.
+- *I6 — Cumplimiento de la eficiencia* (`Cumplimiento = Funciones correctas / Total de funciones evaluadas × 100`, ficha F-06): sobre las 200 pruebas de backend y 410 de frontend ejecutadas al 20/11/2026, el cumplimiento funcional medido sobre las funciones efectivamente evaluadas por una prueba automatizada es **100%** (610 de 610 pruebas aprobadas, 0 fallidas, 0 observadas). Este porcentaje describe la tasa de éxito de las pruebas existentes, no la cobertura total del sistema.
 - *I4 — Comportamiento en el tiempo* (tiempo de respuesta del sistema en sus operaciones principales, ficha F-04), en la operación de generación de rutinas y planes nutricionales: medido con un script propio que invoca los endpoints reales `POST /ia/rutina/generar/{id_cliente}` y `POST /ia/nutricion/generar/{id_cliente}` de extremo a extremo (20 repeticiones, catálogo representativo en SQLite local):
 
   **Tabla 14**
@@ -1868,6 +1898,7 @@ El comportamiento del sistema por rol, según las páginas del panel administrat
 - Administración: usuarios, clientes, membresías, asignación de membresías, pagos, asistencias, progreso físico.
 - Contenido deportivo: ejercicios, comidas, rutinas y planes nutricionales, gestión de avisos.
 - Comercio: categorías, productos, proveedores, compras, inventario, ventas.
+- Configuración del sitio: datos de contacto, redes sociales, mapa y logo que se muestran en la página pública.
 - Es el único rol habilitado para restablecer directamente la contraseña de otro usuario.
 
 **ENTRENADOR**
@@ -1909,6 +1940,7 @@ La Tabla 20 resume, módulo por módulo, qué puede hacer cada rol:
 | Avisos | Sí | — | Consulta | — |
 | Reportes | Sí | Sí | — | — |
 | Entrenadores y auditoría | Sí | — | — | — |
+| Configuración del sitio | Sí | — | — | — |
 
 *Nota.* Elaboración propia, a partir de los permisos por rol definidos en el sistema. "Solo su perfil", "solo los suyos" y expresiones similares indican que el cliente accede únicamente a su propia información.
 
@@ -1978,7 +2010,11 @@ El módulo Inventario muestra el stock actual de cada producto y permite registr
 
 **Publicar avisos** (ADMIN)
 
-En el módulo Avisos se crean o editan los avisos que se muestran en la página pública del gimnasio (horarios, clases, comunicados) y se dan de baja los que ya no están vigentes.
+En el módulo Avisos se crean o editan los avisos que se muestran en la página pública del gimnasio (horarios, clases, comunicados), con una imagen opcional, y se dan de baja los que ya no están vigentes.
+
+**Actualizar los datos de contacto y el logo del gimnasio** (ADMIN)
+
+En el módulo Configuración se edita el teléfono, correo, dirección, enlaces de redes sociales, número de WhatsApp, mapa y logo que se muestran en la página de inicio y en las pantallas de inicio de sesión y registro. El cambio queda disponible de inmediato para cualquier visitante, sin necesidad de modificar el código ni volver a desplegar el sistema.
 
 **Enviar avisos masivos por WhatsApp** (ADMIN o ENTRENADOR)
 
@@ -2036,7 +2072,7 @@ Como recomendaciones generales de uso: confirmar un pago solo después de verifi
 **Instalación local (resumen):**
 
 1. Crear la base de datos PostgreSQL (`CREATE DATABASE gleyforgym;`).
-2. Backend: crear entorno virtual (`python -m venv venv`), activarlo, instalar dependencias (`pip install -r requirements.txt`), configurar `backend/.env` con, como mínimo, `DATABASE_URL` y `SECRET_KEY` (único par obligatorio para levantar el backend), más las variables opcionales que habilitan una función específica si se definen: `CLOUDINARY_URL` (imágenes de ejercicios), `BREVO_API_KEY`/`BREVO_SENDER_EMAIL`/`BREVO_SENDER_NAME` (envío real de correo), `ANTHROPIC_API_KEY`/`CLAUDE_MODEL_IA` (integración híbrida con Claude), `RUC_EMPRESA`/`RAZON_SOCIAL` (datos del gimnasio en el comprobante ticket 80mm, con valor por defecto si se omiten) y `ALGORITHM`/`ACCESS_TOKEN_EXPIRE_MINUTES`/`CORS_ORIGINS`/`FRONTEND_URL` (todas con un valor por defecto razonable); inicializar las tablas (`python create_db.py`) y levantar el servidor (`uvicorn app.main:app --reload`), disponible en `http://127.0.0.1:8000` con documentación interactiva en `/docs`.
+2. Backend: crear entorno virtual (`python -m venv venv`), activarlo, instalar dependencias (`pip install -r requirements.txt`), configurar `backend/.env` con, como mínimo, `DATABASE_URL` y `SECRET_KEY` (único par obligatorio para levantar el backend), más las variables opcionales que habilitan una función específica si se definen: `CLOUDINARY_URL` (imágenes de ejercicios, productos, avisos y el logo del gimnasio), `BREVO_API_KEY`/`BREVO_SENDER_EMAIL`/`BREVO_SENDER_NAME` (envío real de correo), `ANTHROPIC_API_KEY`/`CLAUDE_MODEL_IA` (integración híbrida con Claude), `RUC_EMPRESA`/`RAZON_SOCIAL` (datos del gimnasio en el comprobante ticket 80mm, con valor por defecto si se omiten) y `ALGORITHM`/`ACCESS_TOKEN_EXPIRE_MINUTES`/`CORS_ORIGINS`/`FRONTEND_URL` (todas con un valor por defecto razonable); inicializar las tablas (`python create_db.py`) y levantar el servidor (`uvicorn app.main:app --reload`), disponible en `http://127.0.0.1:8000` con documentación interactiva en `/docs`.
 3. Frontend: instalar dependencias (`npm install`) y levantar el servidor de desarrollo (`npm run dev`), disponible en `http://localhost:5173`.
 4. Verificar: backend y frontend responden, y el usuario administrador sembrado por `create_db.py` permite iniciar sesión.
 

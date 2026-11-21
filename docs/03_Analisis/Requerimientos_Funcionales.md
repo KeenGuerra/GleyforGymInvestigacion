@@ -2032,3 +2032,39 @@ Nota: este requerimiento reemplaza al webhook de notificación asíncrona de una
 El sistema deberá exponer un endpoint único (`/reportes/kpis`) que consolide los indicadores del dashboard (clientes activos, recaudación, rutinas generadas por IA, progreso promedio) en una sola respuesta.
 
 Prioridad: Media.
+
+---
+
+## RF-227 Publicar aviso con imagen
+
+El sistema deberá permitir al administrador adjuntar una imagen opcional al crear un aviso, y reemplazarla en un aviso ya publicado sin tener que volver a enviar el resto de sus datos (`POST /avisos/` como `multipart/form-data`, `PUT /avisos/{id_aviso}/media`). La imagen se almacena en Cloudinary; el visitante público la ve junto al aviso si existe.
+
+Prioridad: Baja.
+
+---
+
+# MÓDULO 25: CONFIGURACIÓN DEL SITIO
+
+> Agregado 2026-11. Antes la dirección, el teléfono, el correo, las redes sociales, el mapa y el logo del gimnasio que se muestran en la página pública estaban escritos directamente en el código del frontend; ahora se gestionan desde `models.ConfiguracionSitio` y `routes/configuracion.py`.
+
+## RF-228 Consultar configuración pública del sitio
+
+El sistema deberá exponer sin autenticación los datos de contacto, redes sociales, mapa y logo vigentes del gimnasio (`GET /configuracion/`), para que la página de inicio y las pantallas de autenticación los muestren siempre actualizados.
+
+Prioridad: Media.
+
+---
+
+## RF-229 Editar datos de contacto y redes sociales
+
+El sistema deberá permitir únicamente al administrador editar el teléfono, correo, dirección, enlaces de Facebook/Instagram/TikTok, número de WhatsApp y mapa embebido del gimnasio desde el panel (`PUT /configuracion/`), quedando el cambio disponible de inmediato en la página pública.
+
+Prioridad: Media.
+
+---
+
+## RF-230 Reemplazar el logo del gimnasio
+
+El sistema deberá permitir únicamente al administrador reemplazar el logo mostrado en la página pública y en las pantallas de autenticación (`PUT /configuracion/media`), almacenándolo en Cloudinary y descartando la imagen anterior.
+
+Prioridad: Baja.
